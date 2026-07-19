@@ -16,8 +16,11 @@ function isPublicRoute(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  console.log('[v0] Middleware processing:', { pathname });
+
   // Allow public routes without authentication
   if (isPublicRoute(pathname)) {
+    console.log('[v0] Public route, allowing access');
     return NextResponse.next();
   }
 
@@ -26,14 +29,25 @@ export async function middleware(request: NextRequest) {
     // Check for platform admin session cookie
     const token = request.cookies.get('platform-admin-token')?.value;
 
+    console.log('[v0] Platform admin route accessed:', { 
+      pathname, 
+      tokenExists: !!token,
+      isApiRoute: pathname.startsWith('/api/')
+    });
+
     if (!token) {
+      console.log('[v0] No token found, denying access');
       // For API routes, return 401
       if (pathname.startsWith('/api/')) {
+        console.log('[v0] Returning 401 for API route');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       // For page routes, redirect to login
+      console.log('[v0] Redirecting to login for page route');
       return NextResponse.redirect(new URL('/platform-admin-login', request.url));
     }
+
+    console.log('[v0] Token found, adding to headers');
 
     // For API routes, add the token to headers so the route handler can verify it
     // For page routes, the middleware simply passes through (authentication can be checked server-side)

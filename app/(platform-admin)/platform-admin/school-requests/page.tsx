@@ -41,6 +41,8 @@ export default function SchoolRequestsPage() {
         setLoading(true);
         setError(null);
 
+        console.log('[v0] Fetching school requests:', { page, pageSize, status, search });
+
         const params = new URLSearchParams({
           page: page.toString(),
           pageSize: pageSize.toString(),
@@ -48,22 +50,34 @@ export default function SchoolRequestsPage() {
           ...(search && { search }),
         });
 
+        console.log('[v0] Making API request to:', `/api/platform-admin/school-requests?${params.toString()}`);
+
         const response = await fetch(
           `/api/platform-admin/school-requests?${params.toString()}`
         );
 
+        console.log('[v0] API response status:', response.status);
+
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('[v0] School requests API error:', response.status, errorText);
-          throw new Error(`Failed to fetch school requests: ${response.status}`);
+          console.error('[v0] School requests API error response:', {
+            status: response.status,
+            statusText: response.statusText,
+            body: errorText
+          });
+          throw new Error(`Failed to fetch school requests: ${response.status} - ${errorText}`);
         }
 
         const data: PaginatedResponse<SchoolRequest> = await response.json();
+        console.log('[v0] School requests received:', { count: data.data?.length || 0, total: data.total });
         setRequests(data.data || []);
         setTotal(data.total || 0);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-        console.error('[v0] School requests fetch error:', err);
+        console.error('[v0] School requests fetch error:', { 
+          message: errorMsg,
+          errorStack: err instanceof Error ? err.stack : undefined
+        });
         setError(errorMsg);
       } finally {
         setLoading(false);
