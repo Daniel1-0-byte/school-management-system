@@ -23,6 +23,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/platform-admin', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { label: 'School Requests', href: '/platform-admin/school-requests', icon: <School className="w-5 h-5" /> },
   { label: 'Schools', href: '/platform-admin/schools', icon: <School className="w-5 h-5" /> },
   { label: 'Users', href: '/platform-admin/users', icon: <Users className="w-5 h-5" /> },
   { label: 'Audit Logs', href: '/platform-admin/audit-logs', icon: <FileText className="w-5 h-5" /> },
