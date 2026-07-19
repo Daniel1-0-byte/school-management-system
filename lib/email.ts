@@ -8,6 +8,10 @@ let resendClient: Resend | null = null;
 function getResendClient(): Resend {
   if (!resendClient) {
     const apiKey = process.env.RESEND_API_KEY;
+    console.log('[v0] Initializing Resend client:', {
+      apiKeyExists: !!apiKey,
+      fromEmail: FROM_EMAIL,
+    });
     if (!apiKey) {
       throw new Error('RESEND_API_KEY environment variable is not set');
     }
@@ -24,6 +28,13 @@ interface EmailOptions {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
+    console.log('[v0] Sending email:', {
+      to,
+      subject,
+      from: FROM_EMAIL,
+      timestamp: new Date().toISOString(),
+    });
+
     const resend = getResendClient();
     const response = await resend.emails.send({
       from: FROM_EMAIL,
@@ -32,15 +43,34 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       html,
     });
 
+    console.log('[v0] Email send response:', {
+      error: response.error || null,
+      id: response.data?.id || null,
+      success: !response.error,
+    });
+
     if (response.error) {
-      console.error('[v0] Email send error:', response.error);
+      console.error('[v0] Email send failed:', {
+        error: response.error,
+        to,
+        from: FROM_EMAIL,
+      });
       return { success: false, error: response.error };
     }
 
-    console.log('[v0] Email sent successfully:', response.data?.id);
+    console.log('[v0] Email sent successfully:', {
+      id: response.data?.id,
+      to,
+      from: FROM_EMAIL,
+    });
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('[v0] Email service error:', error);
+    console.error('[v0] Email service error:', {
+      error: error instanceof Error ? error.message : String(error),
+      to,
+      from: FROM_EMAIL,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return { success: false, error };
   }
 }
