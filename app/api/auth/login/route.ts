@@ -1,0 +1,120 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { validateLogin } from '@/lib/schemas';
+import { getClientIp } from '@/lib/auth-utils';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const clientIp = getClientIp(request.headers);
+
+    // Validate input
+    const validated = validateLogin(body);
+    if (!validated) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid login credentials' },
+        { status: 400 }
+      );
+    }
+
+    const { email, password, captchaToken } = validated;
+
+    // Verify CAPTCHA if token provided
+    if (captchaToken) {
+      const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `secret=${RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
+      });
+
+      const captchaData = await captchaResponse.json() as { success: boolean; score?: number };
+      if (!captchaData.success || (captchaData.score && captchaData.score < 0.5)) {
+        return NextResponse.json(
+          { success: false, error: 'CAPTCHA verification failed' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create Supabase client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Attempt login with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError || !authData.session) {
+      // Generic error message to prevent email enumeration
+      console.error('[v0] Login error:', authError);
+      return NextResponse.json(
+        { success: false, error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    // Get user profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('system_role, status')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError || !profileData) {
+      console.error('[v0] Profile fetch error:', profileError);
+      return NextResponse.json(
+        { success: false, error: 'User profile not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user is active
+    if (profileData.status !== 'active') {
+      return NextResponse.json(
+        { success: false, error: 'Your account is not active' },
+        { status: 403 }
+      );
+    }
+
+    // Log audit entry
+    await supabase
+      .from('audit_logs')
+      .insert({
+        actor_id: authData.user.id,
+        action: 'login',
+        target_type: 'user',
+        target_id: authData.user.id,
+        ip_address: clientIp,
+      });
+
+    // Create response with session cookie
+    const response = NextResponse.json({
+      success: true,
+      data: {
+        userId: authData.user.id,
+        email: authData.user.email,
+        role: profileData.system_role,
+      },
+    });
+
+    // Set secure session cookie
+    response.cookies.set({
+      name: 'sb-auth-token',
+      value: authData.session.access_token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    return response;
+  } catch (error) {
+    console.error('[v0] Login error:', error);
+    return NextResponse.json(
+      { success: false, error: 'An unexpected error occurred' },
+      { status: 500 }
+    );
+  }
+}
