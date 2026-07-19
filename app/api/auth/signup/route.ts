@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateSignup } from '@/lib/schemas';
 import { getClientIp, generateInviteToken, getInviteExpirationTime } from '@/lib/auth-utils';
 import { SchoolStatus } from '@/types';
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     } = validated;
 
     // Verify CAPTCHA token with Google
-    const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    const captchaResponse = await fetch(RECAPTCHA_VERIFY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `secret=${RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
