@@ -14,37 +14,49 @@ function VerifyEmailContent() {
   useEffect(() => {
     const verifyEmail = async () => {
       const token = searchParams.get('token');
+      const email = searchParams.get('email');
 
-      if (!token) {
-        setError('No verification token provided');
+      console.log('[v0] Verify email page loaded:', { tokenExists: !!token, email });
+
+      if (!token || !email) {
+        console.log('[v0] Missing token or email');
+        setError('Invalid verification link');
         setLoading(false);
         return;
       }
 
       try {
+        console.log('[v0] Calling verify-email API');
         const response = await fetch('/api/auth/verify-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token, email }),
         });
 
         const data = await response.json();
 
+        console.log('[v0] API response:', { status: response.status, success: data.success });
+
         if (!response.ok) {
+          console.error('[v0] Verification failed:', data.error);
           setError(data.error || 'Verification failed');
           setLoading(false);
           return;
         }
 
+        console.log('[v0] Email verified successfully');
         setVerified(true);
         setLoading(false);
 
         // Redirect to setup after 2 seconds
         setTimeout(() => {
+          console.log('[v0] Redirecting to setup');
           router.push('/setup');
         }, 2000);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Verification error');
+        const errorMsg = err instanceof Error ? err.message : 'Verification error';
+        console.error('[v0] Verification exception:', err);
+        setError(errorMsg);
         setLoading(false);
       }
     };

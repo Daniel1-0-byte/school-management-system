@@ -146,7 +146,18 @@ export async function POST(request: NextRequest) {
       });
 
     // Send verification email
-    const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/verify-email?token=${authData.user.confirmation_token}&email=${encodeURIComponent(email)}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const verificationToken = inviteToken; // Use the same token we created for the profile
+    const verificationLink = `${appUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    
+    console.log('[v0] Sending verification email:', {
+      email,
+      schoolName,
+      verificationLink,
+      appUrl,
+      tokenExists: !!verificationToken
+    });
+    
     const emailHtml = getEmailVerificationTemplate(verificationLink, schoolName);
     
     const emailResult = await sendEmail({
@@ -156,7 +167,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailResult.success) {
-      console.error('[v0] Email send failed:', emailResult.error);
+      console.error('[v0] Email send failed:', {
+        error: emailResult.error,
+        email,
+        schoolName
+      });
       // Continue anyway - user can resend email
     }
 
