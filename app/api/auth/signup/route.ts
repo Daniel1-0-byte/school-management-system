@@ -5,6 +5,7 @@ import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateSignup } from '@/lib/schemas';
 import { getClientIp, generateInviteToken, getInviteExpirationTime } from '@/lib/auth-utils';
 import { SchoolStatus } from '@/types';
+import { sendEmail } from '@/lib/email';
 
 
 export async function POST(request: NextRequest) {
@@ -145,6 +146,69 @@ export async function POST(request: NextRequest) {
         school_id: schoolData.id,
         ip_address: clientIp,
       });
+
+    // Send signup confirmation email
+    const welcomeHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+            .content { background: #f9fafb; padding: 20px; border-radius: 0 0 8px 8px; }
+            .button { background: #667eea; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; display: inline-block; margin: 20px 0; }
+            .footer { margin-top: 20px; font-size: 12px; color: #666; }
+            .highlight { background: #fffbeb; padding: 15px; border-left: 4px solid #667eea; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to School Management System</h1>
+            </div>
+            <div class="content">
+              <p>Hi ${firstName},</p>
+              <p>Thank you for signing up <strong>${schoolName}</strong>! Your account has been successfully created.</p>
+              <div class="highlight">
+                <p><strong>What's next?</strong></p>
+                <p>Our platform administrators will review your school details and add your school information. You'll receive another email once your school is approved and ready to use.</p>
+              </div>
+              <p>In the meantime, you can:</p>
+              <ul>
+                <li>Log in to your account</li>
+                <li>Update your profile information</li>
+                <li>Prepare to invite staff and students once approved</li>
+              </ul>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login" class="button">Sign In to Your Account</a>
+              <p>If you have any questions, please don't hesitate to contact our support team.</p>
+              <div class="footer">
+                <p>© 2026 School Management System. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    console.log('[v0] Sending signup confirmation email to:', { email, schoolName });
+    const emailResult = await sendEmail({
+      to: email,
+      subject: `Welcome to School Management System - ${schoolName}`,
+      html: welcomeHtml,
+    });
+
+    if (!emailResult.success) {
+      console.error('[v0] Signup confirmation email failed:', {
+        error: emailResult.error,
+        email,
+        schoolName,
+      });
+      // Continue anyway - signup is successful even if email fails
+    } else {
+      console.log('[v0] ✓ Signup confirmation email sent successfully to:', email);
+    }
 
     // Return success - email verification is skipped
     // Platform admin will receive school details on first login
