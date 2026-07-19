@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY, RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
+import { getServerSupabaseClient, queryProfiles, queryAuditLogs } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Supabase client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = getServerSupabaseClient();
 
     // Attempt login with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -47,7 +47,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError || !authData.session) {
-      // Generic error message to prevent email enumeration
       console.error('[v0] Login error:', authError);
       return NextResponse.json(
         { success: false, error: 'Invalid email or password' },
@@ -56,9 +55,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user profile
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('system_role, status')
+    const { data: profileData, error: profileError } = await queryProfiles()
+      .select('system_role, status, school_id')
       .eq('id', authData.user.id)
       .single();
 
@@ -79,15 +77,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Log audit entry
-    await supabase
-      .from('audit_logs')
-      .insert({
-        actor_id: authData.user.id,
-        action: 'login',
-        target_type: 'user',
-        target_id: authData.user.id,
-        ip_address: clientIp,
-      });
+    await queryAuditLogs().insert({
+      actor_id: authData.user.id,
+      school_id: profileData.school_id,
+      action: 'login',
+      target_type: 'user',
+      target_id: authData.user.id,
+      ip_address: clientIp,
+    });
 
     // Create response with session cookie
     const response = NextResponse.json({

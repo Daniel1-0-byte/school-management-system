@@ -1,63 +1,47 @@
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  querySchoolRequests,
+  queryAuditLogs,
+  getPaginatedResults,
+  formatSupabaseError,
+} from '@/lib/supabase';
 
 // GET /api/platform-admin/school-requests - Fetch all school requests
 export async function GET(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: 'Supabase configuration missing' },
-        { status: 500 }
-      );
-    }
-
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
 
     if (!adminId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const pageSize = parseInt(searchParams.get('pageSize') || '20');
     const status = searchParams.get('status') || '';
     const search = searchParams.get('search') || '';
 
-    // Build query
-    let query = supabase
-      .from('school_requests')
-      .select('*', { count: 'exact' });
+    let query = querySchoolRequests().select('*', { count: 'exact' });
 
     if (status) {
       query = query.eq('status', status);
     }
 
     if (search) {
-      query = query.or(`school_name.ilike.%${search}%,email.ilike.%${search}%,contact_person.ilike.%${search}%`);
+      query = query.or(
+        `school_name.ilike.%${search}%,email.ilike.%${search}%,contact_person.ilike.%${search}%`
+      );
     }
 
     query = query.order('submitted_at', { ascending: false });
 
-    const start = (page - 1) * pageSize;
-    query = query.range(start, start + pageSize - 1);
-
-    const { data, error, count } = await query;
+    const { data, error, count } = await getPaginatedResults(query, page, pageSize);
 
     if (error) {
       console.error('[v0] Failed to fetch school requests:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch school requests' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -66,45 +50,26 @@ export async function GET(request: NextRequest) {
       total: count || 0,
       page,
       pageSize,
-      hasMore: (page * pageSize) < (count || 0),
+      hasMore: page * pageSize < (count || 0),
     });
-
   } catch (error) {
     console.error('[v0] Error fetching school requests:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // POST /api/platform-admin/school-requests - Approve or reject a school request
 export async function POST(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: 'Supabase configuration missing' },
-        { status: 500 }
-      );
-    }
-
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
 
     if (!adminId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    const {
-      requestId,
-      action, // 'approve' or 'reject'
-      rejectionReason,
-      rejectionNotes,
-    } = body;
+    const { requestId, action, rejectionReason, rejectionNotes } = body;
 
     if (!requestId || !action) {
       return NextResponse.json(
@@ -113,26 +78,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
     // Get the school request
-    const { data: schoolRequest, error: fetchError } = await supabase
-      .from('school_requests')
+    const { data: schoolRequest, error: fetchError } = await querySchoolRequests()
       .select('*')
       .eq('id', requestId)
       .single();
 
     if (fetchError) {
-      return NextResponse.json(
-        { error: 'School request not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'School request not found' }, { status: 404 });
     }
 
     if (action === 'reject') {
-      // Update request to rejected
-      const { data: updated, error: updateError } = await supabase
-        .from('school_requests')
+      const { data: updated, error: updateError } = await querySchoolRequests()
         .update({
           status: 'rejected',
           rejection_reason: rejectionReason,
@@ -145,14 +102,10 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
       }
 
-      // Create audit log
-      await supabase.from('audit_logs').insert({
+      await queryAuditLogs().insert({
         actor_id: adminId,
         action: 'school_request_rejected',
         target_type: 'school_request',
@@ -167,11 +120,8 @@ export async function POST(request: NextRequest) {
         message: 'School request rejected',
         data: updated,
       });
-
     } else if (action === 'approve') {
-      // Update request to approved (provisioning happens separately)
-      const { data: updated, error: updateError } = await supabase
-        .from('school_requests')
+      const { data: updated, error: updateError } = await querySchoolRequests()
         .update({
           status: 'approved',
           reviewed_at: new Date().toISOString(),
@@ -182,14 +132,25 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
       }
 
-      // Create audit log
-      await supabase.from('audit_logs').insert({
+      // Trigger auto-provisioning for the school
+      if (schoolRequest.school_id) {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          await fetch(`${baseUrl}/api/school/setup/provision`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ schoolId: schoolRequest.school_id }),
+          });
+        } catch (provisionError) {
+          console.error('[v0] Auto-provisioning error:', provisionError);
+          // Don't fail the approval if provisioning fails - it can be done manually
+        }
+      }
+
+      await queryAuditLogs().insert({
         actor_id: adminId,
         action: 'school_request_approved',
         target_type: 'school_request',
@@ -201,21 +162,14 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'School request approved',
+        message: 'School request approved and provisioning initiated',
         data: updated,
       });
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action' },
-      { status: 400 }
-    );
-
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('[v0] Error processing school request:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
