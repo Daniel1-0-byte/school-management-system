@@ -135,6 +135,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
       }
 
+      // Trigger auto-provisioning for the school
+      if (schoolRequest.school_id) {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          await fetch(`${baseUrl}/api/school/setup/provision`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ schoolId: schoolRequest.school_id }),
+          });
+        } catch (provisionError) {
+          console.error('[v0] Auto-provisioning error:', provisionError);
+          // Don't fail the approval if provisioning fails - it can be done manually
+        }
+      }
+
       await queryAuditLogs().insert({
         actor_id: adminId,
         action: 'school_request_approved',
@@ -147,7 +162,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'School request approved',
+        message: 'School request approved and provisioning initiated',
         data: updated,
       });
     }
