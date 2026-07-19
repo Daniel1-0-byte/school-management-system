@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '@/lib/platform-admin-auth.edge';
 
 // Routes that do NOT require authentication
 const publicRoutes = [
@@ -23,31 +22,25 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect platform admin routes that require authentication
-  if (pathname.startsWith('/platform-admin')) {
+  if (pathname.startsWith('/platform-admin') || pathname.startsWith('/api/platform-admin')) {
     // Check for platform admin session cookie
     const token = request.cookies.get('platform-admin-token')?.value;
 
     if (!token) {
-      // Redirect to platform admin login
+      // For API routes, return 401
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      // For page routes, redirect to login
       return NextResponse.redirect(new URL('/platform-admin-login', request.url));
     }
 
-    // Verify token is valid and not expired
-    const session = await verifySession(token);
-    if (!session) {
-      // Token is invalid or expired, redirect to login
-      const response = NextResponse.redirect(new URL('/platform-admin-login', request.url));
-      // Clear the invalid cookie
-      response.cookies.delete('platform-admin-token');
-      return response;
-    }
-
-    // Session is valid, add admin info to request headers for later use
+    // For API routes, add the token to headers so the route handler can verify it
+    // For page routes, the middleware simply passes through (authentication can be checked server-side)
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-admin-id', session.adminId);
-    requestHeaders.set('x-admin-email', session.email);
+    requestHeaders.set('x-platform-admin-token', token);
 
-    // Create a new request with the admin headers
+    // Create a new request with the token header
     return NextResponse.next({
       request: {
         headers: requestHeaders,
