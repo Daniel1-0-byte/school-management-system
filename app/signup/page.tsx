@@ -92,7 +92,8 @@ export default function SignupPage() {
       // Success!
       setStep('success');
       setTimeout(() => {
-        router.push('/login?email=' + encodeURIComponent(formData.email || ''));
+        // After email verification, user will be redirected to setup wizard
+        router.push('/setup');
       }, 3000);
       } catch (error) {
         if (error instanceof ZodError) {
