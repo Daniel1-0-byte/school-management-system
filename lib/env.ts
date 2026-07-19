@@ -42,6 +42,7 @@ export const SUPABASE_SERVICE_ROLE_KEY = getOptionalEnv('SUPABASE_SERVICE_ROLE_K
 // CAPTCHA configuration - optional at build time
 export const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 export const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '';
+export const RECAPTCHA_SCORE_THRESHOLD = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
 
 // Optional: Resend for custom transactional emails
 export const RESEND_API_KEY = getOptionalEnv('RESEND_API_KEY');
