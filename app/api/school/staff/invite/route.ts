@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getServerSupabaseClient, queryProfiles, queryAuditLogs, formatSupabaseError } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, queryAuditLogs, queryStaffInvitations, querySchools, formatSupabaseError } from '@/lib/supabase';
+import { sendEmail, getStaffInvitationTemplate } from '@/lib/email';
 
 const invitationSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
@@ -41,12 +42,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get school name
+    const { data: school } = await querySchools()
+      .select('name')
+      .eq('id', schoolId)
+      .single();
+
     // Create invitation record
-    const inviteToken = Math.random().toString(36).substring(2, 15);
+    const inviteToken = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
 
-    const { data: invitation, error: inviteError } = await supabase
-      .from('staff_invitations')
+    const { data: invitation, error: inviteError } = await queryStaffInvitations()
       .insert({
         school_id: schoolId,
         email: validated.email,
@@ -67,15 +73,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(inviteError) }, { status: 400 });
     }
 
-    // Send invitation email (you would implement email sending here)
+    // Send invitation email
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite/staff?token=${inviteToken}`;
+    const staffName = `${validated.first_name} ${validated.last_name}`;
+    const schoolName = school?.name || 'Your School';
+    const emailHtml = getStaffInvitationTemplate(staffName, schoolName, inviteLink, validated.system_role);
 
-    // For now, just log it
-    console.log('[v0] Staff invitation created:', {
-      inviteeEmail: validated.email,
-      inviteLink,
-      expiresAt,
+    const emailResult = await sendEmail({
+      to: validated.email,
+      subject: `You've been invited to ${schoolName}`,
+      html: emailHtml,
     });
+
+    if (!emailResult.success) {
+      console.error('[v0] Staff invitation email failed:', emailResult.error);
+      // Continue anyway - invitation is created, email can be resent
+    } else {
+      console.log('[v0] Staff invitation email sent to:', validated.email);
+    }
 
     // Log in audit log
     await queryAuditLogs().insert({
