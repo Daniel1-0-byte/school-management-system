@@ -31,13 +31,25 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 let serverSupabase: any = null;
 
 export function getServerSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  
+  console.log('[v0] Getting server Supabase client:', { 
+    urlExists: !!supabaseUrl, 
+    roleKeyExists: !!supabaseServiceRoleKey 
+  });
+
   if (!supabaseUrl || !supabaseServiceRoleKey) {
+    console.error('[v0] Server Supabase config missing:', {
+      urlMissing: !supabaseUrl,
+      roleKeyMissing: !supabaseServiceRoleKey
+    });
     throw new Error(
       'Server Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment variables.'
     );
   }
   
   if (!serverSupabase) {
+    console.log('[v0] Creating new server Supabase client');
     serverSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   }
   
@@ -46,7 +58,19 @@ export function getServerSupabaseClient() {
 
 // Helper function to check if environment variables are set
 export function validateSupabaseConfig() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  console.log('[v0] Validating Supabase config:', { 
+    urlExists: !!supabaseUrl, 
+    anonKeyExists: !!supabaseAnonKey 
+  });
+
   if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[v0] Client Supabase config missing:', {
+      urlMissing: !supabaseUrl,
+      anonKeyMissing: !supabaseAnonKey
+    });
     throw new Error(
       'Client Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.'
     );
