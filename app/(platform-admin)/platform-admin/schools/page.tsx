@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Edit2, Trash2, AlertCircle, Loader2, Pause, Play } from 'lucide-react';
 import { PaginatedResponse, School } from '@/types';
+import { SchoolFormModal } from '@/components/platform-admin/school-form-modal';
 
 interface SchoolWithStats extends School {
   totalUsers?: number;
@@ -20,6 +21,9 @@ export default function SchoolsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<SchoolWithStats | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch schools
   useEffect(() => {
@@ -56,6 +60,53 @@ export default function SchoolsPage() {
 
     fetchSchools();
   }, [page, pageSize, search, status]);
+
+  const handleOpenModal = (school?: SchoolWithStats) => {
+    setSelectedSchool(school || null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedSchool(null);
+  };
+
+  const handleSubmitForm = async (data: Partial<School>) => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const method = selectedSchool ? 'PUT' : 'POST';
+      const url = selectedSchool
+        ? `/api/platform-admin/schools/${selectedSchool.id}`
+        : '/api/platform-admin/schools';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${selectedSchool ? 'update' : 'create'} school`);
+      }
+
+      const result = await response.json();
+
+      if (selectedSchool) {
+        setSchools(schools.map(s => (s.id === selectedSchool.id ? result.data : s)));
+      } else {
+        setSchools([result.data, ...schools]);
+      }
+
+      handleCloseModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      throw err;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
@@ -121,7 +172,10 @@ export default function SchoolsPage() {
           <h1 className="text-3xl font-bold text-foreground">Schools</h1>
           <p className="text-muted-foreground mt-2">Manage all schools in the system</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">
+        <button
+          onClick={() => handleOpenModal()}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+        >
           <Plus className="w-5 h-5" />
           <span>Add School</span>
         </button>
@@ -228,7 +282,10 @@ export default function SchoolsPage() {
                           <Play className="w-4 h-4" />
                         )}
                       </button>
-                      <button className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors">
+                      <button
+                        onClick={() => handleOpenModal(school)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors"
+                      >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
@@ -275,6 +332,15 @@ export default function SchoolsPage() {
           </div>
         </div>
       )}
+
+      {/* School Form Modal */}
+      <SchoolFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitForm}
+        school={selectedSchool || undefined}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }
