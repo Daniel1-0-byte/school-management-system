@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
@@ -138,19 +139,19 @@ export default async function PlatformAdminDashboard() {
       <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
         <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+          <Link href="/platform-admin/schools" className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group block">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-500/30 transition-colors">
-                <Users className="w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
+                <School className="w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
               </div>
               <div className="min-w-0">
                 <p className="font-medium text-foreground text-xs sm:text-sm">Manage Schools</p>
                 <p className="text-muted-foreground text-xs">Add or edit schools</p>
               </div>
             </div>
-          </button>
+          </Link>
 
-          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+          <Link href="/platform-admin/users" className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group block">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/30 transition-colors">
                 <Users className="w-4 sm:w-5 h-4 sm:h-5 text-cyan-500" />
@@ -160,19 +161,19 @@ export default async function PlatformAdminDashboard() {
                 <p className="text-muted-foreground text-xs">View all users</p>
               </div>
             </div>
-          </button>
+          </Link>
 
-          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+          <Link href="/platform-admin/school-requests" className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group block">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500/30 transition-colors">
                 <BarChart3 className="w-4 sm:w-5 h-4 sm:h-5 text-purple-500" />
               </div>
               <div className="min-w-0">
-                <p className="font-medium text-foreground text-xs sm:text-sm">View Reports</p>
-                <p className="text-muted-foreground text-xs">System statistics</p>
+                <p className="font-medium text-foreground text-xs sm:text-sm">School Requests</p>
+                <p className="text-muted-foreground text-xs">Review pending requests</p>
               </div>
             </div>
-          </button>
+          </Link>
         </div>
       </div>
 
