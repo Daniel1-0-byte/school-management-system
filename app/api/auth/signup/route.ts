@@ -91,6 +91,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Add school to school_requests for platform admin review
+    const { error: requestError } = await supabase
+      .from('school_requests')
+      .insert({
+        school_name: schoolName,
+        contact_person: `${firstName} ${lastName}`,
+        email,
+        phone,
+        location: '', // Will be empty initially, admin can add details
+        requested_plan: 'basic', // Default plan
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+      });
+
+    if (requestError) {
+      console.error('[v0] Error adding school to requests:', requestError);
+      // Don't fail signup if school_requests fails - it's a secondary operation
+    } else {
+      console.log('[v0] ✓ School added to school_requests for admin review:', { schoolName, email });
+    }
+
     // Create auth user via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
