@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Lock, Bell, Shield, Database, Save, CheckCircle, AlertCircle, Mail, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, Bell, Shield, Database, Save, CheckCircle, AlertCircle, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 interface SettingsState {
   siteName: string;
@@ -20,7 +20,7 @@ interface SettingsState {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsState>({
-    siteName: 'SchoolHub',
+    siteName: 'School Management System',
     maintenanceMode: false,
     emailNotifications: true,
     twoFactorRequired: true,
@@ -38,6 +38,49 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'security' | 'email' | 'system'>('general');
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load settings from database on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch('/api/platform-admin/settings', {
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load settings');
+        }
+
+        const { data } = await response.json();
+        setSettings({
+          siteName: data.siteName || '',
+          maintenanceMode: data.maintenanceMode || false,
+          emailNotifications: data.emailNotifications !== false,
+          twoFactorRequired: data.twoFactorRequired !== false,
+          sessionTimeout: String(data.sessionTimeout || '8'),
+          captchaEnabled: data.captchaEnabled !== false,
+          passwordMinLength: String(data.passwordMinLength || '8'),
+          passwordRequireSpecial: data.passwordRequireSpecial !== false,
+          smtpServer: data.smtpServer || '',
+          smtpPort: String(data.smtpPort || '587'),
+          smtpUsername: data.smtpUsername || '',
+          smtpPassword: data.smtpPassword || '',
+        });
+      } catch (err) {
+        console.error('[v0] Failed to load settings:', err);
+        setError('Failed to load settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   const handleChange = (key: keyof SettingsState, value: any) => {
     setSettings(prev => ({
@@ -55,11 +98,31 @@ export default function SettingsPage() {
         return;
       }
 
-      // In a real app, you'd send this to an API
+      setIsSaving(true);
+      setError(null);
+
+      console.log('[v0] Saving settings:', settings);
+
+      const response = await fetch('/api/platform-admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save settings');
+      }
+
+      console.log('[v0] Settings saved successfully');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save settings');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to save settings';
+      console.error('[v0] Settings save error:', errorMsg);
+      setError(errorMsg);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -93,27 +156,38 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="border-b border-border">
-        <div className="flex gap-8">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 border-b-2 font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading settings...</span>
         </div>
-      </div>
+      )}
 
-      {/* Tab Content */}
-      <div className="space-y-6">
+      {/* Tabs */}
+      {!loading && (
+        <>
+          {/* Tabs */}
+          <div className="border-b border-border">
+            <div className="flex gap-8">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-3 border-b-2 font-medium transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="space-y-6">
         {/* General Settings */}
         {activeTab === 'general' && (
           <>
@@ -399,16 +473,23 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Save className="w-5 h-5" />
-          <span>Save Changes</span>
-        </button>
-      </div>
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={isSaving || loading}
+            className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+          </button>
+        </div>
+        </>
+      )}
     </div>
   );
 }
