@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState } from 'react';
 import { BarChart3, Clock, DollarSign, TrendingUp, Download, Filter } from 'lucide-react';
 import { useRouter } from 'next/navigation';
