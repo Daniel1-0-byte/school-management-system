@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
 import { getServerSupabaseClient, queryProfiles, queryAuditLogs } from '@/lib/supabase';
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Verify CAPTCHA if token provided
     if (captchaToken) {
-      const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      const captchaResponse = await fetch(RECAPTCHA_VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `secret=${RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,

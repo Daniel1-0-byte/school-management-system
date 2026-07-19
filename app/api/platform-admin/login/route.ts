@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RECAPTCHA_SECRET_KEY, RECAPTCHA_SCORE_THRESHOLD } from '@/lib/env';
+import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validatePlatformAdminLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
 import { verifyPassword, create2FASession, generateSessionToken, storeSession } from '@/lib/platform-admin-auth.server';
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
           tokenLength: captchaToken.length,
         });
 
-        const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        const captchaResponse = await fetch(RECAPTCHA_VERIFY_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `secret=${RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,

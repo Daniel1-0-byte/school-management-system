@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,8 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify token with Google reCAPTCHA
-    const verificationUrl = 'https://www.google.com/recaptcha/api/siteverify';
-    const response = await fetch(verificationUrl, {
+    const response = await fetch(RECAPTCHA_VERIFY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `secret=${RECAPTCHA_SECRET_KEY}&response=${token}`,
