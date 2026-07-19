@@ -1,35 +1,117 @@
-import React from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
-import { Plus, Search, MoreVertical } from 'lucide-react';
+'use client';
 
-async function getSchools() {
-  try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return [];
-    }
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, MoreVertical, Edit2, Trash2, AlertCircle, Loader2, Pause, Play } from 'lucide-react';
+import { PaginatedResponse, School } from '@/types';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data, error } = await supabase
-      .from('schools')
-      .select('id, name, address, phone_number, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('[v0] Failed to fetch schools:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('[v0] Error fetching schools:', error);
-    return [];
-  }
+interface SchoolWithStats extends School {
+  totalUsers?: number;
+  totalStudents?: number;
+  subscription?: any;
 }
 
-export default async function SchoolsPage() {
-  const schools = await getSchools();
+export default function SchoolsPage() {
+  const [schools, setSchools] = useState<SchoolWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Fetch schools
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const params = new URLSearchParams({
+          page: page.toString(),
+          pageSize: pageSize.toString(),
+          ...(search && { search }),
+          ...(status && { status }),
+        });
+
+        const response = await fetch(
+          `/api/platform-admin/schools?${params.toString()}`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch schools');
+        }
+
+        const data: PaginatedResponse<SchoolWithStats> = await response.json();
+        setSchools(data.data);
+        setTotal(data.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchools();
+  }, [page, pageSize, search, status]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingId(id);
+      const response = await fetch(`/api/platform-admin/schools/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete school');
+      }
+
+      setSchools(schools.filter(s => s.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete school');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/platform-admin/schools/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update school');
+      }
+
+      setSchools(schools.map(s =>
+        s.id === id ? { ...s, status: newStatus as any } : s
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update school');
+    }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-500/20 text-green-600';
+      case 'suspended':
+        return 'bg-yellow-500/20 text-yellow-600';
+      case 'pending_verification':
+        return 'bg-blue-500/20 text-blue-600';
+      default:
+        return 'bg-gray-500/20 text-gray-600';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -45,23 +127,57 @@ export default async function SchoolsPage() {
         </button>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-red-600">Error</p>
+            <p className="text-sm text-red-600/80">{error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Search and Filters */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <div className="flex gap-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+        <div className="flex gap-4 flex-col md:flex-row">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search schools..."
+              placeholder="Search schools by name or email..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
             />
           </div>
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+          >
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="pending_verification">Pending</option>
+          </select>
         </div>
       </div>
 
       {/* Schools Table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
-        {schools.length === 0 ? (
+        {loading ? (
+          <div className="p-8 text-center flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading schools...</p>
+          </div>
+        ) : schools.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-muted-foreground">No schools found</p>
           </div>
@@ -74,10 +190,10 @@ export default async function SchoolsPage() {
                     School Name
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Address
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Phone
+                    Contact
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                     Added
@@ -88,17 +204,43 @@ export default async function SchoolsPage() {
                 </tr>
               </thead>
               <tbody>
-                {schools.map((school: any) => (
+                {schools.map((school) => (
                   <tr key={school.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-foreground">{school.name}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{school.address}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{school.phone_number}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(school.created_at).toLocaleDateString()}
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(school.status)}`}>
+                        {school.status.replace('_', ' ')}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{school.email || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      {new Date(school.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button
+                        onClick={() => handleStatusChange(school.id, school.status === 'active' ? 'suspended' : 'active')}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors"
+                        title={school.status === 'active' ? 'Suspend' : 'Activate'}
+                      >
+                        {school.status === 'active' ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(school.id)}
+                        disabled={deletingId === school.id}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs text-red-600 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === school.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -108,6 +250,31 @@ export default async function SchoolsPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {total > pageSize && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} schools
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page * pageSize >= total}
+              className="px-4 py-2 border border-border rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
