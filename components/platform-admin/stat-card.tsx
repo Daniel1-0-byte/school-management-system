@@ -40,12 +40,12 @@ export function StatCard({
   };
 
   return (
-    <div className={`${bgColors[variant]} border ${borderColors[variant]} rounded-lg p-6 flex flex-col justify-between`}>
-      <div className="flex items-start justify-between mb-4">
-        <div className={`${iconColors[variant]} opacity-80`}>{icon}</div>
+    <div className={`${bgColors[variant]} border ${borderColors[variant]} rounded-lg p-4 sm:p-6 flex flex-col justify-between hover:shadow-md transition-shadow`}>
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <div className={`${iconColors[variant]} opacity-80 flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8`}>{icon}</div>
         {trend !== undefined && trend !== 0 && (
           <div
-            className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded ${
+            className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded flex-shrink-0 ${
               trend > 0
                 ? 'bg-green-500/20 text-green-600'
                 : 'bg-red-500/20 text-red-600'
@@ -62,8 +62,8 @@ export function StatCard({
       </div>
 
       <div>
-        <p className="text-muted-foreground text-sm font-medium mb-1">{title}</p>
-        <p className="text-3xl font-bold text-foreground">{value}</p>
+        <p className="text-muted-foreground text-xs sm:text-sm font-medium mb-1">{title}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-foreground">{value}</p>
         <p className="text-xs text-muted-foreground mt-2">{description}</p>
       </div>
     </div>

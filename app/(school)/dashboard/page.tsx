@@ -50,14 +50,14 @@ const StatCard = ({
   subtext?: string;
   color: string;
 }) => (
-  <div className="bg-card border border-border rounded-lg p-6">
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-muted-foreground text-sm font-medium">{label}</p>
-        <p className="text-3xl font-bold text-foreground mt-2">{value}</p>
+  <div className="bg-card border border-border rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <p className="text-muted-foreground text-xs sm:text-sm font-medium">{label}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-foreground mt-2">{value}</p>
         {subtext && <p className="text-xs text-muted-foreground mt-1">{subtext}</p>}
       </div>
-      <div className={`p-3 rounded-lg ${color}`}>{icon}</div>
+      <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${color}`}>{icon}</div>
     </div>
   </div>
 );
@@ -105,15 +105,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Welcome back! Here's your school overview.</p>
+      <div className="px-0">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground text-sm sm:text-base mt-2">Welcome back! Here's your school overview.</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard
           icon={<Users className="w-6 h-6 text-blue-500" />}
           label="Total Students"
@@ -145,9 +145,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-xl font-bold text-foreground mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-bold text-foreground mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             { icon: Users, label: 'Add Student', href: '/students/add' },
             { icon: Clock, label: 'Mark Attendance', href: '/attendance' },
@@ -159,20 +159,20 @@ export default function DashboardPage() {
             <a
               key={label}
               href={href}
-              className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-muted transition-colors group"
+              className="flex items-center gap-3 p-3 sm:p-4 rounded-lg border border-border hover:bg-muted transition-all hover:shadow-sm group"
             >
-              <Icon className="w-5 h-5 text-primary" />
-              <span className="font-medium text-foreground">{label}</span>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform ml-auto" />
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary flex-shrink-0" />
+              <span className="font-medium text-foreground text-sm sm:text-base truncate">{label}</span>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform ml-auto flex-shrink-0" />
             </a>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-6">
-          <h2 className="text-xl font-bold text-foreground mb-4">Recent Activity</h2>
+        <div className="lg:col-span-2 bg-card border border-border rounded-lg p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground mb-4">Recent Activity</h2>
           <div className="space-y-4">
             {stats?.recentActivities && stats.recentActivities.length > 0 ? (
               stats.recentActivities.map((activity) => (
@@ -180,9 +180,9 @@ export default function DashboardPage() {
                   key={activity.id}
                   className="flex items-start gap-4 pb-4 border-b border-border last:border-0 last:pb-0"
                 >
-                  <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-primary mt-1 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm">{activity.description}</p>
+                    <p className="font-medium text-foreground text-xs sm:text-sm">{activity.description}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {activity.user} • {new Date(activity.timestamp).toLocaleString()}
                     </p>
@@ -196,16 +196,16 @@ export default function DashboardPage() {
         </div>
 
         {/* Upcoming Events */}
-        <div className="bg-card border border-border rounded-lg p-6">
-          <h2 className="text-xl font-bold text-foreground mb-4">Upcoming Events</h2>
+        <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground mb-4">Upcoming Events</h2>
           <div className="space-y-3">
             {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? (
               stats.upcomingEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-colors"
+                  className="p-3 rounded-lg bg-muted/50 border border-border hover:bg-muted transition-all hover:shadow-sm cursor-pointer"
                 >
-                  <p className="font-medium text-foreground text-sm">{event.title}</p>
+                  <p className="font-medium text-foreground text-xs sm:text-sm">{event.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(event.date).toLocaleDateString()}
                   </p>
