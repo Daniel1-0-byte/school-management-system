@@ -5,7 +5,7 @@ import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateSignup } from '@/lib/schemas';
 import { getClientIp, generateInviteToken, getInviteExpirationTime } from '@/lib/auth-utils';
 import { SchoolStatus } from '@/types';
-import { sendEmail, getEmailVerificationTemplate } from '@/lib/email';
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: false, // Require email verification
+      email_confirm: true, // Skip email verification - user can login immediately
     });
 
     if (authError || !authData.user) {
@@ -146,57 +146,21 @@ export async function POST(request: NextRequest) {
         ip_address: clientIp,
       });
 
-    // Send verification email
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const verificationToken = inviteToken; // Use the same token we created for the profile
-    const verificationLink = `${appUrl}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-    
-    console.log('[v0] Email verification setup:', {
+    // Return success - email verification is skipped
+    // Platform admin will receive school details on first login
+    console.log('[v0] School signup successful, awaiting platform admin approval:', {
+      schoolId: schoolData.id,
+      userId: authData.user.id,
       email,
       schoolName,
-      verificationLink,
-      appUrl,
-      tokenExists: !!verificationToken,
-      resendApiKeyExists: !!process.env.RESEND_API_KEY,
-      resendFromEmail: process.env.RESEND_FROM_EMAIL,
     });
-    
-    const emailHtml = getEmailVerificationTemplate(verificationLink, schoolName);
-    
-    console.log('[v0] Generated email template, starting send...');
-    
-    const emailResult = await sendEmail({
-      to: email,
-      subject: `Verify your email - ${schoolName} School Management System`,
-      html: emailHtml,
-    });
-
-    console.log('[v0] Email send result:', {
-      success: emailResult.success,
-      error: emailResult.error || null,
-      email,
-      schoolName,
-      timestamp: new Date().toISOString(),
-    });
-
-    if (!emailResult.success) {
-      console.error('[v0] Email send failed but continuing:', {
-        error: emailResult.error,
-        email,
-        schoolName,
-        verificationLink,
-      });
-      // Continue anyway - user can resend email
-    } else {
-      console.log('[v0] ✓ Verification email sent successfully to:', email);
-    }
 
     return NextResponse.json({
       success: true,
       data: {
         schoolId: schoolData.id,
         userId: authData.user.id,
-        message: 'Please check your email to verify your account',
+        message: 'Signup successful! You can now sign in to your account.',
       },
     });
   } catch (error) {

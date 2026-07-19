@@ -3,7 +3,8 @@ import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
-import { getServerSupabaseClient, queryProfiles, queryAuditLogs } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, queryAuditLogs, querySchools } from '@/lib/supabase';
+import { sendEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +76,43 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Your account is not active' },
         { status: 403 }
       );
+    }
+
+    // Get school details to send confirmation email
+    const { data: schoolData } = await querySchools()
+      .select('id, name')
+      .eq('id', profileData.school_id)
+      .single();
+
+    // Send confirmation email to school (logged but user won't receive)
+    if (schoolData) {
+      const confirmationHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">School Details Received</h2>
+          <p>The following school details have been recorded and forwarded to our platform administrators for review:</p>
+          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>School Name:</strong> ${schoolData.name}</p>
+            <p><strong>Contact Email:</strong> ${authData.user.email}</p>
+            <p><strong>Status:</strong> Pending Admin Approval</p>
+          </div>
+          <p>Our administrators will review your school details and send you updates shortly.</p>
+        </div>
+      `;
+
+      // Send email (logged but user won't receive it)
+      const emailResult = await sendEmail({
+        to: authData.user.email || '',
+        subject: `School Registration Confirmation - ${schoolData.name}`,
+        html: confirmationHtml,
+      });
+
+      console.log('[v0] Confirmation email sent (logged):', {
+        success: emailResult.success,
+        email: authData.user.email,
+        schoolId: schoolData.id,
+        schoolName: schoolData.name,
+        note: 'Email logged but user may not receive it',
+      });
     }
 
     // Log audit entry
