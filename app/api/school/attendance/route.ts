@@ -1,104 +1,101 @@
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { queryAttendance, queryStudents, formatSupabaseError } from '@/lib/supabase';
 
 const attendanceRecordSchema = z.object({
-  classId: z.string(),
-  date: z.string(),
+  class_id: z.string().uuid(),
+  date: z.string().date(),
   attendance: z.array(
     z.object({
-      studentId: z.string(),
-      status: z.enum(['present', 'absent', 'leave', 'not-marked']),
+      student_id: z.string().uuid(),
+      status: z.enum(['present', 'absent', 'late', 'excused']),
     })
   ),
 });
 
 export async function GET(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
-    const classId = request.nextUrl.searchParams.get('classId');
+    const classId = request.nextUrl.searchParams.get('class_id');
     const date = request.nextUrl.searchParams.get('date');
+    const schoolId = request.nextUrl.searchParams.get('school_id');
 
-    if (!classId || !date) {
-      return NextResponse.json({ error: 'Class ID and date are required' }, { status: 400 });
+    if (!classId || !date || !schoolId) {
+      return NextResponse.json(
+        { error: 'Class ID, school ID, and date are required' },
+        { status: 400 }
+      );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Fetch students for the class
-    const { data: students, error: studentError } = await supabase
-      .from('students')
-      .select('id, firstName, lastName')
-      .eq('class_id', classId)
+    // Fetch students in the class
+    const { data: students, error: studentError } = await queryStudents()
+      .select('id, first_name, last_name')
+      .eq('school_id', schoolId)
+      .eq('current_class_id', classId)
       .eq('status', 'active');
 
-    if (studentError) throw studentError;
+    if (studentError) {
+      throw studentError;
+    }
 
     // Fetch existing attendance records
-    const { data: existingRecords } = await supabase
-      .from('attendance')
+    const { data: existingRecords } = await queryAttendance()
       .select('student_id, status')
+      .eq('school_id', schoolId)
       .eq('class_id', classId)
-      .eq('marked_date', date);
+      .eq('date', date);
 
     const recordMap = new Map(
-      (existingRecords || []).map((r) => [r.student_id, r.status])
+      (existingRecords || []).map((r: any) => [r.student_id, r.status])
     );
 
-    const attendanceData = (students || []).map((student) => ({
-      studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
-      status: recordMap.get(student.id) || 'not-marked',
+    const attendanceData = (students || []).map((student: any) => ({
+      student_id: student.id,
+      student_name: `${student.first_name} ${student.last_name}`,
+      status: recordMap.get(student.id) || null,
     }));
 
-    return NextResponse.json({ students: attendanceData });
+    return NextResponse.json({ students: attendanceData, total: attendanceData.length });
   } catch (error) {
     console.error('[v0] Attendance GET error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch attendance' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
     const body = await request.json();
     const validatedData = attendanceRecordSchema.parse(body);
+    const schoolId = request.nextUrl.searchParams.get('school_id');
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Delete existing records for the date
-    await supabase
-      .from('attendance')
-      .delete()
-      .eq('class_id', validatedData.classId)
-      .eq('marked_date', validatedData.date);
-
-    // Insert new records
-    const records = validatedData.attendance
-      .filter((a) => a.status !== 'not-marked')
-      .map((a) => ({
-        class_id: validatedData.classId,
-        student_id: a.studentId,
-        marked_date: validatedData.date,
-        status: a.status,
-      }));
-
-    if (records.length > 0) {
-      const { error } = await supabase.from('attendance').insert(records);
-      if (error) throw error;
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true });
+    // Delete existing records for the date
+    await queryAttendance()
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('class_id', validatedData.class_id)
+      .eq('date', validatedData.date);
+
+    // Insert new records
+    const records = validatedData.attendance.map((a: any) => ({
+      school_id: schoolId,
+      class_id: validatedData.class_id,
+      student_id: a.student_id,
+      date: validatedData.date,
+      status: a.status,
+      recorded_by: null, // Will be set by trigger or middleware
+    }));
+
+    const { error } = await queryAttendance().insert(records);
+
+    if (error) {
+      console.error('[v0] Attendance POST error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, count: records.length });
   } catch (error) {
     console.error('[v0] Attendance POST error:', error);
     if (error instanceof z.ZodError) {
