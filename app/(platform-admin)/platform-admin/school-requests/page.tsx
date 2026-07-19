@@ -49,19 +49,22 @@ export default function SchoolRequestsPage() {
         });
 
         const response = await fetch(
-          `/api/platform-admin/school-requests?${params.toString()}`,
-          { headers: { 'Accept': 'application/json' } }
+          `/api/platform-admin/school-requests?${params.toString()}`
         );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch school requests');
+          const errorText = await response.text();
+          console.error('[v0] School requests API error:', response.status, errorText);
+          throw new Error(`Failed to fetch school requests: ${response.status}`);
         }
 
         const data: PaginatedResponse<SchoolRequest> = await response.json();
-        setRequests(data.data);
-        setTotal(data.total);
+        setRequests(data.data || []);
+        setTotal(data.total || 0);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+        console.error('[v0] School requests fetch error:', err);
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
