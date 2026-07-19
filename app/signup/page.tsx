@@ -13,7 +13,7 @@ interface FormErrors {
 
 export default function SignupPage() {
   const router = useRouter();
-  const [step, setStep] = useState<'form' | 'verifying' | 'success'>('form');
+  const [step, setStep] = useState<'form' | 'submitting' | 'success'>('form');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState('');
@@ -52,7 +52,7 @@ export default function SignupPage() {
     setGeneralError('');
     setErrors({});
     setLoading(true);
-    setStep('verifying');
+    setStep('submitting');
 
     try {
       // Validate form data
@@ -92,8 +92,8 @@ export default function SignupPage() {
       // Success!
       setStep('success');
       setTimeout(() => {
-        // After email verification, user will be redirected to setup wizard
-        router.push('/setup');
+        // Redirect to login - platform admin will add school details
+        router.push('/login');
       }, 3000);
       } catch (error) {
         if (error instanceof ZodError) {
@@ -123,7 +123,7 @@ export default function SignupPage() {
           </div>
           <h2 className="text-2xl font-bold text-white">Signup Successful!</h2>
           <p className="text-slate-400">
-            Please check your email to verify your account. You&apos;ll be redirected to the login page shortly.
+            Your account is ready! Our platform admin will review your school details. You&apos;ll be redirected to login shortly.
           </p>
         </div>
       </div>
