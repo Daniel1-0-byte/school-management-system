@@ -57,15 +57,46 @@ export default function PlatformAdminLoginPage() {
 
     try {
       let captchaToken = '';
+      const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
+
       if (typeof window !== 'undefined' && window.grecaptcha) {
         try {
-          captchaToken = await window.grecaptcha.execute(
-            process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
-            { action: 'login' }
-          );
+          // Log before executing reCAPTCHA
+          if (process.env.NODE_ENV === 'development' || typeof localStorage !== 'undefined' && localStorage.getItem('AUTH_DEBUG') === 'true') {
+            console.log('[reCAPTCHA FRONTEND] Starting grecaptcha.execute', {
+              siteKeyExists: !!siteKey,
+              siteKeyLength: siteKey.length,
+              action: 'login',
+            });
+          }
+
+          captchaToken = await window.grecaptcha.execute(siteKey, { action: 'login' });
+
+          // Log after receiving token
+          if (process.env.NODE_ENV === 'development' || typeof localStorage !== 'undefined' && localStorage.getItem('AUTH_DEBUG') === 'true') {
+            console.log('[reCAPTCHA FRONTEND] Token received', {
+              exists: !!captchaToken,
+              length: captchaToken.length,
+              first20: captchaToken.slice(0, 20),
+              last20: captchaToken.slice(-20),
+            });
+          }
+
+          // TASK 4: Verify frontend is waiting for token before submitting
+          if (!captchaToken) {
+            console.error('[reCAPTCHA FRONTEND] Token is empty after execution');
+            setGeneralError('reCAPTCHA token generation failed');
+            setLoading(false);
+            return;
+          }
         } catch (error) {
-          console.error('[v0] reCAPTCHA error:', error);
+          console.error('[reCAPTCHA FRONTEND] Error during grecaptcha.execute:', error);
+          setGeneralError('reCAPTCHA failed. Please try again.');
+          setLoading(false);
+          return;
         }
+      } else {
+        console.warn('[reCAPTCHA FRONTEND] grecaptcha not available');
       }
 
       const validated = platformAdminLoginSchema.parse({

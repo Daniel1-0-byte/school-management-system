@@ -6,13 +6,26 @@ import { getClientIp } from '@/lib/auth-utils';
 import { verifyPassword, create2FASession, generateSessionToken, storeSession } from '@/lib/platform-admin-auth.server';
 
 // ============================================================================
-// STRUCTURED LOGGING HELPER
+// DEBUG FLAG - Only log detailed debugging in development or when AUTH_DEBUG=true
+// ============================================================================
+
+const DEBUG_MODE = process.env.AUTH_DEBUG === 'true' || process.env.NODE_ENV === 'development';
+
+// ============================================================================
+// STRUCTURED LOGGING HELPERS
 // ============================================================================
 
 function log(level: 'INFO' | 'WARN' | 'ERROR', action: string, details?: Record<string, unknown>) {
   const timestamp = new Date().toISOString();
   const detailsStr = details ? ` | ${JSON.stringify(details)}` : '';
   console.log(`[${timestamp}] [ADMIN LOGIN] [${level}] ${action}${detailsStr}`);
+}
+
+function debugLog(action: string, details?: Record<string, unknown>) {
+  if (!DEBUG_MODE) return;
+  const timestamp = new Date().toISOString();
+  const detailsStr = details ? ` | ${JSON.stringify(details)}` : '';
+  console.log(`[${timestamp}] [CAPTCHA DEBUG] ${action}${detailsStr}`);
 }
 
 // ============================================================================
@@ -56,7 +69,26 @@ export async function POST(request: NextRequest) {
     if (captchaToken) {
       log('INFO', 'Starting CAPTCHA verification');
 
+      // --------
+      // TASK 2: Log token received from frontend
+      // --------
+      debugLog('Token received from frontend', {
+        exists: !!captchaToken,
+        length: captchaToken.length,
+        first20: captchaToken.slice(0, 20),
+        last20: captchaToken.slice(-20),
+      });
+
       try {
+        // --------
+        // TASK 3: Log request sent to Google
+        // --------
+        debugLog('Request prepared for Google', {
+          secretExists: !!RECAPTCHA_SECRET_KEY,
+          secretLength: RECAPTCHA_SECRET_KEY.length,
+          tokenLength: captchaToken.length,
+        });
+
         const captchaResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -72,20 +104,79 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const captchaData = await captchaResponse.json() as { success: boolean; score?: number; action?: string; hostname?: string };
-        log('INFO', 'CAPTCHA response received', { 
-          success: captchaData.success, 
-          score: captchaData.score, 
-          action: captchaData.action,
-          hostname: captchaData.hostname 
-        });
+        const captchaData = await captchaResponse.json() as {
+          success: boolean;
+          score?: number;
+          action?: string;
+          hostname?: string;
+          challenge_ts?: string;
+          'error-codes'?: string[];
+        };
+
+        // --------
+        // TASK 1: Log EVERYTHING from Google response
+        // --------
+        debugLog('Full Google Response', captchaData);
 
         if (!captchaData.success) {
-          log('WARN', 'CAPTCHA verification failed - response.success = false');
+          // --------
+          // TASK 8: Log Google error codes if present
+          // --------
+          const errorDetails: Record<string, unknown> = {
+            success: captchaData.success,
+          };
+
+          if (captchaData['error-codes'] && captchaData['error-codes'].length > 0) {
+            errorDetails['error-codes'] = captchaData['error-codes'];
+            debugLog('Google error codes', { codes: captchaData['error-codes'] });
+          }
+
+          if (captchaData.score !== undefined) {
+            errorDetails.score = captchaData.score;
+          }
+
+          if (captchaData.action) {
+            errorDetails.action = captchaData.action;
+          }
+
+          if (captchaData.challenge_ts) {
+            errorDetails.challenge_ts = captchaData.challenge_ts;
+          }
+
+          log('WARN', 'CAPTCHA verification failed - response.success = false', errorDetails);
+          debugLog('CAPTCHA FAILED - Full response', captchaData);
           return NextResponse.json(
             { success: false, error: 'CAPTCHA verification failed' },
             { status: 400 }
           );
+        }
+
+        // --------
+        // TASK 5: Verify action matches "login"
+        // --------
+        const expectedAction = 'login';
+        if (captchaData.action && captchaData.action !== expectedAction) {
+          debugLog('Action mismatch', {
+            expectedAction,
+            actualAction: captchaData.action,
+          });
+          log('WARN', 'CAPTCHA action mismatch', {
+            expected: expectedAction,
+            actual: captchaData.action,
+          });
+        }
+
+        // --------
+        // TASK 6: Verify hostname
+        // --------
+        if (captchaData.hostname) {
+          const expectedHostname = request.headers.get('host') || '';
+          if (captchaData.hostname !== expectedHostname) {
+            debugLog('Hostname mismatch (warning only)', {
+              expected: expectedHostname,
+              actual: captchaData.hostname,
+            });
+          }
         }
 
         // Check score against configurable threshold
@@ -99,9 +190,18 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+
+        debugLog('CAPTCHA verification successful', {
+          score: captchaData.score,
+          action: captchaData.action,
+        });
       } catch (error) {
         log('ERROR', 'CAPTCHA verification exception', { 
           message: error instanceof Error ? error.message : 'Unknown error' 
+        });
+        debugLog('CAPTCHA exception', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
         });
         return NextResponse.json(
           { success: false, error: 'CAPTCHA verification failed' },
