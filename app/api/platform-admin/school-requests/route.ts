@@ -46,9 +46,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    // Transform snake_case to camelCase for frontend
+    const transformedData = (data || []).map((request: any) => ({
+      id: request.id,
+      schoolName: request.school_name,
+      contactPerson: request.contact_person,
+      email: request.email,
+      phone: request.phone,
+      location: request.location,
+      requestedPlan: request.requested_plan || 'basic',
+      status: request.status,
+      notes: request.notes,
+      submittedAt: request.submitted_at,
+      reviewedAt: request.reviewed_at,
+      rejectionReason: request.rejection_reason,
+      rejectionNotes: request.rejection_notes,
+    }));
+
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: transformedData,
       total: count || 0,
       page,
       pageSize,

@@ -79,17 +79,17 @@ export default async function PlatformAdminDashboard() {
   const recentLogs = await getRecentAuditLogs();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
+      <div className="px-0">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground text-sm sm:text-base mt-2">
           Welcome back. Here&apos;s an overview of your platform.
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Schools"
           value={stats?.totalSchools || 0}
@@ -122,7 +122,7 @@ export default async function PlatformAdminDashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Recent Activity */}
         <div className="lg:col-span-2">
           <RecentActivity logs={recentLogs} />
@@ -135,40 +135,40 @@ export default async function PlatformAdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 bg-muted hover:bg-muted/80 rounded-lg transition-colors text-left group">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
-                <Users className="w-5 h-5 text-blue-500" />
+      <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-500/30 transition-colors">
+                <Users className="w-4 sm:w-5 h-4 sm:h-5 text-blue-500" />
               </div>
-              <div>
-                <p className="font-medium text-foreground text-sm">Manage Schools</p>
+              <div className="min-w-0">
+                <p className="font-medium text-foreground text-xs sm:text-sm">Manage Schools</p>
                 <p className="text-muted-foreground text-xs">Add or edit schools</p>
               </div>
             </div>
           </button>
 
-          <button className="p-4 bg-muted hover:bg-muted/80 rounded-lg transition-colors text-left group">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
-                <Users className="w-5 h-5 text-cyan-500" />
+          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-cyan-500/30 transition-colors">
+                <Users className="w-4 sm:w-5 h-4 sm:h-5 text-cyan-500" />
               </div>
-              <div>
-                <p className="font-medium text-foreground text-sm">User Management</p>
+              <div className="min-w-0">
+                <p className="font-medium text-foreground text-xs sm:text-sm">User Management</p>
                 <p className="text-muted-foreground text-xs">View all users</p>
               </div>
             </div>
           </button>
 
-          <button className="p-4 bg-muted hover:bg-muted/80 rounded-lg transition-colors text-left group">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
-                <BarChart3 className="w-5 h-5 text-purple-500" />
+          <button className="p-3 sm:p-4 bg-muted hover:bg-muted/80 rounded-lg transition-all hover:shadow-sm text-left group">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500/30 transition-colors">
+                <BarChart3 className="w-4 sm:w-5 h-4 sm:h-5 text-purple-500" />
               </div>
-              <div>
-                <p className="font-medium text-foreground text-sm">View Reports</p>
+              <div className="min-w-0">
+                <p className="font-medium text-foreground text-xs sm:text-sm">View Reports</p>
                 <p className="text-muted-foreground text-xs">System statistics</p>
               </div>
             </div>

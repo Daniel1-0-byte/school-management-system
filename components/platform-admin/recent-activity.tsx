@@ -69,40 +69,40 @@ function getActionLabel(action: string) {
 export function RecentActivity({ logs }: RecentActivityProps) {
   if (!logs || logs.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
-        <div className="text-center py-12">
-          <Clock className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-muted-foreground">No recent activity</p>
+      <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+        <div className="text-center py-8 sm:py-12">
+          <Clock className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">No recent activity</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+    <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+      <h2 className="text-base sm:text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-2 sm:space-y-3 max-h-96 overflow-y-auto">
         {logs.map((log) => (
           <div
             key={log.id}
-            className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+            className="flex items-start gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-all hover:shadow-sm"
           >
-            <div className="flex-shrink-0 mt-1">
+            <div className="flex-shrink-0 mt-0.5 sm:mt-1">
               {getActionIcon(log.action)}
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-foreground">
+              <p className="font-medium text-xs sm:text-sm text-foreground">
                 {getActionLabel(log.action)}
               </p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
                 <p className="text-xs text-muted-foreground truncate">
                   ID: {log.actor_id.substring(0, 8)}...
                 </p>
-                <span className="text-muted-foreground">•</span>
-                <p className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground hidden sm:inline">•</span>
+                <p className="text-xs text-muted-foreground truncate">
                   {log.ip_address}
                 </p>
               </div>
