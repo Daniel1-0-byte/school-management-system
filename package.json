@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "create-admin": "tsx scripts/create-platform-admin.ts",
-    "generate-admin-sql": "tsx scripts/generate-admin-sql.ts"
+    "generate-admin-sql": "tsx scripts/generate-admin-sql.ts",
+    "clean:schools": "node scripts/clean-schools-interactive.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
