@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+const DEFAULT_FROM_EMAIL = 'onboarding@resend.dev';
+const CUSTOM_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
 
 // Initialize Resend lazily to avoid build-time issues
 let resendClient: Resend | null = null;
@@ -10,7 +11,8 @@ function getResendClient(): Resend {
     const apiKey = process.env.RESEND_API_KEY;
     console.log('[v0] Initializing Resend client:', {
       apiKeyExists: !!apiKey,
-      fromEmail: FROM_EMAIL,
+      customFromEmail: CUSTOM_FROM_EMAIL,
+      defaultFromEmail: DEFAULT_FROM_EMAIL,
     });
     if (!apiKey) {
       throw new Error('RESEND_API_KEY environment variable is not set');
@@ -28,32 +30,58 @@ interface EmailOptions {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
+    // Try custom email first, fall back to default if domain not verified
+    let fromEmail = CUSTOM_FROM_EMAIL || DEFAULT_FROM_EMAIL;
+
     console.log('[v0] Sending email:', {
       to,
       subject,
-      from: FROM_EMAIL,
+      from: fromEmail,
+      isCustomDomain: !!CUSTOM_FROM_EMAIL,
       timestamp: new Date().toISOString(),
     });
 
     const resend = getResendClient();
-    const response = await resend.emails.send({
-      from: FROM_EMAIL,
+    let response = await resend.emails.send({
+      from: fromEmail,
       to,
       subject,
       html,
     });
 
+    // If custom domain fails due to verification, retry with default
+    if (
+      response.error &&
+      CUSTOM_FROM_EMAIL &&
+      response.error.message?.includes('domain is not verified')
+    ) {
+      console.log('[v0] Custom domain not verified, falling back to default:', {
+        customDomain: fromEmail,
+        fallback: DEFAULT_FROM_EMAIL,
+        error: response.error.message,
+      });
+
+      fromEmail = DEFAULT_FROM_EMAIL;
+      response = await resend.emails.send({
+        from: fromEmail,
+        to,
+        subject,
+        html,
+      });
+    }
+
     console.log('[v0] Email send response:', {
       error: response.error || null,
       id: response.data?.id || null,
       success: !response.error,
+      from: fromEmail,
     });
 
     if (response.error) {
       console.error('[v0] Email send failed:', {
         error: response.error,
         to,
-        from: FROM_EMAIL,
+        from: fromEmail,
       });
       return { success: false, error: response.error };
     }
@@ -61,14 +89,16 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     console.log('[v0] Email sent successfully:', {
       id: response.data?.id,
       to,
-      from: FROM_EMAIL,
+      from: fromEmail,
+      note: CUSTOM_FROM_EMAIL && fromEmail === DEFAULT_FROM_EMAIL ? 'Used fallback domain' : 'Used configured domain',
     });
     return { success: true, data: response.data };
   } catch (error) {
     console.error('[v0] Email service error:', {
       error: error instanceof Error ? error.message : String(error),
       to,
-      from: FROM_EMAIL,
+      customFromEmail: CUSTOM_FROM_EMAIL,
+      fallbackFromEmail: DEFAULT_FROM_EMAIL,
       stack: error instanceof Error ? error.stack : undefined,
     });
     return { success: false, error };
