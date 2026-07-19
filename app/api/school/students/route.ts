@@ -1,55 +1,54 @@
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { queryStudents, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 
 const studentSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(['Male', 'Female', 'Other']).optional(),
-  classId: z.string().min(1),
-  rollNumber: z.string().optional(),
-  status: z.enum(['active', 'graduated', 'withdrawn']).default('active'),
+  first_name: z.string().min(1, 'First name required'),
+  last_name: z.string().min(1, 'Last name required'),
+  date_of_birth: z.string().optional(),
+  admission_number: z.string().optional(),
+  current_class_id: z.string().uuid().optional(),
+  current_class_name: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'graduated']).default('active'),
+  parental_status: z.string().optional(),
+  medical_notes: z.string().optional(),
+  allergies: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
+    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
+    const search = request.nextUrl.searchParams.get('search') || '';
+    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const status = request.nextUrl.searchParams.get('status') || '';
+
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
-    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '10');
-    const search = request.nextUrl.searchParams.get('search') || '';
-    const classId = request.nextUrl.searchParams.get('classId') || '';
-    const status = request.nextUrl.searchParams.get('status') || 'active';
-
-    let query = supabase
-      .from('students')
-      .select('*', { count: 'exact' });
+    let query = queryStudents()
+      .select('*', { count: 'exact' })
+      .eq('school_id', schoolId);
 
     if (search) {
-      query = query.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,email.ilike.%${search}%`);
-    }
-
-    if (classId) {
-      query = query.eq('class_id', classId);
+      query = query.or(
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,admission_number.ilike.%${search}%`
+      );
     }
 
     if (status) {
       query = query.eq('status', status);
     }
 
-    const { data, count, error } = await query
-      .order('createdAt', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+    query = query.order('created_at', { ascending: false });
 
-    if (error) throw error;
+    const { data, error, count } = await getPaginatedResults(query, page, pageSize);
+
+    if (error) {
+      console.error('[v0] Students GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
 
     return NextResponse.json({
       data: data || [],
@@ -68,23 +67,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
     const body = await request.json();
     const validatedData = studentSchema.parse(body);
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Check if school_id is provided
     const schoolId = request.nextUrl.searchParams.get('school_id');
+
     if (!schoolId) {
       return NextResponse.json({ error: 'School ID required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from('students')
+    const { data, error } = await queryStudents()
       .insert({
         ...validatedData,
         school_id: schoolId,
@@ -92,7 +83,10 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[v0] Students POST error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
