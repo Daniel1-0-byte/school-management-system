@@ -8,16 +8,25 @@ import {
   formatSupabaseError,
 } from '@/lib/supabase';
 import { sendEmail, getSchoolApprovalNotificationTemplate } from '@/lib/email';
+import { verifySession } from '@/lib/platform-admin-auth.edge';
 
 // GET /api/platform-admin/school-requests - Fetch all school requests
 export async function GET(request: NextRequest) {
   try {
     const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
+    const token = headersList.get('x-platform-admin-token');
 
-    if (!adminId) {
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Verify the session token
+    const session = await verifySession(token);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const adminId = session.adminId;
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
@@ -81,11 +90,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
+    const token = headersList.get('x-platform-admin-token');
 
-    if (!adminId) {
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Verify the session token
+    const session = await verifySession(token);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const adminId = session.adminId;
 
     const body = await request.json();
     const { requestId, action, rejectionReason, rejectionNotes } = body;
