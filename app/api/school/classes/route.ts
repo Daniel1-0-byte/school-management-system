@@ -1,71 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { queryClasses, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 
 const classSchema = z.object({
-  name: z.string().min(1),
-  section: z.string(),
-  teacherId: z.string().optional(),
-  roomNumber: z.string(),
-  capacity: z.number().min(1),
+  name: z.string().min(1, 'Class name required'),
+  section: z.string().min(1, 'Section required'),
+  teacher_id: z.string().uuid().optional(),
+  room_number: z.string().optional(),
+  capacity: z.number().min(1, 'Capacity must be at least 1'),
+  academic_year_id: z.string().uuid().optional(),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
-    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '10');
+    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
     const search = request.nextUrl.searchParams.get('search') || '';
+    const schoolId = request.nextUrl.searchParams.get('school_id');
 
-    // Mock data - TODO: Replace with Supabase
-    const mockClasses = [
-      {
-        id: 'class-1',
-        name: '10-A',
-        section: 'A',
-        teacherName: 'Mr. Sharma',
-        studentCount: 35,
-        roomNumber: '101',
-        capacity: 50,
-      },
-      {
-        id: 'class-2',
-        name: '10-B',
-        section: 'B',
-        teacherName: 'Mrs. Patel',
-        studentCount: 42,
-        roomNumber: '102',
-        capacity: 50,
-      },
-      {
-        id: 'class-3',
-        name: '11-A',
-        section: 'A',
-        teacherName: 'Dr. Desai',
-        studentCount: 38,
-        roomNumber: '201',
-        capacity: 50,
-      },
-    ];
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    }
 
-    const filtered = mockClasses.filter((c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.section.toLowerCase().includes(search.toLowerCase())
-    );
+    let query = queryClasses()
+      .select('*', { count: 'exact' })
+      .eq('school_id', schoolId);
 
-    const start = (page - 1) * pageSize;
-    const data = filtered.slice(start, start + pageSize);
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,section.ilike.%${search}%`);
+    }
+
+    query = query.order('name', { ascending: true });
+
+    const { data, error, count } = await getPaginatedResults(query, page, pageSize);
+
+    if (error) {
+      console.error('[v0] Classes GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
 
     return NextResponse.json({
-      data,
-      total: filtered.length,
+      data: data || [],
+      total: count || 0,
       page,
       pageSize,
     });
   } catch (error) {
     console.error('[v0] Classes GET error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch classes' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch classes' }, { status: 500 });
   }
 }
 
@@ -73,20 +55,31 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = classSchema.parse(body);
+    const schoolId = request.nextUrl.searchParams.get('school_id');
 
-    // TODO: Save to Supabase
-    return NextResponse.json({
-      success: true,
-      data: { id: 'new-class', ...validatedData },
-    });
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    }
+
+    const { data, error } = await queryClasses()
+      .insert({
+        ...validatedData,
+        school_id: schoolId,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[v0] Classes POST error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('[v0] Classes POST error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: 'Failed to create class' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create class' }, { status: 500 });
   }
 }

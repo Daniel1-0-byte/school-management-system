@@ -1,95 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { queryProfiles, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 
 const staffSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().optional(),
-  role: z.string(),
+  first_name: z.string().min(1, 'First name required'),
+  last_name: z.string().min(1, 'Last name required'),
+  email: z.string().email('Valid email required'),
+  phone_number: z.string().optional(),
+  system_role: z.enum(['Teacher', 'Admin', 'Accountant', 'BusCoordinator']),
   department: z.string().optional(),
-  joinDate: z.string(),
+  join_date: z.string().date(),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
-    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '10');
+    const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
     const search = request.nextUrl.searchParams.get('search') || '';
     const role = request.nextUrl.searchParams.get('role') || '';
+    const schoolId = request.nextUrl.searchParams.get('school_id');
     const status = request.nextUrl.searchParams.get('status') || 'active';
 
-    // Mock data - TODO: Replace with Supabase
-    const mockStaff = [
-      {
-        id: 'staff-1',
-        firstName: 'Rajesh',
-        lastName: 'Sharma',
-        email: 'rajesh@school.edu',
-        phone: '+91-9876543210',
-        role: 'Teacher',
-        department: 'Mathematics',
-        joinDate: '2020-06-15',
-        status: 'active',
-      },
-      {
-        id: 'staff-2',
-        firstName: 'Priya',
-        lastName: 'Patel',
-        email: 'priya@school.edu',
-        phone: '+91-9876543211',
-        role: 'Teacher',
-        department: 'Science',
-        joinDate: '2021-07-20',
-        status: 'active',
-      },
-      {
-        id: 'staff-3',
-        firstName: 'Arun',
-        lastName: 'Desai',
-        email: 'arun@school.edu',
-        phone: '+91-9876543212',
-        role: 'Principal',
-        department: 'Administration',
-        joinDate: '2015-04-10',
-        status: 'active',
-      },
-    ];
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    }
 
-    let filtered = mockStaff;
+    let query = queryProfiles()
+      .select('*', { count: 'exact' })
+      .eq('school_id', schoolId)
+      .neq('system_role', 'Parent');
 
     if (search) {
-      filtered = filtered.filter(
-        (s) =>
-          s.firstName.toLowerCase().includes(search.toLowerCase()) ||
-          s.lastName.toLowerCase().includes(search.toLowerCase()) ||
-          s.email.toLowerCase().includes(search.toLowerCase())
+      query = query.or(
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
       );
     }
 
     if (role) {
-      filtered = filtered.filter((s) => s.role === role);
+      query = query.eq('system_role', role);
     }
 
     if (status) {
-      filtered = filtered.filter((s) => s.status === status);
+      query = query.eq('status', status);
     }
 
-    const start = (page - 1) * pageSize;
-    const data = filtered.slice(start, start + pageSize);
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error, count } = await getPaginatedResults(query, page, pageSize);
+
+    if (error) {
+      console.error('[v0] Staff GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
 
     return NextResponse.json({
-      data,
-      total: filtered.length,
+      data: data || [],
+      total: count || 0,
       page,
       pageSize,
     });
   } catch (error) {
     console.error('[v0] Staff GET error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch staff' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch staff' }, { status: 500 });
   }
 }
 
@@ -97,20 +69,32 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = staffSchema.parse(body);
+    const schoolId = request.nextUrl.searchParams.get('school_id');
 
-    // TODO: Save to Supabase
-    return NextResponse.json({
-      success: true,
-      data: { id: 'new-staff', ...validatedData, status: 'active' },
-    });
+    if (!schoolId) {
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    }
+
+    const { data, error } = await queryProfiles()
+      .insert({
+        ...validatedData,
+        school_id: schoolId,
+        status: 'active',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[v0] Staff POST error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('[v0] Staff POST error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: 'Failed to create staff' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create staff' }, { status: 500 });
   }
 }

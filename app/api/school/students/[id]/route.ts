@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { queryStudents, formatSupabaseError } from '@/lib/supabase';
 
 const studentUpdateSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  gender: z.enum(['Male', 'Female', 'Other']).optional(),
-  classId: z.string(),
-  rollNumber: z.string().optional(),
-  status: z.enum(['active', 'graduated', 'withdrawn']),
+  first_name: z.string().min(1).optional(),
+  last_name: z.string().min(1).optional(),
+  date_of_birth: z.string().optional(),
+  admission_number: z.string().optional(),
+  current_class_id: z.string().uuid().optional(),
+  status: z.enum(['active', 'inactive', 'graduated']).optional(),
+  parental_status: z.string().optional(),
+  medical_notes: z.string().optional(),
+  allergies: z.string().optional(),
 });
 
 export async function GET(
@@ -20,27 +21,20 @@ export async function GET(
   try {
     const { id } = params;
 
-    // TODO: Fetch from Supabase
-    const mockStudent = {
-      id,
-      firstName: 'Aarjav',
-      lastName: 'Patel',
-      email: 'aarjav@example.com',
-      phone: '9876543210',
-      dateOfBirth: '2008-05-15',
-      gender: 'Male',
-      classId: 'class-1',
-      rollNumber: '001',
-      status: 'active',
-    };
+    const { data, error } = await queryStudents()
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    return NextResponse.json(mockStudent);
+    if (error) {
+      console.error('[v0] Student GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('[v0] Student GET error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch student' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch student' }, { status: 500 });
   }
 }
 
@@ -53,20 +47,24 @@ export async function PUT(
     const body = await request.json();
     const validatedData = studentUpdateSchema.parse(body);
 
-    // TODO: Update in Supabase
-    return NextResponse.json({
-      success: true,
-      data: { id, ...validatedData },
-    });
+    const { data, error } = await queryStudents()
+      .update(validatedData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[v0] Student PUT error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error('[v0] Student PUT error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
-    return NextResponse.json(
-      { error: 'Failed to update student' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update student' }, { status: 500 });
   }
 }
 
@@ -77,13 +75,18 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    // TODO: Delete from Supabase
+    const { error } = await queryStudents()
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('[v0] Student DELETE error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[v0] Student DELETE error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete student' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete student' }, { status: 500 });
   }
 }

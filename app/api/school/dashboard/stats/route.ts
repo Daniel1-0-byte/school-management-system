@@ -1,112 +1,82 @@
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } from '@/lib/env';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  queryStudents,
+  queryProfiles,
+  queryClasses,
+  queryAttendance,
+  queryAuditLogs,
+  formatSupabaseError,
+} from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('cookie') || '';
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Get school_id from session or query param
     const schoolId = request.nextUrl.searchParams.get('school_id');
+
     if (!schoolId) {
-      return NextResponse.json(
-        { error: 'School ID required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
     }
 
     // Fetch total students
-    const { count: totalStudents } = await supabase
-      .from('students')
+    const { count: totalStudents } = await queryStudents()
       .select('id', { count: 'exact', head: true })
       .eq('school_id', schoolId)
       .eq('status', 'active');
 
     // Fetch total teachers
-    const { count: totalTeachers } = await supabase
-      .from('profiles')
+    const { count: totalTeachers } = await queryProfiles()
       .select('id', { count: 'exact', head: true })
       .eq('school_id', schoolId)
       .eq('system_role', 'Teacher');
 
     // Fetch total classes
-    const { count: totalClasses } = await supabase
-      .from('classes')
+    const { count: totalClasses } = await queryClasses()
       .select('id', { count: 'exact', head: true })
       .eq('school_id', schoolId);
 
-    // Fetch attendance rate (simplified - count present / total)
-    const { data: attendanceData } = await supabase
-      .from('attendance')
+    // Fetch attendance rate for last 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+
+    const { data: attendanceData, error: attendanceError } = await queryAttendance()
       .select('status')
       .eq('school_id', schoolId)
-      .gte('marked_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      .gte('date', thirtyDaysAgo);
 
     const attendanceRate =
       attendanceData && attendanceData.length > 0
         ? Math.round(
-          (attendanceData.filter((a) => a.status === 'present').length / attendanceData.length) *
+          ((attendanceData as any[]).filter((a) => a.status === 'present').length /
+            attendanceData.length) *
           100
         )
         : 0;
 
-    // Fetch recent activities
-    const { data: recentActivities } = await supabase
-      .from('audit_logs')
+    // Fetch recent audit activities
+    const { data: recentActivities } = await queryAuditLogs()
       .select('id, action, target_name, created_at, actor_id')
       .eq('school_id', schoolId)
       .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Fetch upcoming events
-    const { data: upcomingEvents } = await supabase
-      .from('calendar_events')
-      .select('id, title, event_date, type')
-      .eq('school_id', schoolId)
-      .gte('event_date', new Date().toISOString())
-      .order('event_date', { ascending: true })
       .limit(5);
 
     return NextResponse.json({
       totalStudents: totalStudents || 0,
       totalTeachers: totalTeachers || 0,
       totalClasses: totalClasses || 0,
-      attendanceRate,
-      recentActivities: (recentActivities || []).map((activity) => ({
+      attendanceRate: attendanceRate || 0,
+      recentActivities: (recentActivities || []).map((activity: any) => ({
         id: activity.id,
         type: activity.action,
-        description: `${activity.action.replace(/_/g, ' ')}: ${activity.target_name || 'Unknown'}`,
+        description: `${activity.action.replace(/_/g, ' ')}: ${activity.target_name || 'System'}`,
         timestamp: activity.created_at,
         user: activity.actor_id || 'System',
-      })),
-      upcomingEvents: (upcomingEvents || []).map((event) => ({
-        id: event.id,
-        title: event.title,
-        date: event.event_date,
-        type: event.type,
       })),
     });
   } catch (error) {
     console.error('[v0] Dashboard stats error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard stats' },
-      { status: 500 }
+      { error: formatSupabaseError(error) },
+      { status: 400 }
     );
   }
 }
