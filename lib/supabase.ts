@@ -101,6 +101,10 @@ export function querySchoolSubscriptions() {
   return getServerSupabaseClient().from('school_subscriptions');
 }
 
+export function queryStaffInvitations() {
+  return getServerSupabaseClient().from('staff_invitations');
+}
+
 // ============================================================================
 // PAGINATION HELPER
 // ============================================================================

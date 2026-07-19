@@ -4,6 +4,7 @@ import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RECAPTCHA_SECRET_KEY } from '@
 import { validateSignup } from '@/lib/schemas';
 import { getClientIp, generateInviteToken, getInviteExpirationTime } from '@/lib/auth-utils';
 import { SchoolStatus } from '@/types';
+import { sendEmail, getEmailVerificationTemplate } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -144,8 +145,20 @@ export async function POST(request: NextRequest) {
         ip_address: clientIp,
       });
 
-    // Send verification email via Supabase Auth (automatic)
-    // The user will receive an email with a verification link
+    // Send verification email
+    const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/verify-email?token=${authData.user.confirmation_token}&email=${encodeURIComponent(email)}`;
+    const emailHtml = getEmailVerificationTemplate(verificationLink, schoolName);
+    
+    const emailResult = await sendEmail({
+      to: email,
+      subject: `Verify your email - ${schoolName} School Management System`,
+      html: emailHtml,
+    });
+
+    if (!emailResult.success) {
+      console.error('[v0] Email send failed:', emailResult.error);
+      // Continue anyway - user can resend email
+    }
 
     return NextResponse.json({
       success: true,

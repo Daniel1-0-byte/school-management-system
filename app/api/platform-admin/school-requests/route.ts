@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   querySchoolRequests,
   queryAuditLogs,
+  queryProfiles,
   getPaginatedResults,
   formatSupabaseError,
 } from '@/lib/supabase';
+import { sendEmail, getSchoolApprovalNotificationTemplate } from '@/lib/email';
 
 // GET /api/platform-admin/school-requests - Fetch all school requests
 export async function GET(request: NextRequest) {
@@ -135,6 +137,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
       }
 
+      // Get school admin email to send approval notification
+      const { data: adminProfile } = await queryProfiles()
+        .select('email')
+        .eq('school_id', schoolRequest.school_id)
+        .eq('system_role', 'Admin')
+        .single();
+
+      if (adminProfile?.email) {
+        const emailHtml = getSchoolApprovalNotificationTemplate(
+          schoolRequest.school_name,
+          adminProfile.email
+        );
+        const emailResult = await sendEmail({
+          to: adminProfile.email,
+          subject: `Your school has been approved - ${schoolRequest.school_name}`,
+          html: emailHtml,
+        });
+
+        if (!emailResult.success) {
+          console.error('[v0] Approval email send failed:', emailResult.error);
+        } else {
+          console.log('[v0] School approval email sent to:', adminProfile.email);
+        }
+      }
+
       // Trigger auto-provisioning for the school
       if (schoolRequest.school_id) {
         try {
@@ -146,7 +173,6 @@ export async function POST(request: NextRequest) {
           });
         } catch (provisionError) {
           console.error('[v0] Auto-provisioning error:', provisionError);
-          // Don't fail the approval if provisioning fails - it can be done manually
         }
       }
 
@@ -162,7 +188,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'School request approved and provisioning initiated',
+        message: 'School request approved and approval email sent',
         data: updated,
       });
     }
