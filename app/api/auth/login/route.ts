@@ -63,20 +63,79 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (profileError || !profileData) {
-      console.error('[v0] Profile fetch error:', profileError);
+      console.error('[v0][LOGIN] ❌ Profile fetch error:', {
+        email,
+        userId: authData.user.id,
+        profileError,
+      });
       return NextResponse.json(
         { success: false, error: 'User profile not found' },
         { status: 404 }
       );
     }
 
+    console.log('[v0][LOGIN] Profile loaded:', {
+      email,
+      userId: authData.user.id,
+      systemRole: profileData.system_role,
+      userStatus: profileData.status,
+      schoolId: profileData.school_id,
+    });
+
     // Check if user is active
     if (profileData.status !== 'active') {
+      console.error('[v0][LOGIN] ❌ User account not active:', {
+        email,
+        userId: authData.user.id,
+        userStatus: profileData.status,
+      });
       return NextResponse.json(
         { success: false, error: 'Your account is not active' },
         { status: 403 }
       );
     }
+
+    // Check if school is approved
+    console.log('[v0][LOGIN] Checking school approval status for school_id:', profileData.school_id);
+    const { data: schoolCheckData, error: schoolCheckError } = await querySchools()
+      .select('id, status, name')
+      .eq('id', profileData.school_id)
+      .single();
+
+    if (schoolCheckError) {
+      console.error('[v0][LOGIN] ❌ School fetch error:', {
+        email,
+        schoolId: profileData.school_id,
+        error: schoolCheckError,
+      });
+      return NextResponse.json(
+        { success: false, error: 'School information not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log('[v0][LOGIN] School status retrieved:', {
+      email,
+      schoolId: profileData.school_id,
+      schoolName: schoolCheckData?.name,
+      schoolStatus: schoolCheckData?.status,
+    });
+
+    // Only allow login if school is approved (active)
+    if (schoolCheckData?.status !== 'active') {
+      console.error('[v0][LOGIN] ❌ School not approved (status is not active):', {
+        email,
+        schoolId: profileData.school_id,
+        schoolName: schoolCheckData?.name,
+        schoolStatus: schoolCheckData?.status,
+      });
+      return NextResponse.json(
+        { success: false, error: 'Your school has not been approved yet. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[v0][LOGIN] ✅ School approval verified - proceeding with login');
 
     // Get school details to send confirmation email
     const { data: schoolData } = await querySchools()
