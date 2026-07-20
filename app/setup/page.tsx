@@ -77,20 +77,8 @@ export default function SetupWizardPage() {
 
   const [logoFileName, setLogoFileName] = useState('');
 
-  // Check if user is authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/session');
-        if (!response.ok) {
-          router.push('/login');
-        }
-      } catch (error) {
-        router.push('/login');
-      }
-    };
-    checkAuth();
-  }, [router]);
+  // No auth check needed - setup can be accessed from signup flow
+  // Users will be redirected to login after completing setup
 
   const handleSchoolDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -161,7 +149,7 @@ export default function SetupWizardPage() {
     setError('');
 
     try {
-      console.log('[v0] Submitting setup data to server...');
+      console.log('[v0][SETUP] Submitting setup data to server...');
       
       const response = await fetch('/api/auth/setup-profile', {
         method: 'POST',
@@ -176,16 +164,17 @@ export default function SetupWizardPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        console.error('[v0] Setup submission failed:', data);
+        console.error('[v0][SETUP] Setup submission failed:', data);
         setError(data.error || 'Failed to complete setup');
         setLoading(false);
         return;
       }
 
-      console.log('[v0] Setup submitted successfully, redirecting to dashboard...');
-      router.push('/dashboard');
+      console.log('[v0][SETUP] Setup completed successfully, redirecting to login...');
+      // Redirect to login - they'll then be authenticated and go to dashboard
+      router.push('/login?message=setup-complete');
     } catch (err) {
-      console.error('[v0] Setup error:', err);
+      console.error('[v0][SETUP] Setup error:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete setup');
       setLoading(false);
     }

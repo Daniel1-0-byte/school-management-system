@@ -251,11 +251,29 @@ export async function POST(request: NextRequest) {
       });
       // Continue anyway - signup is successful even if email fails
     } else {
-      console.log('[v0][SIGNUP] ✅ Signup confirmation email SENT:', { 
+    console.log('[v0][SIGNUP] ✅ Signup confirmation email SENT:', { 
         email, 
         schoolName,
         messageId: emailResult.data?.id,
       });
+    }
+
+    console.log('[v0][SIGNUP] ✅ Signup complete, redirecting to setup wizard:', {
+      email,
+      schoolId: schoolData.id,
+      userId: authData.user.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        schoolId: schoolData.id,
+        userId: authData.user.id,
+        email: authData.user.email,
+      },
+      redirectTo: '/setup',
+      message: 'Signup successful! Complete your school setup now.',
+    });
     }
 
     // Return success - email verification is skipped

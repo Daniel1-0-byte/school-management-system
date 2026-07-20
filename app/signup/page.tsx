@@ -92,9 +92,9 @@ export default function SignupPage() {
       // Success!
       setStep('success');
       setTimeout(() => {
-        // Redirect to login - platform admin will add school details
-        router.push('/login');
-      }, 3000);
+        // Redirect to setup wizard to complete school configuration
+        router.push('/setup');
+      }, 2000);
       } catch (error) {
         if (error instanceof ZodError) {
           const fieldErrors: FormErrors = {};
