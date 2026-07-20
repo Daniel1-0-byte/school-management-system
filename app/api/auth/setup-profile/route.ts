@@ -126,9 +126,31 @@ export async function POST(request: NextRequest) {
 
     const userId = profileData?.id;
 
-    // Skip term creation as school_terms table may not exist
-    // Terms can be managed through school settings later
-    console.log('[v0][SETUP] Skipping term creation (can be added through school settings)');
+    // Create term records
+    const terms = [
+      { name: 'Term 1', start: body.terms.term1Start, end: body.terms.term1End },
+      { name: 'Term 2', start: body.terms.term2Start, end: body.terms.term2End },
+      { name: 'Term 3', start: body.terms.term3Start, end: body.terms.term3End },
+    ];
+
+    console.log('[v0][SETUP] Creating school terms:', { schoolId, termCount: terms.length });
+
+    for (const term of terms) {
+      const { error: termError } = await supabase
+        .from('terms')
+        .insert({
+          school_id: schoolId,
+          name: term.name,
+          start_date: term.start,
+          end_date: term.end,
+        });
+
+      if (termError && !termError.message?.includes('duplicate')) {
+        console.warn('[v0][SETUP] ⚠️ Term creation warning:', { termError, term: term.name });
+      } else if (!termError) {
+        console.log('[v0][SETUP] Term created:', { name: term.name });
+      }
+    }
 
     // Mark profile setup as complete
     if (userId) {
