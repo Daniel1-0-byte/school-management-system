@@ -235,7 +235,12 @@ export async function POST(request: NextRequest) {
       console.log('[v0] Admin profile fetched:', { emailExists: !!adminProfile?.email });
 
       if (adminProfile?.email) {
-        console.log('[v0] Sending approval email to:', { email: adminProfile.email });
+        console.log('[v0][APPROVAL] About to send approval email:', { 
+          to: adminProfile.email,
+          schoolName: schoolRequest.school_name,
+          resendApiKeyConfigured: !!process.env.RESEND_API_KEY,
+          fromEmailConfigured: !!process.env.RESEND_FROM_EMAIL,
+        });
         const emailHtml = getSchoolApprovalNotificationTemplate(
           schoolRequest.school_name,
           adminProfile.email
@@ -247,10 +252,24 @@ export async function POST(request: NextRequest) {
         });
 
         if (!emailResult.success) {
-          console.error('[v0] Approval email send failed:', { error: emailResult.error });
+          console.error('[v0][APPROVAL] ❌ Approval email send FAILED:', {
+            to: adminProfile.email,
+            schoolName: schoolRequest.school_name,
+            error: emailResult.error,
+            errorDetails: JSON.stringify(emailResult.error),
+          });
         } else {
-          console.log('[v0] School approval email sent successfully');
+          console.log('[v0][APPROVAL] ✅ School approval email SENT:', {
+            to: adminProfile.email,
+            schoolName: schoolRequest.school_name,
+            messageId: emailResult.data?.id,
+          });
         }
+      } else {
+        console.warn('[v0][APPROVAL] ⚠️  No admin profile email found to send approval notification:', {
+          schoolId: schoolRequest.school_id,
+          schoolName: schoolRequest.school_name,
+        });
       }
 
       // Trigger auto-provisioning for the school

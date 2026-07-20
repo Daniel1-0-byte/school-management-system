@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 
-const FROM_EMAIL = 'onboarding@resend.dev';
+// Use the sender email from environment or fall back to configured domain
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@schoolmanagementsystem.com';
 
 // Initialize Resend lazily to avoid build-time issues
 let resendClient: Resend | null = null;
@@ -28,14 +29,22 @@ interface EmailOptions {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
-    console.log('[v0] Sending email:', {
+    const timestamp = new Date().toISOString();
+    const requestId = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log(`[v0][EMAIL][${requestId}] Starting email send:`, {
       to,
       subject,
       from: FROM_EMAIL,
-      timestamp: new Date().toISOString(),
+      resendApiKeyConfigured: !!process.env.RESEND_API_KEY,
+      resendFromEmailEnv: !!process.env.RESEND_FROM_EMAIL,
+      timestamp,
     });
 
     const resend = getResendClient();
+    
+    console.log(`[v0][EMAIL][${requestId}] Resend client initialized, calling API...`);
+    
     const response = await resend.emails.send({
       from: FROM_EMAIL,
       to,
@@ -43,33 +52,43 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
       html,
     });
 
-    console.log('[v0] Email send response:', {
-      error: response.error || null,
-      id: response.data?.id || null,
-      success: !response.error,
+    console.log(`[v0][EMAIL][${requestId}] Resend API response:`, {
+      hasError: !!response.error,
+      errorDetails: response.error ? JSON.stringify(response.error) : null,
+      messageId: response.data?.id || null,
+      timestamp,
     });
 
     if (response.error) {
-      console.error('[v0] Email send failed:', {
-        error: response.error,
+      console.error(`[v0][EMAIL][${requestId}] ❌ Email send FAILED:`, {
         to,
+        subject,
         from: FROM_EMAIL,
+        error: response.error,
+        errorType: typeof response.error,
+        errorKeys: Object.keys(response.error || {}),
+        timestamp,
       });
       return { success: false, error: response.error };
     }
 
-    console.log('[v0] Email sent successfully:', {
-      id: response.data?.id,
+    console.log(`[v0][EMAIL][${requestId}] ✅ Email sent SUCCESSFULLY:`, {
       to,
+      subject,
       from: FROM_EMAIL,
+      messageId: response.data?.id,
+      timestamp,
     });
     return { success: true, data: response.data };
   } catch (error) {
-    console.error('[v0] Email service error:', {
-      error: error instanceof Error ? error.message : String(error),
+    console.error('[v0][EMAIL] ❌ Unexpected email service error:', {
       to,
+      subject,
       from: FROM_EMAIL,
+      error: error instanceof Error ? error.message : String(error),
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
       stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
     });
     return { success: false, error };
   }

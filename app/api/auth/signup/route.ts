@@ -213,7 +213,14 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    console.log('[v0] Sending signup confirmation email to:', { email, schoolName });
+    console.log('[v0][SIGNUP] About to send confirmation email:', { 
+      email, 
+      schoolName,
+      resendApiKeyConfigured: !!process.env.RESEND_API_KEY,
+      fromEmailConfigured: !!process.env.RESEND_FROM_EMAIL,
+      timestamp: new Date().toISOString(),
+    });
+    
     const emailResult = await sendEmail({
       to: email,
       subject: `Welcome to School Management System - ${schoolName}`,
@@ -221,14 +228,21 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailResult.success) {
-      console.error('[v0] Signup confirmation email failed:', {
-        error: emailResult.error,
+      console.error('[v0][SIGNUP] ❌ Signup confirmation email send FAILED:', {
         email,
         schoolName,
+        error: emailResult.error,
+        errorDetails: JSON.stringify(emailResult.error),
+        schoolId: schoolData.id,
+        userId: authData.user.id,
       });
       // Continue anyway - signup is successful even if email fails
     } else {
-      console.log('[v0] ✓ Signup confirmation email sent successfully to:', email);
+      console.log('[v0][SIGNUP] ✅ Signup confirmation email SENT:', { 
+        email, 
+        schoolName,
+        messageId: emailResult.data?.id,
+      });
     }
 
     // Return success - email verification is skipped
