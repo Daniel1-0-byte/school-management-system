@@ -161,10 +161,31 @@ export default function SetupWizardPage() {
     setError('');
 
     try {
-      // Here you would save the school setup data
-      // For now, just redirect to dashboard
+      console.log('[v0] Submitting setup data to server...');
+      
+      const response = await fetch('/api/auth/setup-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolDetails,
+          academicYear,
+          terms,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        console.error('[v0] Setup submission failed:', data);
+        setError(data.error || 'Failed to complete setup');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[v0] Setup submitted successfully, redirecting to dashboard...');
       router.push('/dashboard');
     } catch (err) {
+      console.error('[v0] Setup error:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete setup');
       setLoading(false);
     }

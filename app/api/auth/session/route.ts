@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id, school_id, system_role, first_name, last_name, status')
+      .select('id, school_id, system_role, first_name, last_name, status, setup_completed')
       .eq('id', user.id)
       .single();
 
@@ -43,8 +43,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    console.log('[v0][SESSION] Session verified:', {
+      userId: user.id,
+      email: user.email,
+      role: profileData.system_role,
+      setupCompleted: profileData.setup_completed,
+    });
+
     return NextResponse.json({
       success: true,
+      session: {
+        userId: user.id,
+        email: user.email,
+        role: profileData.system_role,
+        setupCompleted: profileData.setup_completed,
+      },
       data: {
         user: {
           id: user.id,

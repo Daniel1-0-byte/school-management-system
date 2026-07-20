@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Get user profile
     const { data: profileData, error: profileError } = await queryProfiles()
-      .select('system_role, status, school_id')
+      .select('system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
 
@@ -137,6 +137,14 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0][LOGIN] ✅ School approval verified - proceeding with login');
 
+    // Check if profile setup is completed
+    const setupCompleted = profileData.setup_completed === true;
+    console.log('[v0][LOGIN] Profile setup status:', {
+      email,
+      setupCompleted,
+      schoolId: profileData.school_id,
+    });
+
     // Get school details to send confirmation email
     const { data: schoolData } = await querySchools()
       .select('id, name')
@@ -191,6 +199,8 @@ export async function POST(request: NextRequest) {
         userId: authData.user.id,
         email: authData.user.email,
         role: profileData.system_role,
+        setupCompleted: setupCompleted,
+        needsSetup: !setupCompleted,
       },
     });
 

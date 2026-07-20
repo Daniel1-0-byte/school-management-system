@@ -59,14 +59,12 @@ export async function POST(request: NextRequest) {
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check if email already exists
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', email)
-      .single();
+    // Check if email already exists in auth
+    console.log('[v0][SIGNUP] Checking if email already registered:', { email });
+    const { data: existingAuthUser, error: checkAuthError } = await supabase.auth.admin.getUserByEmail(email);
 
-    if (existingUser) {
+    if (existingAuthUser) {
+      console.warn('[v0][SIGNUP] Email already registered:', { email });
       return NextResponse.json(
         { success: false, error: 'Email already registered' },
         { status: 400 }

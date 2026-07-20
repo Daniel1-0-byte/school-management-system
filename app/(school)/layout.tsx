@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import {
   LayoutDashboard,
   Users,
@@ -70,7 +71,54 @@ export default function SchoolLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-  const userRole = 'Admin'; // Default role - auth check handled by middleware
+  const [userRole, setUserRole] = useState<string>('Admin');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication and setup status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        console.log('[v0][LAYOUT] Checking authentication...');
+        const response = await fetch('/api/auth/session');
+        
+        if (!response.ok) {
+          console.log('[v0][LAYOUT] Not authenticated, redirecting to login');
+          router.push('/login');
+          return;
+        }
+
+        const data = await response.json();
+        console.log('[v0][LAYOUT] Auth check result:', {
+          hasSession: !!data.session,
+          setupCompleted: data.session?.setupCompleted,
+        });
+
+        if (!data.session) {
+          console.log('[v0][LAYOUT] No session found, redirecting to login');
+          router.push('/login');
+          return;
+        }
+
+        setUserRole(data.session.role || 'Admin');
+        setIsAuthenticated(true);
+
+        // Check if profile setup is completed
+        if (data.session.setupCompleted === false && pathname !== '/setup') {
+          console.log('[v0][LAYOUT] Setup not completed, redirecting to setup');
+          router.push('/setup');
+          return;
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('[v0][LAYOUT] Auth check error:', error);
+        router.push('/login');
+      }
+    };
+
+    checkAuth();
+  }, [router, pathname]);
   
   const handleLogout = async () => {
     try {
@@ -83,6 +131,23 @@ export default function SchoolLayout({
 
   const navItems = getNavItems(userRole);
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render layout if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
