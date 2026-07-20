@@ -274,25 +274,6 @@ export async function POST(request: NextRequest) {
       redirectTo: '/setup',
       message: 'Signup successful! Complete your school setup now.',
     });
-    }
-
-    // Return success - email verification is skipped
-    // Platform admin will receive school details on first login
-    console.log('[v0] School signup successful, awaiting platform admin approval:', {
-      schoolId: schoolData.id,
-      userId: authData.user.id,
-      email,
-      schoolName,
-    });
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        schoolId: schoolData.id,
-        userId: authData.user.id,
-        message: 'Signup successful! You can now sign in to your account.',
-      },
-    });
   } catch (error) {
     console.error('[v0] Signup error:', error);
     return NextResponse.json(
