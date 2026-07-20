@@ -59,17 +59,7 @@ export async function POST(request: NextRequest) {
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Check if email already exists in auth
-    console.log('[v0][SIGNUP] Checking if email already registered:', { email });
-    const { data: existingAuthUser, error: checkAuthError } = await supabase.auth.admin.getUserByEmail(email);
-
-    if (existingAuthUser) {
-      console.warn('[v0][SIGNUP] Email already registered:', { email });
-      return NextResponse.json(
-        { success: false, error: 'Email already registered' },
-        { status: 400 }
-      );
-    }
+    console.log('[v0][SIGNUP] Starting signup process:', { email, schoolName });
 
     // Create school first
     const { data: schoolData, error: schoolError } = await supabase
@@ -118,7 +108,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError || !authData.user) {
-      console.error('[v0] Auth user creation error:', authError);
+      console.error('[v0][SIGNUP] Auth user creation error:', {
+        email,
+        errorMessage: authError?.message,
+        errorStatus: authError?.status,
+      });
+      
+      // Check if it's a duplicate email error
+      if (authError?.message?.includes('already exists') || authError?.status === 422) {
+        return NextResponse.json(
+          { success: false, error: 'Email already registered' },
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(
         { success: false, error: 'Failed to create user account' },
         { status: 500 }
