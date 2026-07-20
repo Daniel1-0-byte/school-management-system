@@ -43,6 +43,7 @@ export default function SetupWizardPage() {
   const [currentStep, setCurrentStep] = useState<SetupStep>('school-details');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [schoolId, setSchoolId] = useState<string>('');
 
   const [schoolDetails, setSchoolDetails] = useState<SchoolDetailsData>({
     name: '',
@@ -77,8 +78,14 @@ export default function SetupWizardPage() {
 
   const [logoFileName, setLogoFileName] = useState('');
 
-  // No auth check needed - setup can be accessed from signup flow
-  // Users will be redirected to login after completing setup
+  // Get schoolId from session storage (set during signup)
+  useEffect(() => {
+    const stored = sessionStorage.getItem('schoolId');
+    if (stored) {
+      setSchoolId(stored);
+      console.log('[v0][SETUP] Retrieved schoolId from session:', stored);
+    }
+  }, []);
 
   const handleSchoolDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -148,13 +155,20 @@ export default function SetupWizardPage() {
     setLoading(true);
     setError('');
 
+    if (!schoolId) {
+      setError('School ID not found. Please try signing up again.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('[v0][SETUP] Submitting setup data to server...');
+      console.log('[v0][SETUP] Submitting setup data to server:', { schoolId });
       
       const response = await fetch('/api/auth/setup-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          schoolId,
           schoolDetails,
           academicYear,
           terms,

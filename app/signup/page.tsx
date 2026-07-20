@@ -80,7 +80,7 @@ export default function SignupPage() {
         body: JSON.stringify(validated),
       });
 
-      const result = await response.json() as { success: boolean; error?: string };
+      const result = await response.json() as { success: boolean; error?: string; data?: { schoolId: string } };
 
       if (!response.ok || !result.success) {
         setGeneralError(result.error || 'Signup failed. Please try again.');
@@ -91,6 +91,13 @@ export default function SignupPage() {
 
       // Success!
       setStep('success');
+      
+      // Store schoolId in sessionStorage for setup page
+      if (result.data?.schoolId) {
+        sessionStorage.setItem('schoolId', result.data.schoolId);
+        console.log('[v0][SIGNUP] Stored schoolId:', result.data.schoolId);
+      }
+      
       setTimeout(() => {
         // Redirect to setup wizard to complete school configuration
         router.push('/setup');

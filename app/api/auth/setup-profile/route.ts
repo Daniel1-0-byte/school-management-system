@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabaseClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 interface SetupData {
+  schoolId?: string;
   schoolDetails: {
     name: string;
     address: string;
@@ -27,39 +31,28 @@ interface SetupData {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getServerSupabaseClient();
-
-    // Get authenticated user
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError || !userData.user) {
-      console.error('[v0][SETUP] ❌ Not authenticated:', { error: userError });
-      return NextResponse.json(
-        { success: false, error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    const userId = userData.user.id;
-    console.log('[v0][SETUP] Starting profile setup for user:', { userId });
+    // Use service role to bypass auth requirement (this is for fresh signups with no session yet)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const body = await request.json() as SetupData;
 
-    // Get user's profile and school
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('school_id, setup_completed')
-      .eq('id', userId)
-      .single();
+    console.log('[v0][SETUP] Received setup data:', {
+      schoolId: body.schoolId,
+      schoolName: body.schoolDetails.name,
+    });
 
-    if (profileError || !profileData) {
-      console.error('[v0][SETUP] ❌ Profile not found:', { userId, error: profileError });
+    // Get school ID from request or use the one provided
+    if (!body.schoolId) {
+      console.error('[v0][SETUP] ❌ School ID not provided');
       return NextResponse.json(
-        { success: false, error: 'Profile not found' },
-        { status: 404 }
+        { success: false, error: 'School ID is required' },
+        { status: 400 }
       );
     }
 
-    const schoolId = profileData.school_id;
+    const schoolId = body.schoolId;
 
     console.log('[v0][SETUP] Updating school details:', {
       schoolId,
