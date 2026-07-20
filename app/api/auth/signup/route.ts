@@ -61,6 +61,18 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0][SIGNUP] Starting signup process:', { email, schoolName });
 
+    // Auto-migrate: Add setup_completed column if it doesn't exist
+    console.log('[v0][SIGNUP] Checking for setup_completed column...');
+    try {
+      await supabase.rpc('exec', {
+        sql: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS setup_completed BOOLEAN DEFAULT FALSE;`,
+      });
+      console.log('[v0][SIGNUP] setup_completed column ensured');
+    } catch (migrationError) {
+      console.warn('[v0][SIGNUP] Migration check failed (may already exist):', migrationError);
+      // This is not fatal - column may already exist
+    }
+
     // Create school first
     const { data: schoolData, error: schoolError } = await supabase
       .from('schools')
