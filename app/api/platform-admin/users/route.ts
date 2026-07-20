@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
 
+    console.log('[v0][ADMIN-USERS] GET request started:', { adminId });
+
     if (!adminId) {
+      console.error('[v0][ADMIN-USERS] No admin ID in headers');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,33 +23,53 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     const schoolId = searchParams.get('schoolId') || '';
 
+    console.log('[v0][ADMIN-USERS] Query parameters:', { page, pageSize, search, role, status, schoolId });
+
     let query = queryProfiles().select('*, schools(id, name)', { count: 'exact' });
 
     if (search) {
+      console.log('[v0][ADMIN-USERS] Applying search filter:', { search });
       query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
     }
 
     if (role) {
+      console.log('[v0][ADMIN-USERS] Applying role filter:', { role });
       query = query.eq('system_role', role);
     }
 
     if (status) {
+      console.log('[v0][ADMIN-USERS] Applying status filter:', { status });
       query = query.eq('status', status);
     }
 
     if (schoolId) {
+      console.log('[v0][ADMIN-USERS] Applying school filter:', { schoolId });
       query = query.eq('school_id', schoolId);
     }
 
     query = query.order('created_at', { ascending: false });
 
+    console.log('[v0][ADMIN-USERS] About to execute query');
     const { data, error, count } = await getPaginatedResults(query, page, pageSize);
 
+    console.log('[v0][ADMIN-USERS] Query result:', {
+      hasError: !!error,
+      errorMessage: error?.message,
+      dataCount: data?.length,
+      totalCount: count,
+    });
+
     if (error) {
-      console.error('[v0] Failed to fetch users:', error);
+      console.error('[v0][ADMIN-USERS] ❌ Failed to fetch users:', {
+        error: error.message,
+        code: error.code,
+        status: error.status,
+        details: error.details,
+      });
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    console.log('[v0][ADMIN-USERS] ✅ Successfully fetched users');
     return NextResponse.json({
       success: true,
       data: data || [],
@@ -56,7 +79,10 @@ export async function GET(request: NextRequest) {
       hasMore: page * pageSize < (count || 0),
     });
   } catch (error) {
-    console.error('[v0] Error fetching users:', error);
+    console.error('[v0][ADMIN-USERS] ❌ Unexpected error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

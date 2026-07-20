@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
 
+    console.log('[v0][ADMIN-SCHOOLS] GET request started:', { adminId });
+
     if (!adminId) {
+      console.error('[v0][ADMIN-SCHOOLS] No admin ID in headers');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -20,27 +23,45 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
+    console.log('[v0][ADMIN-SCHOOLS] Query parameters:', { page, pageSize, search, status, sortBy, sortOrder });
+
     let query = querySchools().select('*', { count: 'exact' });
 
     if (search) {
+      console.log('[v0][ADMIN-SCHOOLS] Applying search filter:', { search });
       query = query.or(
         `name.ilike.%${search}%,email.ilike.%${search}%,principal_email.ilike.%${search}%`
       );
     }
 
     if (status) {
+      console.log('[v0][ADMIN-SCHOOLS] Applying status filter:', { status });
       query = query.eq('status', status);
     }
 
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
+    console.log('[v0][ADMIN-SCHOOLS] About to execute query');
     const { data, error, count } = await getPaginatedResults(query, page, pageSize);
 
+    console.log('[v0][ADMIN-SCHOOLS] Query result:', {
+      hasError: !!error,
+      errorMessage: error?.message,
+      dataCount: data?.length,
+      totalCount: count,
+    });
+
     if (error) {
-      console.error('[v0] Failed to fetch schools:', error);
+      console.error('[v0][ADMIN-SCHOOLS] ❌ Failed to fetch schools:', {
+        error: error.message,
+        code: error.code,
+        status: error.status,
+        details: error.details,
+      });
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    console.log('[v0][ADMIN-SCHOOLS] ✅ Successfully fetched schools');
     return NextResponse.json({
       success: true,
       data: data || [],
@@ -50,7 +71,10 @@ export async function GET(request: NextRequest) {
       hasMore: page * pageSize < (count || 0),
     });
   } catch (error) {
-    console.error('[v0] Error fetching schools:', error);
+    console.error('[v0][ADMIN-SCHOOLS] ❌ Unexpected error:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

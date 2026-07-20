@@ -68,7 +68,13 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await getPaginatedResults(query, page, pageSize);
 
     if (error) {
-      console.error('[v0] Supabase query error:', { error, errorMessage: error?.message });
+      console.error('[v0][SCHOOL-REQUESTS] ❌ Supabase query error:', {
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorStatus: error?.status,
+        errorDetails: error?.details,
+        fullError: JSON.stringify(error),
+      });
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
