@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { RECAPTCHA_SECRET_KEY, RECAPTCHA_SITE_KEY } from '@/lib/env';
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
 import { getServerSupabaseClient, queryProfiles, queryAuditLogs, querySchools } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email';
+
+const DEBUG_CAPTCHA = process.env.AUTH_DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,18 +26,78 @@ export async function POST(request: NextRequest) {
 
     // Verify CAPTCHA if token provided
     if (captchaToken) {
+      if (DEBUG_CAPTCHA) {
+        console.log('[v0][CAPTCHA-DEBUG] Starting verification:', {
+          captchaTokenLength: captchaToken.length,
+          secretKeyExists: !!RECAPTCHA_SECRET_KEY,
+          secretKeyLength: RECAPTCHA_SECRET_KEY.length,
+          siteKeyExists: !!RECAPTCHA_SITE_KEY,
+          verifyUrl: RECAPTCHA_VERIFY_URL,
+          clientIp,
+        });
+      }
+
       const captchaResponse = await fetch(RECAPTCHA_VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `secret=${RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
       });
 
-      const captchaData = await captchaResponse.json() as { success: boolean; score?: number };
-      if (!captchaData.success || (captchaData.score && captchaData.score < 0.5)) {
+      const captchaData = await captchaResponse.json() as {
+        success: boolean;
+        score?: number;
+        action?: string;
+        challenge_ts?: string;
+        hostname?: string;
+        'error-codes'?: string[];
+      };
+
+      if (DEBUG_CAPTCHA) {
+        console.log('[v0][CAPTCHA-DEBUG] Google verification response:', {
+          success: captchaData.success,
+          score: captchaData.score,
+          action: captchaData.action,
+          hostname: captchaData.hostname,
+          challenge_ts: captchaData.challenge_ts,
+          errorCodes: captchaData['error-codes'],
+          httpStatus: captchaResponse.status,
+        });
+      }
+
+      if (!captchaData.success) {
+        console.error('[v0][CAPTCHA] Verification failed:', {
+          email,
+          errorCodes: captchaData['error-codes'],
+          action: captchaData.action,
+          hostname: captchaData.hostname,
+          score: captchaData.score,
+        });
         return NextResponse.json(
-          { success: false, error: 'CAPTCHA verification failed' },
+          { success: false, error: 'CAPTCHA verification failed', details: DEBUG_CAPTCHA ? captchaData['error-codes'] : undefined },
           { status: 400 }
         );
+      }
+
+      if (captchaData.score && captchaData.score < 0.5) {
+        console.error('[v0][CAPTCHA] Score too low:', {
+          email,
+          score: captchaData.score,
+          threshold: 0.5,
+          action: captchaData.action,
+        });
+        return NextResponse.json(
+          { success: false, error: 'CAPTCHA score too low' },
+          { status: 400 }
+        );
+      }
+
+      if (DEBUG_CAPTCHA) {
+        console.log('[v0][CAPTCHA-DEBUG] Verification successful:', {
+          email,
+          score: captchaData.score,
+          action: captchaData.action,
+          hostname: captchaData.hostname,
+        });
       }
     }
 
