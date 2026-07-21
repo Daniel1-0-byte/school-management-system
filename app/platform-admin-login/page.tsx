@@ -59,44 +59,39 @@ export default function PlatformAdminLoginPage() {
       let captchaToken = '';
       const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
-      if (typeof window !== 'undefined' && window.grecaptcha) {
-        try {
-          // Log before executing reCAPTCHA
-          if (process.env.NODE_ENV === 'development' || typeof localStorage !== 'undefined' && localStorage.getItem('AUTH_DEBUG') === 'true') {
-            console.log('[reCAPTCHA FRONTEND] Starting grecaptcha.execute', {
-              siteKeyExists: !!siteKey,
-              siteKeyLength: siteKey.length,
-              action: 'login',
-            });
-          }
+      // Wait for grecaptcha to be available (handle browser caching)
+      let grecaptchaReady = false;
+      let attempts = 0;
+      const maxAttempts = 10;
 
-          captchaToken = await window.grecaptcha.execute(siteKey, { action: 'login' });
+      while (!grecaptchaReady && attempts < maxAttempts) {
+        if (typeof window !== 'undefined' && window.grecaptcha) {
+          grecaptchaReady = true;
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
 
-          // Log after receiving token
-          if (process.env.NODE_ENV === 'development' || typeof localStorage !== 'undefined' && localStorage.getItem('AUTH_DEBUG') === 'true') {
-            console.log('[reCAPTCHA FRONTEND] Token received', {
-              exists: !!captchaToken,
-              length: captchaToken.length,
-              first20: captchaToken.slice(0, 20),
-              last20: captchaToken.slice(-20),
-            });
-          }
+      if (!grecaptchaReady || !window.grecaptcha) {
+        setGeneralError('reCAPTCHA not available. Please refresh the page.');
+        setLoading(false);
+        return;
+      }
 
-          // TASK 4: Verify frontend is waiting for token before submitting
-          if (!captchaToken) {
-            console.error('[reCAPTCHA FRONTEND] Token is empty after execution');
-            setGeneralError('reCAPTCHA token generation failed');
-            setLoading(false);
-            return;
-          }
-        } catch (error) {
-          console.error('[reCAPTCHA FRONTEND] Error during grecaptcha.execute:', error);
-          setGeneralError('reCAPTCHA failed. Please try again.');
+      try {
+        captchaToken = await window.grecaptcha.execute(siteKey, { action: 'login' });
+
+        if (!captchaToken) {
+          setGeneralError('reCAPTCHA token generation failed');
           setLoading(false);
           return;
         }
-      } else {
-        console.warn('[reCAPTCHA FRONTEND] grecaptcha not available');
+      } catch (error) {
+        console.error('[CAPTCHA] Error during execution:', error);
+        setGeneralError('reCAPTCHA failed. Please try again.');
+        setLoading(false);
+        return;
       }
 
       const validated = platformAdminLoginSchema.parse({
@@ -367,11 +362,10 @@ export default function PlatformAdminLoginPage() {
         </div>
       </div>
 
-      {/* reCAPTCHA script */}
+      {/* reCAPTCHA script - load immediately to ensure it's ready */}
       <script
         src={`https://www.google.com/recaptcha/api.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}`}
         async
-        defer
       />
     </div>
   );

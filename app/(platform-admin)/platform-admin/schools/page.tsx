@@ -41,7 +41,10 @@ export default function SchoolsPage() {
 
         const response = await fetch(
           `/api/platform-admin/schools?${params.toString()}`,
-          { headers: { 'Accept': 'application/json' } }
+          { 
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+          }
         );
 
         if (!response.ok) {
@@ -84,6 +87,7 @@ export default function SchoolsPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -117,6 +121,7 @@ export default function SchoolsPage() {
       setDeletingId(id);
       const response = await fetch(`/api/platform-admin/schools/${id}`, {
         method: 'DELETE',
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -136,6 +141,7 @@ export default function SchoolsPage() {
       const response = await fetch(`/api/platform-admin/schools/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus }),
       });
 
