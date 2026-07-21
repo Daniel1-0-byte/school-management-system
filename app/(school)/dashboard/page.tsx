@@ -77,13 +77,21 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setError(null);
+      console.log('[v0] Fetching dashboard stats for school:', sid);
       const response = await fetch(`/api/school/dashboard/stats?school_id=${sid}`, {
         credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to fetch stats');
+      console.log('[v0] Stats response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[v0] Stats fetch failed:', { status: response.status, error: errorText });
+        throw new Error(`Failed to fetch stats: ${response.status}`);
+      }
       const data = await response.json();
+      console.log('[v0] Stats data received:', data);
       setStats(data);
     } catch (err) {
+      console.error('[v0] Error fetching stats:', err);
       setError(err instanceof Error ? err.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
@@ -93,21 +101,28 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkSetupAndFetch = async () => {
       try {
+        console.log('[v0] Fetching session...');
         // Check setup status and get school ID
         const sessionResponse = await fetch('/api/auth/session', {
           credentials: 'include'
         });
+        console.log('[v0] Session response status:', sessionResponse.status);
         if (sessionResponse.ok) {
           const sessionData = await sessionResponse.json();
+          console.log('[v0] Session data:', sessionData);
           setSetupCompleted(sessionData.session?.setupCompleted !== false);
           
           if (sessionData.session?.schoolId) {
+            console.log('[v0] School ID found:', sessionData.session.schoolId);
             setSchoolId(sessionData.session.schoolId);
             fetchStats(sessionData.session.schoolId);
           } else {
+            console.error('[v0] School ID missing from session:', sessionData.session);
             setError('School ID not found in session');
           }
         } else {
+          const errorText = await sessionResponse.text();
+          console.error('[v0] Session fetch failed:', { status: sessionResponse.status, error: errorText });
           setError('Failed to get session information');
         }
       } catch (err) {

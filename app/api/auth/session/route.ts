@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         userId: user.id,
         email: user.email,
         role: profileData.system_role,
+        schoolId: profileData.school_id,
         setupCompleted: profileData.setup_completed,
       },
       data: {
