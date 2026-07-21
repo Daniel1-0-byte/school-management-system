@@ -71,12 +71,13 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [setupCompleted, setSetupCompleted] = useState(true);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = async (sid: string) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/school/dashboard/stats', {
+      const response = await fetch(`/api/school/dashboard/stats?school_id=${sid}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch stats');
@@ -92,17 +93,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkSetupAndFetch = async () => {
       try {
-        // Check setup status
+        // Check setup status and get school ID
         const sessionResponse = await fetch('/api/auth/session', {
           credentials: 'include'
         });
         if (sessionResponse.ok) {
           const sessionData = await sessionResponse.json();
           setSetupCompleted(sessionData.session?.setupCompleted !== false);
+          
+          if (sessionData.session?.schoolId) {
+            setSchoolId(sessionData.session.schoolId);
+            fetchStats(sessionData.session.schoolId);
+          } else {
+            setError('School ID not found in session');
+          }
+        } else {
+          setError('Failed to get session information');
         }
-        fetchStats();
       } catch (err) {
         console.error('[v0] Error checking setup:', err);
+        setError('Failed to load dashboard');
       }
     };
     
