@@ -38,14 +38,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json() as SetupData;
 
-    console.log('[v0][SETUP] Received setup data:', {
-      schoolId: body.schoolId,
-      schoolName: body.schoolDetails.name,
-    });
-
-    // Get school ID from request or use the one provided
     if (!body.schoolId) {
-      console.error('[v0][SETUP] ❌ School ID not provided');
       return NextResponse.json(
         { success: false, error: 'School ID is required' },
         { status: 400 }
@@ -53,11 +46,6 @@ export async function POST(request: NextRequest) {
     }
 
     const schoolId = body.schoolId;
-
-    console.log('[v0][SETUP] Updating school details:', {
-      schoolId,
-      schoolName: body.schoolDetails.name,
-    });
 
     // Update school information
     const { error: schoolError } = await supabase
@@ -73,21 +61,13 @@ export async function POST(request: NextRequest) {
       .eq('id', schoolId);
 
     if (schoolError) {
-      console.error('[v0][SETUP] ❌ School update error:', { schoolError, schoolId });
       return NextResponse.json(
         { success: false, error: 'Failed to update school information' },
         { status: 500 }
       );
     }
 
-    console.log('[v0][SETUP] School updated successfully');
-
     // Create academic year record if it doesn't exist
-    console.log('[v0][SETUP] Creating academic year:', {
-      schoolId,
-      year: body.academicYear.year,
-    });
-
     const { error: academicYearError } = await supabase
       .from('academic_years')
       .insert({
@@ -99,30 +79,13 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (academicYearError && !academicYearError.message.includes('duplicate')) {
-      console.error('[v0][SETUP] ❌ Academic year creation error:', { academicYearError });
-      // Continue anyway - academic year might already exist
-    } else {
-      console.log('[v0][SETUP] Academic year created successfully');
-    }
-
-    // Get userId from profile (user who just signed up for this school)
-    console.log('[v0][SETUP] Fetching user profile for school:', { schoolId });
-    
+    // Get userId from profile
     const { data: profileData, error: profileFetchError } = await supabase
       .from('profiles')
       .select('id')
       .eq('school_id', schoolId)
       .eq('system_role', 'SchoolAdmin')
       .single();
-
-    if (profileFetchError || !profileData) {
-      console.warn('[v0][SETUP] ⚠️ Could not find admin profile for school:', {
-        schoolId,
-        error: profileFetchError,
-      });
-      // Continue anyway - we'll mark setup complete by school_id
-    }
 
     const userId = profileData?.id;
 
@@ -133,10 +96,8 @@ export async function POST(request: NextRequest) {
       { name: 'Term 3', start: body.terms.term3Start, end: body.terms.term3End },
     ];
 
-    console.log('[v0][SETUP] Creating school terms:', { schoolId, termCount: terms.length });
-
     for (const term of terms) {
-      const { error: termError } = await supabase
+      await supabase
         .from('terms')
         .insert({
           school_id: schoolId,
@@ -144,35 +105,18 @@ export async function POST(request: NextRequest) {
           start_date: term.start,
           end_date: term.end,
         });
-
-      if (termError && !termError.message?.includes('duplicate')) {
-        console.warn('[v0][SETUP] ⚠️ Term creation warning:', { termError, term: term.name });
-      } else if (!termError) {
-        console.log('[v0][SETUP] Term created:', { name: term.name });
-      }
     }
 
     // Mark profile setup as complete
     if (userId) {
-      console.log('[v0][SETUP] Marking profile setup as complete:', { userId, schoolId });
-
-      const { error: profileUpdateError } = await supabase
+      await supabase
         .from('profiles')
         .update({
           setup_completed: true,
         })
         .eq('id', userId);
 
-      if (profileUpdateError) {
-        console.warn('[v0][SETUP] ⚠️ Could not mark profile as complete:', { profileUpdateError, userId });
-        // Continue anyway - user is still registered
-      }
-    } else {
-      console.log('[v0][SETUP] Skipping profile update (no admin profile found)');
-    }
-
-    // Log audit entry if userId is available
-    if (userId) {
+      // Log audit entry
       await supabase
         .from('audit_logs')
         .insert({
@@ -185,12 +129,6 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    console.log('[v0][SETUP] ✅ Setup COMPLETED successfully:', {
-      userId: userId || 'unknown',
-      schoolId,
-      schoolName: body.schoolDetails.name,
-    });
-
     return NextResponse.json({
       success: true,
       data: {
@@ -200,11 +138,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[v0][SETUP] ❌ Setup error:', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
+    console.error('[v0][SETUP] Setup failed:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { success: false, error: 'An unexpected error occurred during setup' },
       { status: 500 }

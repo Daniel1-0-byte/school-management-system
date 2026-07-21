@@ -7,7 +7,7 @@ let otplib: any = null;
 try {
   otplib = require('otplib');
 } catch (error) {
-  console.error('[v0] Warning: otplib could not be loaded. TOTP 2FA will be unavailable.');
+  // otplib is optional - 2FA will be unavailable if not loaded
 }
 
 /**
@@ -58,65 +58,24 @@ export function hashPassword(password: string, salt?: Buffer): string {
  */
 export function verifyPassword(password: string, hashedPassword: string): boolean {
   try {
-    // Validate hash format
-    if (!hashedPassword || typeof hashedPassword !== 'string') {
-      console.error('[v0] Password verification: hash is missing or not a string');
-      return false;
-    }
+    if (!hashedPassword || typeof hashedPassword !== 'string') return false;
 
     const parts = hashedPassword.split('.');
-    if (parts.length !== 2) {
-      console.error('[v0] Password verification: hash format invalid - expected 2 parts separated by dot', {
-        partsCount: parts.length,
-        hashLength: hashedPassword.length
-      });
-      return false;
-    }
+    if (parts.length !== 2) return false;
 
     const [saltHex, hashHex] = parts;
+    if (!saltHex || !hashHex) return false;
+    if (!/^[a-f0-9]*$/.test(saltHex) || !/^[a-f0-9]*$/.test(hashHex)) return false;
 
-    // Validate hex strings
-    if (!saltHex || !hashHex) {
-      console.error('[v0] Password verification: missing salt or hash part');
-      return false;
-    }
-
-    if (!/^[a-f0-9]*$/.test(saltHex) || !/^[a-f0-9]*$/.test(hashHex)) {
-      console.error('[v0] Password verification: hash parts contain invalid hex characters');
-      return false;
-    }
-
-    // Decode and validate lengths
     const saltBuffer = Buffer.from(saltHex, 'hex');
     const storedHash = Buffer.from(hashHex, 'hex');
 
-    if (saltBuffer.length !== 16) {
-      console.error('[v0] Password verification: salt length incorrect', {
-        expected: 16,
-        actual: saltBuffer.length
-      });
-      return false;
-    }
+    if (saltBuffer.length !== 16 || storedHash.length !== 64) return false;
 
-    if (storedHash.length !== 64) {
-      console.error('[v0] Password verification: hash length incorrect', {
-        expected: 64,
-        actual: storedHash.length
-      });
-      return false;
-    }
-
-    // Compute hash with provided password
     const expectedHash = crypto.pbkdf2Sync(password, saltBuffer, 100000, 64, 'sha512');
-
-    // Use timing-safe comparison to prevent timing attacks
-    const matches = crypto.timingSafeEqual(expectedHash, storedHash);
-    return matches;
+    return crypto.timingSafeEqual(expectedHash, storedHash);
 
   } catch (error) {
-    console.error('[v0] Password verification exception:', {
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
     return false;
   }
 }
