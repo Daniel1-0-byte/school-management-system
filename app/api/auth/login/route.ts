@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RECAPTCHA_SECRET_KEY, RECAPTCHA_SITE_KEY } from '@/lib/env';
+import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
 import { getServerSupabaseClient, queryProfiles, queryAuditLogs, querySchools } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email';
-
-const DEBUG_CAPTCHA = process.env.AUTH_DEBUG === 'true' || process.env.NODE_ENV === 'development';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,17 +24,6 @@ export async function POST(request: NextRequest) {
 
     // Verify CAPTCHA if token provided
     if (captchaToken) {
-      if (DEBUG_CAPTCHA) {
-        console.log('[v0][CAPTCHA-DEBUG] Starting verification:', {
-          captchaTokenLength: captchaToken.length,
-          secretKeyExists: !!RECAPTCHA_SECRET_KEY,
-          secretKeyLength: RECAPTCHA_SECRET_KEY.length,
-          siteKeyExists: !!RECAPTCHA_SITE_KEY,
-          verifyUrl: RECAPTCHA_VERIFY_URL,
-          clientIp,
-        });
-      }
-
       const captchaResponse = await fetch(RECAPTCHA_VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -46,58 +33,14 @@ export async function POST(request: NextRequest) {
       const captchaData = await captchaResponse.json() as {
         success: boolean;
         score?: number;
-        action?: string;
-        challenge_ts?: string;
-        hostname?: string;
-        'error-codes'?: string[];
       };
 
-      if (DEBUG_CAPTCHA) {
-        console.log('[v0][CAPTCHA-DEBUG] Google verification response:', {
-          success: captchaData.success,
-          score: captchaData.score,
-          action: captchaData.action,
-          hostname: captchaData.hostname,
-          challenge_ts: captchaData.challenge_ts,
-          errorCodes: captchaData['error-codes'],
-          httpStatus: captchaResponse.status,
-        });
-      }
-
-      if (!captchaData.success) {
-        console.error('[v0][CAPTCHA] Verification failed:', {
-          email,
-          errorCodes: captchaData['error-codes'],
-          action: captchaData.action,
-          hostname: captchaData.hostname,
-          score: captchaData.score,
-        });
+      if (!captchaData.success || (captchaData.score && captchaData.score < 0.5)) {
+        console.error('[v0][LOGIN] CAPTCHA verification failed:', { email });
         return NextResponse.json(
-          { success: false, error: 'CAPTCHA verification failed', details: DEBUG_CAPTCHA ? captchaData['error-codes'] : undefined },
+          { success: false, error: 'CAPTCHA verification failed' },
           { status: 400 }
         );
-      }
-
-      if (captchaData.score && captchaData.score < 0.5) {
-        console.error('[v0][CAPTCHA] Score too low:', {
-          email,
-          score: captchaData.score,
-          threshold: 0.5,
-          action: captchaData.action,
-        });
-        return NextResponse.json(
-          { success: false, error: 'CAPTCHA score too low' },
-          { status: 400 }
-        );
-      }
-
-      if (DEBUG_CAPTCHA) {
-        console.log('[v0][CAPTCHA-DEBUG] Verification successful:', {
-          email,
-          score: captchaData.score,
-          action: captchaData.action,
-          hostname: captchaData.hostname,
-        });
       }
     }
 
@@ -118,70 +61,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile - using service role client which bypasses RLS
-    console.log('[v0][LOGIN] Fetching profile for userId:', authData.user.id);
-
-    // First, try to fetch the profile
-    let { data: profileData, error: profileError } = await queryProfiles()
+    // Get user profile using service role client (bypasses RLS)
+    const { data: profileData, error: profileError } = await queryProfiles()
       .select('id, system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
 
-    // If that fails, log detailed diagnostics
     if (profileError || !profileData) {
-      console.error('[v0][LOGIN] Profile lookup failed:', {
+      console.error('[v0][LOGIN] Profile not found:', {
         email,
         userId: authData.user.id,
-        errorCode: profileError?.code,
-        errorMessage: profileError?.message,
-        errorDetails: profileError?.details,
-        errorHint: profileError?.hint,
-        errorStatus: profileError?.status,
+        error: profileError?.message,
       });
-
-      // Try alternative: fetch ALL profiles to debug
-      console.log('[v0][LOGIN] Attempting diagnostic query (all profiles)...');
-      const { data: allProfiles, error: allError } = await queryProfiles()
-        .select('id, email')
-        .limit(5);
       
-      if (allError) {
-        console.error('[v0][LOGIN] Diagnostic query failed:', allError?.message);
-      } else {
-        console.log('[v0][LOGIN] Sample of profiles in database:', allProfiles?.slice(0, 3).map(p => p.id));
-      }
-
-      // Try fetching by email instead
-      console.log('[v0][LOGIN] Attempting alternative lookup by email...');
-      const { data: profileByEmail, error: emailError } = await queryProfiles()
-        .select('id, system_role, status, school_id, setup_completed')
-        .eq('email', email)
-        .single();
-
-      if (!emailError && profileByEmail) {
-        console.log('[v0][LOGIN] Found profile by email! ID mismatch?', {
-          authId: authData.user.id,
-          profileId: profileByEmail.id,
-          email,
-        });
-        profileData = profileByEmail;
-        profileError = null;
-      } else {
-        console.error('[v0][LOGIN] Email lookup also failed:', emailError?.message);
-        return NextResponse.json(
-          { success: false, error: 'User profile not found' },
-          { status: 404 }
-        );
-      }
+      return NextResponse.json(
+        { success: false, error: 'User profile not found' },
+        { status: 404 }
+      );
     }
-
-    console.log('[v0][LOGIN] Profile loaded:', {
-      email,
-      userId: authData.user.id,
-      systemRole: profileData.system_role,
-      userStatus: profileData.status,
-      schoolId: profileData.school_id,
-    });
 
     // Check if user is active
     if (profileData.status !== 'active') {
