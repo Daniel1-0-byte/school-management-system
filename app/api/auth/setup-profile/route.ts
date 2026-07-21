@@ -79,13 +79,20 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    // Get userId from profile
+    // Get userId from profile - profiles are created with role 'Admin'
     const { data: profileData, error: profileFetchError } = await supabase
       .from('profiles')
       .select('id')
       .eq('school_id', schoolId)
-      .eq('system_role', 'SchoolAdmin')
+      .eq('system_role', 'Admin')
       .single();
+
+    if (profileFetchError) {
+      console.error('[v0][SETUP] Failed to find profile:', { 
+        error: profileFetchError.message,
+        schoolId 
+      });
+    }
 
     const userId = profileData?.id;
 
@@ -109,12 +116,23 @@ export async function POST(request: NextRequest) {
 
     // Mark profile setup as complete
     if (userId) {
-      await supabase
+      console.log('[v0][SETUP] Marking setup complete for user:', { userId, schoolId });
+      
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           setup_completed: true,
         })
         .eq('id', userId);
+
+      if (updateError) {
+        console.error('[v0][SETUP] Failed to update setup_completed:', { 
+          error: updateError.message,
+          userId 
+        });
+      } else {
+        console.log('[v0][SETUP] Setup completed marked in database');
+      }
 
       // Log audit entry
       await supabase
@@ -127,6 +145,8 @@ export async function POST(request: NextRequest) {
           target_name: body.schoolDetails.name,
           school_id: schoolId,
         });
+    } else {
+      console.warn('[v0][SETUP] No userId found - setup_completed not marked!');
     }
 
     return NextResponse.json({

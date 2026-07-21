@@ -208,9 +208,9 @@ export default function SetupWizardPage() {
         return;
       }
 
-      console.log('[v0][SETUP] Setup completed successfully, redirecting to login...');
-      // Redirect to login - they'll then be authenticated and go to dashboard
-      router.push('/login?message=setup-complete');
+      console.log('[v0][SETUP] Setup completed successfully, redirecting to dashboard...');
+      // Redirect to dashboard - setup is complete
+      router.push('/dashboard');
     } catch (err) {
       console.error('[v0][SETUP] Setup error:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete setup');
