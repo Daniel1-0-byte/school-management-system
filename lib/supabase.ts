@@ -32,24 +32,14 @@ let serverSupabase: any = null;
 
 export function getServerSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  
-  console.log('[v0] Getting server Supabase client:', { 
-    urlExists: !!supabaseUrl, 
-    roleKeyExists: !!supabaseServiceRoleKey 
-  });
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
-    console.error('[v0] Server Supabase config missing:', {
-      urlMissing: !supabaseUrl,
-      roleKeyMissing: !supabaseServiceRoleKey
-    });
     throw new Error(
       'Server Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment variables.'
     );
   }
   
   if (!serverSupabase) {
-    console.log('[v0] Creating new server Supabase client');
     serverSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   }
   
@@ -98,10 +88,7 @@ export function queryClasses() {
 }
 
 export function queryProfiles() {
-  console.log('[v0] queryProfiles() called - getting server client');
-  const client = getServerSupabaseClient();
-  console.log('[v0] queryProfiles() - server client obtained, querying profiles table');
-  return client.from('profiles');
+  return getServerSupabaseClient().from('profiles');
 }
 
 export function querySchools() {

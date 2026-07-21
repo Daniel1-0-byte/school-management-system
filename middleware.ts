@@ -1,4 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 // Routes that do NOT require authentication
 const publicRoutes = [
@@ -13,14 +17,55 @@ function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some((route) => pathname.startsWith(route));
 }
 
+/**
+ * Verify platform admin session token and extract admin ID
+ * Returns admin ID if valid, null otherwise
+ */
+async function verifyAdminSession(token: string): Promise<string | null> {
+  try {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('[v0][MIDDLEWARE] Supabase credentials missing');
+      return null;
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data, error } = await supabase
+      .from('platform_admin_sessions')
+      .select('admin_id, expires_at')
+      .eq('token', token)
+      .single();
+
+    if (error || !data) {
+      console.error('[v0][MIDDLEWARE] Session lookup failed:', { error: error?.message });
+      return null;
+    }
+
+    // Check if session has expired
+    const now = new Date();
+    const expiresAt = new Date(data.expires_at);
+
+    if (expiresAt < now) {
+      console.log('[v0][MIDDLEWARE] Session expired');
+      return null;
+    }
+
+    return data.admin_id;
+  } catch (error) {
+    console.error('[v0][MIDDLEWARE] Error verifying session:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  console.log('[v0] Middleware processing:', { pathname });
-
   // Allow public routes without authentication
   if (isPublicRoute(pathname)) {
-    console.log('[v0] Public route, allowing access');
     return NextResponse.next();
   }
 
@@ -29,32 +74,32 @@ export async function middleware(request: NextRequest) {
     // Check for platform admin session cookie
     const token = request.cookies.get('platform-admin-token')?.value;
 
-    console.log('[v0] Platform admin route accessed:', { 
-      pathname, 
-      tokenExists: !!token,
-      isApiRoute: pathname.startsWith('/api/')
-    });
-
     if (!token) {
-      console.log('[v0] No token found, denying access');
       // For API routes, return 401
       if (pathname.startsWith('/api/')) {
-        console.log('[v0] Returning 401 for API route');
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       // For page routes, redirect to login
-      console.log('[v0] Redirecting to login for page route');
       return NextResponse.redirect(new URL('/platform-admin-login', request.url));
     }
 
-    console.log('[v0] Token found, adding to headers');
+    // Verify the session token and get admin ID
+    const adminId = await verifyAdminSession(token);
 
-    // For API routes, add the token to headers so the route handler can verify it
-    // For page routes, the middleware simply passes through (authentication can be checked server-side)
+    if (!adminId) {
+      // For API routes, return 401
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      // For page routes, redirect to login
+      return NextResponse.redirect(new URL('/platform-admin-login', request.url));
+    }
+
+    // Add admin ID to headers for API routes to access
     const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-admin-id', adminId);
     requestHeaders.set('x-platform-admin-token', token);
 
-    // Create a new request with the token header
     return NextResponse.next({
       request: {
         headers: requestHeaders,
