@@ -98,7 +98,10 @@ export function queryClasses() {
 }
 
 export function queryProfiles() {
-  return getServerSupabaseClient().from('profiles');
+  console.log('[v0] queryProfiles() called - getting server client');
+  const client = getServerSupabaseClient();
+  console.log('[v0] queryProfiles() - server client obtained, querying profiles table');
+  return client.from('profiles');
 }
 
 export function querySchools() {

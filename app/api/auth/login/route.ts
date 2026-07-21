@@ -67,21 +67,47 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user profile
+    console.log('[v0][LOGIN] ℹ️ Fetching profile for authenticated user:', {
+      email,
+      userId: authData.user.id,
+      userEmail: authData.user.email,
+    });
+
     let { data: profileData, error: profileError } = await queryProfiles()
       .select('system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
 
+    console.log('[v0][LOGIN] ℹ️ Profile query executed:', {
+      userId: authData.user.id,
+      hasData: !!profileData,
+      hasError: !!profileError,
+      errorCode: profileError?.code,
+      errorStatus: profileError?.status,
+      errorMessage: profileError?.message,
+      errorDetails: profileError?.details,
+      dataReceived: profileData ? { 
+        id: profileData.id, 
+        role: profileData.system_role, 
+        schoolId: profileData.school_id,
+        setupCompleted: profileData.setup_completed 
+      } : null,
+    });
+
     if (profileError || !profileData) {
       console.error('[v0][LOGIN] ❌ Profile fetch error:', {
         email,
         userId: authData.user.id,
-        profileError,
-        errorCode: profileError?.code,
-        errorMessage: profileError?.message,
+        profileError: profileError ? {
+          code: profileError.code,
+          message: profileError.message,
+          status: profileError.status,
+          details: profileError.details,
+          hint: profileError.hint,
+        } : null,
       });
 
-      // If column doesn't exist error, try again after a delay
+      // If column doesn't exist error, try again
       if (profileError?.code === '42703' && profileError?.message?.includes('setup_completed')) {
         console.log('[v0][LOGIN] Retrying profile fetch after schema migration...');
         const { data: retryData, error: retryError } = await queryProfiles()
@@ -90,13 +116,18 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (retryError || !retryData) {
+          console.error('[v0][LOGIN] ❌ Profile fetch retry failed:', {
+            retryError: retryError ? {
+              code: retryError.code,
+              message: retryError.message,
+            } : null,
+          });
           return NextResponse.json(
             { success: false, error: 'User profile not found after retry' },
             { status: 404 }
           );
         }
 
-        // Use the retry data
         profileData = retryData;
       } else {
         return NextResponse.json(
