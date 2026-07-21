@@ -20,33 +20,35 @@ export default function StudentsPage() {
   const [classFilter, setClassFilter] = useState('');
   const [status, setStatus] = useState('active');
 
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        status,
+        ...(search && { search }),
+        ...(classFilter && { classId: classFilter }),
+      });
+
+      const response = await fetch(`/api/school/students?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch students');
+
+      const data: PaginatedResponse<StudentWithDetails> = await response.json();
+      setStudents(data.data);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-          status,
-          ...(search && { search }),
-          ...(classFilter && { classId: classFilter }),
-        });
-
-        const response = await fetch(`/api/school/students?${params.toString()}`);
-        if (!response.ok) throw new Error('Failed to fetch students');
-
-        const data: PaginatedResponse<StudentWithDetails> = await response.json();
-        setStudents(data.data);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStudents();
   }, [page, pageSize, search, classFilter, status]);
 
@@ -54,9 +56,12 @@ export default function StudentsPage() {
     if (!confirm('Are you sure you want to delete this student?')) return;
 
     try {
-      const response = await fetch(`/api/school/students/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/school/students/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to delete student');
-      setStudents(students.filter(s => s.id !== id));
+      await fetchStudents();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete student');
     }

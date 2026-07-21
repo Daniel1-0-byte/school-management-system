@@ -22,39 +22,42 @@ export default function UsersPage() {
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
 
   // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-          ...(search && { search }),
-          ...(role && { role }),
-          ...(status && { status }),
-        });
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        ...(search && { search }),
+        ...(role && { role }),
+        ...(status && { status }),
+      });
 
-        const response = await fetch(
-          `/api/platform-admin/users?${params.toString()}`,
-          { headers: { 'Accept': 'application/json' } }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch users');
+      const response = await fetch(
+        `/api/platform-admin/users?${params.toString()}`,
+        { 
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include'
         }
+      );
 
-        const data: PaginatedResponse<UserWithSchool> = await response.json();
-        setUsers(data.data);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
       }
-    };
 
+      const data: PaginatedResponse<UserWithSchool> = await response.json();
+      setUsers(data.data);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, [page, pageSize, search, role, status]);
 
@@ -107,6 +110,7 @@ export default function UsersPage() {
       const response = await fetch('/api/platform-admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           userIds: Array.from(selectedUsers),
           action,
@@ -118,8 +122,8 @@ export default function UsersPage() {
       }
 
       setSelectedUsers(new Set());
-      // Refetch users
       setPage(1);
+      setTimeout(() => fetchUsers(), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update users');
     }

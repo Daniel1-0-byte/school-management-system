@@ -31,10 +31,6 @@ export default function ClassesPage() {
     capacity: '50',
   });
 
-  useEffect(() => {
-    fetchClasses();
-  }, [page, pageSize, search]);
-
   const fetchClasses = async () => {
     try {
       setLoading(true);
@@ -46,7 +42,9 @@ export default function ClassesPage() {
         ...(search && { search }),
       });
 
-      const response = await fetch(`/api/school/classes?${params.toString()}`);
+      const response = await fetch(`/api/school/classes?${params.toString()}`, {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch classes');
 
       const data: PaginatedResponse<Class> = await response.json();
@@ -59,11 +57,16 @@ export default function ClassesPage() {
     }
   };
 
+  useEffect(() => {
+    fetchClasses();
+  }, [page, pageSize, search]);
+
   const handleAddClass = async () => {
     try {
       const response = await fetch('/api/school/classes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(formData),
       });
 
@@ -72,7 +75,7 @@ export default function ClassesPage() {
       setFormData({ name: '', section: '', teacherId: '', roomNumber: '', capacity: '50' });
       setShowAddForm(false);
       setPage(1);
-      fetchClasses();
+      setTimeout(() => fetchClasses(), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add class');
     }
@@ -82,9 +85,12 @@ export default function ClassesPage() {
     if (!confirm('Are you sure you want to delete this class?')) return;
 
     try {
-      const response = await fetch(`/api/school/classes/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/school/classes/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to delete class');
-      setClasses(classes.filter(c => c.id !== id));
+      await fetchClasses();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete class');
     }

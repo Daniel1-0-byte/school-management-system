@@ -29,10 +29,6 @@ export default function StaffPage() {
   const [status, setStatus] = useState('active');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  useEffect(() => {
-    fetchStaff();
-  }, [page, pageSize, search, roleFilter, status]);
-
   const fetchStaff = async () => {
     try {
       setLoading(true);
@@ -46,7 +42,9 @@ export default function StaffPage() {
         ...(roleFilter && { role: roleFilter }),
       });
 
-      const response = await fetch(`/api/school/staff?${params.toString()}`);
+      const response = await fetch(`/api/school/staff?${params.toString()}`, {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch staff');
 
       const data: PaginatedResponse<Staff> = await response.json();
@@ -59,13 +57,20 @@ export default function StaffPage() {
     }
   };
 
+  useEffect(() => {
+    fetchStaff();
+  }, [page, pageSize, search, roleFilter, status]);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this staff member?')) return;
 
     try {
-      const response = await fetch(`/api/school/staff/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/school/staff/${id}`, { 
+        method: 'DELETE',
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to delete staff');
-      setStaff(staff.filter(s => s.id !== id));
+      await fetchStaff();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete staff member');
     }

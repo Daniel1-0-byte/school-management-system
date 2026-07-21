@@ -35,55 +35,42 @@ export default function SchoolRequestsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   // Fetch requests
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        console.log('[v0] Fetching school requests:', { page, pageSize, status, search });
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        status,
+        ...(search && { search }),
+      });
 
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-          status,
-          ...(search && { search }),
-        });
-
-        console.log('[v0] Making API request to:', `/api/platform-admin/school-requests?${params.toString()}`);
-
-        const response = await fetch(
-          `/api/platform-admin/school-requests?${params.toString()}`
-        );
-
-        console.log('[v0] API response status:', response.status);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[v0] School requests API error response:', {
-            status: response.status,
-            statusText: response.statusText,
-            body: errorText
-          });
-          throw new Error(`Failed to fetch school requests: ${response.status} - ${errorText}`);
+      const response = await fetch(
+        `/api/platform-admin/school-requests?${params.toString()}`,
+        { 
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include'
         }
+      );
 
-        const data: PaginatedResponse<SchoolRequest> = await response.json();
-        console.log('[v0] School requests received:', { count: data.data?.length || 0, total: data.total });
-        setRequests(data.data || []);
-        setTotal(data.total || 0);
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'An error occurred';
-        console.error('[v0] School requests fetch error:', { 
-          message: errorMsg,
-          errorStack: err instanceof Error ? err.stack : undefined
-        });
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch school requests');
       }
-    };
 
+      const data: PaginatedResponse<SchoolRequest> = await response.json();
+      setRequests(data.data || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchRequests();
   }, [page, pageSize, status, search]);
 
@@ -93,6 +80,7 @@ export default function SchoolRequestsPage() {
       const response = await fetch('/api/platform-admin/school-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           requestId,
           action: 'approve',
@@ -103,10 +91,8 @@ export default function SchoolRequestsPage() {
         throw new Error('Failed to approve request');
       }
 
-      // Update local state
-      setRequests(requests.map(r =>
-        r.id === requestId ? { ...r, status: 'approved' as const } : r
-      ));
+      setPage(1);
+      setTimeout(() => fetchRequests(), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve');
     } finally {
@@ -125,6 +111,7 @@ export default function SchoolRequestsPage() {
       const response = await fetch('/api/platform-admin/school-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           requestId,
           action: 'reject',
@@ -137,13 +124,12 @@ export default function SchoolRequestsPage() {
         throw new Error('Failed to reject request');
       }
 
-      setRequests(requests.map(r =>
-        r.id === requestId ? { ...r, status: 'rejected' as const } : r
-      ));
       setShowRejectModal(false);
       setRejectReason('');
       setRejectNotes('');
       setSelectedRequest(null);
+      setPage(1);
+      setTimeout(() => fetchRequests(), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reject');
     } finally {
