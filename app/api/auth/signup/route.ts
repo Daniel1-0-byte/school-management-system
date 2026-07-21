@@ -59,20 +59,6 @@ export async function POST(request: NextRequest) {
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    console.log('[v0][SIGNUP] Starting signup process:', { email, schoolName });
-
-    // Auto-migrate: Add setup_completed column if it doesn't exist
-    console.log('[v0][SIGNUP] Checking for setup_completed column...');
-    try {
-      await supabase.rpc('exec', {
-        sql: `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS setup_completed BOOLEAN DEFAULT FALSE;`,
-      });
-      console.log('[v0][SIGNUP] setup_completed column ensured');
-    } catch (migrationError) {
-      console.warn('[v0][SIGNUP] Migration check failed (may already exist):', migrationError);
-      // This is not fatal - column may already exist
-    }
-
     // Create school first
     const { data: schoolData, error: schoolError } = await supabase
       .from('schools')
@@ -84,7 +70,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (schoolError || !schoolData) {
-      console.error('[v0] School creation error:', schoolError);
       return NextResponse.json(
         { success: false, error: 'Failed to create school' },
         { status: 500 }
@@ -99,34 +84,20 @@ export async function POST(request: NextRequest) {
         contact_person: `${firstName} ${lastName}`,
         email,
         phone,
-        location: '', // Will be empty initially, admin can add details
-        requested_plan: 'basic', // Default plan
+        location: '',
+        requested_plan: 'basic',
         status: 'pending',
         submitted_at: new Date().toISOString(),
       });
-
-    if (requestError) {
-      console.error('[v0] Error adding school to requests:', requestError);
-      // Don't fail signup if school_requests fails - it's a secondary operation
-    } else {
-      console.log('[v0] ✓ School added to school_requests for admin review:', { schoolName, email });
-    }
 
     // Create auth user via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Skip email verification - user can login immediately
+      email_confirm: true,
     });
 
     if (authError || !authData.user) {
-      console.error('[v0][SIGNUP] Auth user creation error:', {
-        email,
-        errorMessage: authError?.message,
-        errorStatus: authError?.status,
-      });
-      
-      // Check if it's a duplicate email error
       if (authError?.message?.includes('already exists') || authError?.status === 422) {
         return NextResponse.json(
           { success: false, error: 'Email already registered' },
@@ -159,8 +130,6 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
-      console.error('[v0] Profile creation error:', profileError);
-      // Clean up: delete the auth user since profile creation failed
       await supabase.auth.admin.deleteUser(authData.user.id);
       return NextResponse.json(
         { success: false, error: 'Failed to create user profile' },
@@ -226,42 +195,10 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    console.log('[v0][SIGNUP] About to send confirmation email:', { 
-      email, 
-      schoolName,
-      resendApiKeyConfigured: !!process.env.RESEND_API_KEY,
-      fromEmailConfigured: !!process.env.RESEND_FROM_EMAIL,
-      timestamp: new Date().toISOString(),
-    });
-    
     const emailResult = await sendEmail({
       to: email,
       subject: `Welcome to School Management System - ${schoolName}`,
       html: welcomeHtml,
-    });
-
-    if (!emailResult.success) {
-      console.error('[v0][SIGNUP] ❌ Signup confirmation email send FAILED:', {
-        email,
-        schoolName,
-        error: emailResult.error,
-        errorDetails: JSON.stringify(emailResult.error),
-        schoolId: schoolData.id,
-        userId: authData.user.id,
-      });
-      // Continue anyway - signup is successful even if email fails
-    } else {
-    console.log('[v0][SIGNUP] ✅ Signup confirmation email SENT:', { 
-        email, 
-        schoolName,
-        messageId: emailResult.data?.id,
-      });
-    }
-
-    console.log('[v0][SIGNUP] ✅ Signup complete, redirecting to setup wizard:', {
-      email,
-      schoolId: schoolData.id,
-      userId: authData.user.id,
     });
 
     return NextResponse.json({

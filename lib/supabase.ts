@@ -50,17 +50,8 @@ export function getServerSupabaseClient() {
 export function validateSupabaseConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  console.log('[v0] Validating Supabase config:', { 
-    urlExists: !!supabaseUrl, 
-    anonKeyExists: !!supabaseAnonKey 
-  });
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('[v0] Client Supabase config missing:', {
-      urlMissing: !supabaseUrl,
-      anonKeyMissing: !supabaseAnonKey
-    });
     throw new Error(
       'Client Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment variables.'
     );

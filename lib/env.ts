@@ -44,17 +44,6 @@ export const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || 
 export const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || '';
 export const RECAPTCHA_SCORE_THRESHOLD = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
 
-// Log reCAPTCHA configuration at startup (server-side only)
-if (typeof window === 'undefined' && (process.env.AUTH_DEBUG === 'true' || process.env.NODE_ENV === 'development')) {
-  console.log('[CAPTCHA CONFIG] Startup verification:', {
-    siteKeyExists: !!RECAPTCHA_SITE_KEY,
-    siteKeyLength: RECAPTCHA_SITE_KEY.length,
-    secretKeyExists: !!RECAPTCHA_SECRET_KEY,
-    secretKeyLength: RECAPTCHA_SECRET_KEY.length,
-    scoreThreshold: RECAPTCHA_SCORE_THRESHOLD,
-  });
-}
-
 // Optional: Resend for custom transactional emails
 export const RESEND_API_KEY = getOptionalEnv('RESEND_API_KEY');
 

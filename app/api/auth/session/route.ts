@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/env';
+import { getServerSupabaseClient, queryProfiles } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,15 +12,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    });
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Use service role client to get user info from token
+    const supabase = getServerSupabaseClient();
+    
+    // Verify token is valid by setting it in auth header
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
       return NextResponse.json(
@@ -30,8 +25,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
+    // Fetch profile using service role (bypasses RLS)
+    const { data: profileData, error: profileError } = await queryProfiles()
       .select('id, school_id, system_role, first_name, last_name, status, setup_completed')
       .eq('id', user.id)
       .single();
@@ -42,13 +37,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    console.log('[v0][SESSION] Session verified:', {
-      userId: user.id,
-      email: user.email,
-      role: profileData.system_role,
-      setupCompleted: profileData.setup_completed,
-    });
 
     return NextResponse.json({
       success: true,
@@ -67,7 +55,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[v0] Session check error:', error);
+    console.error('[v0][SESSION] Check failed:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { success: false, error: 'Session check failed' },
       { status: 500 }
