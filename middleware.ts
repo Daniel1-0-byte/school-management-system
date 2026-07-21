@@ -38,8 +38,16 @@ async function verifyAdminSession(token: string): Promise<string | null> {
       .eq('token', token)
       .single();
 
-    if (error || !data) {
-      console.error('[v0][MIDDLEWARE] Session lookup failed:', { error: error?.message });
+    if (error) {
+      console.error('[v0][MIDDLEWARE] Session lookup query failed:', { 
+        code: error.code,
+        message: error.message 
+      });
+      return null;
+    }
+
+    if (!data) {
+      console.error('[v0][MIDDLEWARE] Session not found in database');
       return null;
     }
 
@@ -48,13 +56,16 @@ async function verifyAdminSession(token: string): Promise<string | null> {
     const expiresAt = new Date(data.expires_at);
 
     if (expiresAt < now) {
-      console.log('[v0][MIDDLEWARE] Session expired');
+      console.warn('[v0][MIDDLEWARE] Session expired:', { 
+        expiresAt: expiresAt.toISOString(),
+        now: now.toISOString()
+      });
       return null;
     }
 
     return data.admin_id;
   } catch (error) {
-    console.error('[v0][MIDDLEWARE] Error verifying session:', {
+    console.error('[v0][MIDDLEWARE] Exception during session verification:', {
       message: error instanceof Error ? error.message : 'Unknown error',
     });
     return null;
@@ -71,10 +82,13 @@ export async function middleware(request: NextRequest) {
 
   // Protect platform admin routes that require authentication
   if (pathname.startsWith('/platform-admin') || pathname.startsWith('/api/platform-admin')) {
+    console.log('[v0][MIDDLEWARE] Protected route accessed:', { pathname });
+
     // Check for platform admin session cookie
     const token = request.cookies.get('platform-admin-token')?.value;
 
     if (!token) {
+      console.warn('[v0][MIDDLEWARE] No session cookie found');
       // For API routes, return 401
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -82,11 +96,14 @@ export async function middleware(request: NextRequest) {
       // For page routes, redirect to login
       return NextResponse.redirect(new URL('/platform-admin-login', request.url));
     }
+
+    console.log('[v0][MIDDLEWARE] Session cookie found, verifying...');
 
     // Verify the session token and get admin ID
     const adminId = await verifyAdminSession(token);
 
     if (!adminId) {
+      console.error('[v0][MIDDLEWARE] Session verification failed - no admin ID returned');
       // For API routes, return 401
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -95,10 +112,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/platform-admin-login', request.url));
     }
 
+    console.log('[v0][MIDDLEWARE] Session verified successfully:', { adminId, pathname });
+
     // Add admin ID to headers for API routes to access
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-admin-id', adminId);
     requestHeaders.set('x-platform-admin-token', token);
+
+    console.log('[v0][MIDDLEWARE] Headers injected, forwarding request');
 
     return NextResponse.next({
       request: {

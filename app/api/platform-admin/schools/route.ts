@@ -1,19 +1,16 @@
-import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedPlatformAdmin, requirePlatformAdmin } from '@/lib/platform-admin-middleware';
 import { querySchools, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 
 // GET /api/platform-admin/schools - Fetch all schools with pagination, search, and filters
 export async function GET(request: NextRequest) {
   try {
-    const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
+    // Verify authentication
+    const adminIdOrError = await requirePlatformAdmin('schools:read');
+    if (adminIdOrError instanceof NextResponse) return adminIdOrError;
+    const adminId = adminIdOrError;
 
     console.log('[v0][ADMIN-SCHOOLS] GET request started:', { adminId });
-
-    if (!adminId) {
-      console.error('[v0][ADMIN-SCHOOLS] No admin ID in headers');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
@@ -82,12 +79,10 @@ export async function GET(request: NextRequest) {
 // POST /api/platform-admin/schools - Create a new school
 export async function POST(request: NextRequest) {
   try {
-    const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
-
-    if (!adminId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Verify authentication
+    const adminIdOrError = await requirePlatformAdmin('schools:create');
+    if (adminIdOrError instanceof NextResponse) return adminIdOrError;
+    const adminId = adminIdOrError;
 
     const body = await request.json();
     const {
