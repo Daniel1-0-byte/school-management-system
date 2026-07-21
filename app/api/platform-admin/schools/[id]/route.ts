@@ -74,6 +74,26 @@ export async function PUT(
 
     const body = await request.json();
 
+    // If only updating status, allow that without requiring all fields
+    if (body.status && !body.name && !body.email) {
+      const { data: updatedSchool, error } = await querySchools()
+        .update({ status: body.status, updated_at: new Date().toISOString() })
+        .eq('id', params.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[v0] School status update error:', { error: error.message, code: error.code });
+        return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: updatedSchool,
+      });
+    }
+
+    // For full updates, require name and email
     if (!body.name || !body.email) {
       return NextResponse.json(
         { error: 'School name and email are required' },
@@ -92,6 +112,7 @@ export async function PUT(
       principal_email: body.principal_email || null,
       student_capacity: body.student_capacity ? parseInt(body.student_capacity) : null,
       founded_year: body.founded_year ? parseInt(body.founded_year) : null,
+      status: body.status || 'pending_verification',
       updated_at: new Date().toISOString(),
     };
 
