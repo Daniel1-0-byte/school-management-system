@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MoreVertical, Edit2, Trash2, AlertCircle, Loader2, Pause, Play } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit2, Trash2, AlertCircle, Loader2, Pause, Play, CheckCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { PaginatedResponse, School } from '@/types';
 import { SchoolFormModal } from '@/components/platform-admin/school-form-modal';
@@ -275,10 +275,21 @@ export default function SchoolsPage() {
                       {formatDate(school.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
+                      {school.status === 'pending_verification' && (
+                        <button
+                          onClick={() => handleStatusChange(school.id, 'active')}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-green-500/10 text-green-600 hover:bg-green-500/20 rounded transition-colors"
+                          title="Approve School"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Approve
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleStatusChange(school.id, school.status === 'active' ? 'suspended' : 'active')}
+                        onClick={() => handleStatusChange(school.id, school.status === 'active' ? 'suspended' : school.status === 'suspended' ? 'active' : 'suspended')}
                         className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors"
-                        title={school.status === 'active' ? 'Suspend' : 'Activate'}
+                        title={school.status === 'active' ? 'Suspend' : school.status === 'suspended' ? 'Activate' : ''}
+                        style={{display: school.status === 'pending_verification' ? 'none' : 'inline-flex'}}
                       >
                         {school.status === 'active' ? (
                           <Pause className="w-4 h-4" />
