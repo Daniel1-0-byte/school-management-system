@@ -118,24 +118,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile
+    // Get user profile - using service role client which bypasses RLS
+    console.log('[v0][LOGIN] Fetching profile for userId:', authData.user.id);
+
+    // First, try to fetch the profile
     let { data: profileData, error: profileError } = await queryProfiles()
-      .select('system_role, status, school_id, setup_completed')
+      .select('id, system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
 
+    // If that fails, log detailed diagnostics
     if (profileError || !profileData) {
-      console.error('[v0][LOGIN] Profile fetch error:', {
+      console.error('[v0][LOGIN] Profile lookup failed:', {
         email,
         userId: authData.user.id,
         errorCode: profileError?.code,
         errorMessage: profileError?.message,
+        errorDetails: profileError?.details,
+        errorHint: profileError?.hint,
+        errorStatus: profileError?.status,
       });
 
-      return NextResponse.json(
-        { success: false, error: 'User profile not found' },
-        { status: 404 }
-      );
+      // Try alternative: fetch ALL profiles to debug
+      console.log('[v0][LOGIN] Attempting diagnostic query (all profiles)...');
+      const { data: allProfiles, error: allError } = await queryProfiles()
+        .select('id, email')
+        .limit(5);
+      
+      if (allError) {
+        console.error('[v0][LOGIN] Diagnostic query failed:', allError?.message);
+      } else {
+        console.log('[v0][LOGIN] Sample of profiles in database:', allProfiles?.slice(0, 3).map(p => p.id));
+      }
+
+      // Try fetching by email instead
+      console.log('[v0][LOGIN] Attempting alternative lookup by email...');
+      const { data: profileByEmail, error: emailError } = await queryProfiles()
+        .select('id, system_role, status, school_id, setup_completed')
+        .eq('email', email)
+        .single();
+
+      if (!emailError && profileByEmail) {
+        console.log('[v0][LOGIN] Found profile by email! ID mismatch?', {
+          authId: authData.user.id,
+          profileId: profileByEmail.id,
+          email,
+        });
+        profileData = profileByEmail;
+        profileError = null;
+      } else {
+        console.error('[v0][LOGIN] Email lookup also failed:', emailError?.message);
+        return NextResponse.json(
+          { success: false, error: 'User profile not found' },
+          { status: 404 }
+        );
+      }
     }
 
     console.log('[v0][LOGIN] Profile loaded:', {
