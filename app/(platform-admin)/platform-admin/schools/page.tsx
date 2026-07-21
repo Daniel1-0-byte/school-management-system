@@ -26,41 +26,41 @@ export default function SchoolsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch schools
-  useEffect(() => {
-    const fetchSchools = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchSchools = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const params = new URLSearchParams({
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-          ...(search && { search }),
-          ...(status && { status }),
-        });
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        ...(search && { search }),
+        ...(status && { status }),
+      });
 
-        const response = await fetch(
-          `/api/platform-admin/schools?${params.toString()}`,
-          { 
-            headers: { 'Accept': 'application/json' },
-            credentials: 'include'
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch schools');
+      const response = await fetch(
+        `/api/platform-admin/schools?${params.toString()}`,
+        { 
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include'
         }
+      );
 
-        const data: PaginatedResponse<SchoolWithStats> = await response.json();
-        setSchools(data.data);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch schools');
       }
-    };
 
+      const data: PaginatedResponse<SchoolWithStats> = await response.json();
+      setSchools(data.data);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSchools();
   }, [page, pageSize, search, status]);
 
@@ -95,15 +95,12 @@ export default function SchoolsPage() {
         throw new Error(`Failed to ${selectedSchool ? 'update' : 'create'} school`);
       }
 
-      const result = await response.json();
-
-      if (selectedSchool) {
-        setSchools(schools.map(s => (s.id === selectedSchool.id ? result.data : s)));
-      } else {
-        setSchools([result.data, ...schools]);
-      }
-
       handleCloseModal();
+      
+      // Refetch schools to ensure newly created/updated school appears correctly
+      // Reset to page 1 to show latest changes
+      setPage(1);
+      setTimeout(() => fetchSchools(), 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
@@ -128,7 +125,8 @@ export default function SchoolsPage() {
         throw new Error('Failed to delete school');
       }
 
-      setSchools(schools.filter(s => s.id !== id));
+      // Refetch schools list after deletion
+      await fetchSchools();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete school');
     } finally {
@@ -149,9 +147,8 @@ export default function SchoolsPage() {
         throw new Error('Failed to update school');
       }
 
-      setSchools(schools.map(s =>
-        s.id === id ? { ...s, status: newStatus as any } : s
-      ));
+      // Refetch schools to ensure status change persists
+      await fetchSchools();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update school');
     }
