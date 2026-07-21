@@ -78,13 +78,37 @@ export default function SetupWizardPage() {
 
   const [logoFileName, setLogoFileName] = useState('');
 
-  // Get schoolId from session storage (set during signup)
+  // Get schoolId from API session on mount
   useEffect(() => {
-    const stored = sessionStorage.getItem('schoolId');
-    if (stored) {
-      setSchoolId(stored);
-      console.log('[v0][SETUP] Retrieved schoolId from session:', stored);
-    }
+    const retrieveSchoolId = async () => {
+      try {
+        // First check session storage (for immediate setup after signup)
+        const stored = sessionStorage.getItem('schoolId');
+        if (stored) {
+          setSchoolId(stored);
+          return;
+        }
+
+        // If not in session storage, fetch from API (for resumed setups)
+        const response = await fetch('/api/auth/session');
+        if (!response.ok) {
+          setError('Failed to retrieve school information');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.session?.schoolId) {
+          setSchoolId(data.session.schoolId);
+        } else {
+          setError('School ID not found');
+        }
+      } catch (err) {
+        console.error('[v0][SETUP] Error retrieving school ID:', err);
+        setError('Failed to load school information');
+      }
+    };
+
+    retrieveSchoolId();
   }, []);
 
   const handleSchoolDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {

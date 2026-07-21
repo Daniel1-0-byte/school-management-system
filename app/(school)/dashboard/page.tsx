@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatDateTime, formatDate } from '@/lib/utils';
 import {
   Users,
@@ -12,6 +13,7 @@ import {
   ArrowRight,
   Calendar,
   Activity,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -64,9 +66,11 @@ const StatCard = ({
 );
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [setupCompleted, setSetupCompleted] = useState(true);
 
   const fetchStats = async () => {
     try {
@@ -86,7 +90,23 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchStats();
+    const checkSetupAndFetch = async () => {
+      try {
+        // Check setup status
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include'
+        });
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          setSetupCompleted(sessionData.session?.setupCompleted !== false);
+        }
+        fetchStats();
+      } catch (err) {
+        console.error('[v0] Error checking setup:', err);
+      }
+    };
+    
+    checkSetupAndFetch();
   }, []);
 
   if (loading) {
@@ -111,6 +131,23 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      {/* Setup Incomplete Banner */}
+      {!setupCompleted && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 sm:p-6 flex items-start gap-4">
+          <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-700">Setup Incomplete</h3>
+            <p className="text-sm text-amber-700/80 mt-1">Complete your school setup to access all features.</p>
+          </div>
+          <button
+            onClick={() => router.push('/setup')}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-sm flex-shrink-0 transition-colors"
+          >
+            Resume Setup
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="px-0">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">Dashboard</h1>
