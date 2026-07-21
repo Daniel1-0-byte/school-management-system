@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
         userId: authData.user.id,
         email: authData.user.email,
         role: profileData.system_role,
+        schoolId: profileData.school_id,
         setupCompleted: setupCompleted,
         needsSetup: !setupCompleted,
       },

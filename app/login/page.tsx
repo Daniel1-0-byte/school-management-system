@@ -86,7 +86,16 @@ export default function LoginPage() {
         body: JSON.stringify(validated),
       });
 
-      const result = await response.json() as { success: boolean; error?: string; redirectUrl?: string };
+      const result = await response.json() as { 
+        success: boolean; 
+        error?: string; 
+        redirectUrl?: string;
+        data?: {
+          schoolId?: string;
+          setupCompleted?: boolean;
+          needsSetup?: boolean;
+        }
+      };
 
       if (!response.ok || !result.success) {
         setGeneralError(result.error || 'Invalid email or password');
@@ -94,8 +103,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect to dashboard or next page
-      if (result.redirectUrl) {
+      // Store schoolId in sessionStorage if needed for setup
+      if (result.data?.schoolId) {
+        sessionStorage.setItem('schoolId', result.data.schoolId);
+      }
+
+      // Redirect to setup if needed, otherwise dashboard
+      if (result.data?.needsSetup === true || result.data?.setupCompleted === false) {
+        router.push('/setup');
+      } else if (result.redirectUrl) {
         router.push(result.redirectUrl);
       } else {
         router.push('/dashboard');
