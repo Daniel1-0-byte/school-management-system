@@ -115,6 +115,12 @@ export async function POST(request: NextRequest) {
     const inviteToken = generateInviteToken();
     const inviteExpires = getInviteExpirationTime();
 
+    console.log('[v0][SIGNUP] Creating profile:', { 
+      userId: authData.user.id,
+      schoolId: schoolData.id,
+      email: authData.user.email
+    });
+
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
@@ -130,12 +136,23 @@ export async function POST(request: NextRequest) {
       });
 
     if (profileError) {
+      console.error('[v0][SIGNUP] Profile creation failed:', { 
+        error: profileError.message,
+        code: profileError.code,
+        userId: authData.user.id,
+        schoolId: schoolData.id
+      });
       await supabase.auth.admin.deleteUser(authData.user.id);
       return NextResponse.json(
         { success: false, error: 'Failed to create user profile' },
         { status: 500 }
       );
     }
+
+    console.log('[v0][SIGNUP] Profile created successfully:', { 
+      userId: authData.user.id,
+      schoolId: schoolData.id
+    });
 
     // Log audit entry
     await supabase

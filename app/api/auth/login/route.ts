@@ -61,12 +61,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user profile using service role client (bypasses RLS)
+    console.log('[v0][LOGIN] Looking for profile:', { userId: authData.user.id, email });
+    
     const { data: profileData, error: profileError } = await queryProfiles()
       .select('id, system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
 
+    if (profileError) {
+      console.error('[v0][LOGIN] Profile query error:', { 
+        error: profileError.message,
+        code: profileError.code,
+        status: profileError.status,
+        userId: authData.user.id
+      });
+    }
+
     if (profileError || !profileData) {
+      console.error('[v0][LOGIN] Profile not found for user:', { 
+        userId: authData.user.id,
+        email,
+        profileExists: !!profileData,
+        errorMessage: profileError?.message
+      });
       return NextResponse.json(
         { success: false, error: 'User profile not found' },
         { status: 404 }
