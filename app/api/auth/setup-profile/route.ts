@@ -87,14 +87,21 @@ export async function POST(request: NextRequest) {
       .eq('system_role', 'Admin')
       .single();
 
-    if (profileFetchError) {
+    if (profileFetchError || !profileData) {
       console.error('[v0][SETUP] Failed to find profile:', { 
-        error: profileFetchError.message,
-        schoolId 
+        error: profileFetchError?.message,
+        schoolId,
+        profileExists: !!profileData
       });
+      return NextResponse.json(
+        { success: false, error: 'School administrator profile not found. Please contact support.' },
+        { status: 404 }
+      );
     }
 
-    const userId = profileData?.id;
+    const userId = profileData.id;
+
+    console.log('[v0][SETUP] Found profile for setup:', { userId, schoolId });
 
     // Create term records
     const terms = [
@@ -114,45 +121,46 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    // Mark profile setup as complete
-    if (userId) {
-      console.log('[v0][SETUP] Marking setup complete for user:', { userId, schoolId });
-      
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          setup_completed: true,
-        })
-        .eq('id', userId);
+    // Mark profile setup as complete - MANDATORY
+    console.log('[v0][SETUP] Marking setup complete for user:', { userId, schoolId });
+    
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        setup_completed: true,
+      })
+      .eq('id', userId);
 
-      if (updateError) {
-        console.error('[v0][SETUP] Failed to update setup_completed:', { 
-          error: updateError.message,
-          userId 
-        });
-      } else {
-        console.log('[v0][SETUP] Setup completed marked in database');
-      }
-
-      // Log audit entry
-      await supabase
-        .from('audit_logs')
-        .insert({
-          actor_id: userId,
-          action: 'complete_setup',
-          target_type: 'school',
-          target_id: schoolId,
-          target_name: body.schoolDetails.name,
-          school_id: schoolId,
-        });
-    } else {
-      console.warn('[v0][SETUP] No userId found - setup_completed not marked!');
+    if (updateError) {
+      console.error('[v0][SETUP] FAILED to update setup_completed:', { 
+        error: updateError.message,
+        code: updateError.code,
+        userId 
+      });
+      return NextResponse.json(
+        { success: false, error: 'Failed to mark setup as complete. Please try again.' },
+        { status: 500 }
+      );
     }
+
+    console.log('[v0][SETUP] Setup completed marked in database successfully');
+
+    // Log audit entry
+    await supabase
+      .from('audit_logs')
+      .insert({
+        actor_id: userId,
+        action: 'complete_setup',
+        target_type: 'school',
+        target_id: schoolId,
+        target_name: body.schoolDetails.name,
+        school_id: schoolId,
+      });
 
     return NextResponse.json({
       success: true,
       data: {
-        userId: userId || null,
+        userId,
         schoolId,
         message: 'Setup completed successfully',
       },
