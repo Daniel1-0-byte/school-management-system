@@ -19,13 +19,31 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [status, setStatus] = useState('active');
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getSchoolId = async () => {
+      try {
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setSchoolId(data.session?.schoolId || null);
+        }
+      } catch (err) {
+        console.error('[v0] Failed to get school ID:', err);
+      }
+    };
+    getSchoolId();
+  }, []);
 
   const fetchStudents = async () => {
+    if (!schoolId) return;
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams({
+        school_id: schoolId,
         page: page.toString(),
         pageSize: pageSize.toString(),
         status,
@@ -50,7 +68,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-  }, [page, pageSize, search, classFilter, status]);
+  }, [schoolId, page, pageSize, search, classFilter, status]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this student?')) return;

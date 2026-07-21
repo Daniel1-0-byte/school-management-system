@@ -23,6 +23,7 @@ export default function ClassesPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     section: '',
@@ -31,12 +32,29 @@ export default function ClassesPage() {
     capacity: '50',
   });
 
+  useEffect(() => {
+    const getSchoolId = async () => {
+      try {
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setSchoolId(data.session?.schoolId || null);
+        }
+      } catch (err) {
+        console.error('[v0] Failed to get school ID:', err);
+      }
+    };
+    getSchoolId();
+  }, []);
+
   const fetchClasses = async () => {
+    if (!schoolId) return;
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams({
+        school_id: schoolId,
         page: page.toString(),
         pageSize: pageSize.toString(),
         ...(search && { search }),
@@ -59,7 +77,7 @@ export default function ClassesPage() {
 
   useEffect(() => {
     fetchClasses();
-  }, [page, pageSize, search]);
+  }, [schoolId, page, pageSize, search]);
 
   const handleAddClass = async () => {
     try {

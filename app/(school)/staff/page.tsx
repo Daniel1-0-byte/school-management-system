@@ -29,13 +29,31 @@ export default function StaffPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [status, setStatus] = useState('active');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getSchoolId = async () => {
+      try {
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setSchoolId(data.session?.schoolId || null);
+        }
+      } catch (err) {
+        console.error('[v0] Failed to get school ID:', err);
+      }
+    };
+    getSchoolId();
+  }, []);
 
   const fetchStaff = async () => {
+    if (!schoolId) return;
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams({
+        school_id: schoolId,
         page: page.toString(),
         pageSize: pageSize.toString(),
         status,
@@ -60,7 +78,7 @@ export default function StaffPage() {
 
   useEffect(() => {
     fetchStaff();
-  }, [page, pageSize, search, roleFilter, status]);
+  }, [schoolId, page, pageSize, search, roleFilter, status]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this staff member?')) return;
