@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatDateTime, formatDate } from '@/lib/utils';
 import {
   Users,
   BookOpen,
@@ -188,7 +189,7 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-xs sm:text-sm">{activity.description}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {activity.user} • {new Date(activity.timestamp).toLocaleString()}
+                      {activity.user} • {formatDateTime(activity.timestamp)}
                     </p>
                   </div>
                 </div>
@@ -211,7 +212,7 @@ export default function DashboardPage() {
                 >
                   <p className="font-medium text-foreground text-xs sm:text-sm">{event.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(event.date).toLocaleDateString()}
+                    {formatDate(event.date)}
                   </p>
                 </div>
               ))

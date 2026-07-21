@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Shield, User, AlertCircle, Loader2, Lock, Trash2, Power } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { Profile, PaginatedResponse } from '@/types';
 
 interface UserWithSchool extends Profile {
@@ -304,7 +305,7 @@ export default function UsersPage() {
                       {user.schools?.name || 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {formatDate(user.createdAt)}
                     </td>
                   </tr>
                 ))}

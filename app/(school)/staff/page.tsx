@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Phone, UserCheck } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 interface Staff {
@@ -269,7 +270,7 @@ export default function StaffPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(member.joinDate).toLocaleDateString()}
+                      {formatDate(member.joinDate)}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${

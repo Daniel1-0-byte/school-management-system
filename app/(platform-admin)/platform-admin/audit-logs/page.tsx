@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Download, Filter, LogIn, LogOut, Shield, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 import { AuditLog, PaginatedResponse } from '@/types';
 
 export default function AuditLogsPage() {
@@ -231,7 +232,7 @@ export default function AuditLogsPage() {
                       {log.ipAddress || 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString()}
+                      {formatDateTime(log.createdAt)}
                     </td>
                   </tr>
                 ))}

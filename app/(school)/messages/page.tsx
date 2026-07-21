@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Send, MessageSquare, Search, Filter, Archive, Trash2, AlertCircle } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -146,7 +147,7 @@ export default function MessagesPage() {
                       From <span className="font-semibold">{selectedMessage.senderName}</span> ({selectedMessage.senderRole})
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(selectedMessage.timestamp).toLocaleString()}
+                      {formatDateTime(selectedMessage.timestamp)}
                     </p>
                   </div>
                   <div className="flex gap-2">

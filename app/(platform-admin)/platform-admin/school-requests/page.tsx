@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Check, X, Search, AlertCircle, Loader2, FileText, Mail, MapPin, Building } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 interface SchoolRequest {
@@ -286,7 +287,7 @@ export default function SchoolRequestsPage() {
 
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {new Date(request.submittedAt).toLocaleString()}
+                  {formatDateTime(request.submittedAt)}
                 </p>
 
                 {request.status === 'pending' && (

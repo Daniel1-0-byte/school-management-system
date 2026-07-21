@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MoreVertical, Edit2, Trash2, AlertCircle, Loader2, Pause, Play } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
 import { PaginatedResponse, School } from '@/types';
 import { SchoolFormModal } from '@/components/platform-admin/school-form-modal';
 
@@ -271,7 +272,7 @@ export default function SchoolsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{school.email || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {new Date(school.createdAt).toLocaleDateString()}
+                      {formatDate(school.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
