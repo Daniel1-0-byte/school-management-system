@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePlatformAdmin } from '@/lib/platform-admin-middleware';
 import {
   querySchools,
   queryProfiles,
@@ -67,12 +68,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
-
-    if (!adminId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const adminIdOrError = await requirePlatformAdmin('schools:update');
+    if (adminIdOrError instanceof NextResponse) return adminIdOrError;
+    const adminId = adminIdOrError;
 
     const body = await request.json();
 
@@ -120,12 +118,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const headersList = await headers();
-    const adminId = headersList.get('x-admin-id');
-
-    if (!adminId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const adminIdOrError = await requirePlatformAdmin('schools:delete');
+    if (adminIdOrError instanceof NextResponse) return adminIdOrError;
+    const adminId = adminIdOrError;
 
     // Get school for audit log
     const { data: school } = await querySchools()

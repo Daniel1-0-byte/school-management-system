@@ -54,14 +54,15 @@ export function SchoolFormModal({
       await onSubmit({
         name: formData.name,
         email: formData.email,
-        phone: formData.phone,
+        phone_number: formData.phone,
         address: formData.address,
         website: formData.website,
         principal_name: formData.principalName,
         principal_email: formData.principalEmail,
         student_capacity: formData.studentCapacity ? parseInt(formData.studentCapacity) : undefined,
-        founded_year: formData.foundedYear ? parseInt(formData.foundedYear) : undefined,
+        established_year: formData.foundedYear ? parseInt(formData.foundedYear) : undefined,
       });
+      setFormData({ name: '', email: '', phone: '', address: '', website: '', principalName: '', principalEmail: '', studentCapacity: '', foundedYear: '' });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
