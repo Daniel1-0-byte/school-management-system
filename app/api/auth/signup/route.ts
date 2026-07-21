@@ -4,6 +4,7 @@ import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RECAPTCHA_SECRET_KEY } from '@
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateSignup } from '@/lib/schemas';
 import { getClientIp, generateInviteToken, getInviteExpirationTime } from '@/lib/auth-utils';
+import { seedDefaultCurriculum } from '@/lib/seed-curriculum';
 import { SchoolStatus } from '@/types';
 import { sendEmail } from '@/lib/email';
 
@@ -75,6 +76,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Seed default curriculum (classes and subjects) for the new school
+    await seedDefaultCurriculum(supabase, schoolData.id);
 
     // Add school to school_requests for platform admin review
     const { error: requestError } = await supabase
