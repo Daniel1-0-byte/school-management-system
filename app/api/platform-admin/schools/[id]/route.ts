@@ -74,6 +74,27 @@ export async function PUT(
 
     const body = await request.json();
 
+    if (!body.name || !body.email) {
+      return NextResponse.json(
+        { error: 'School name and email are required' },
+        { status: 400 }
+      );
+    }
+
+    // Prepare update data - only include fields that are in the database
+    const updateData: any = {
+      name: body.name,
+      email: body.email,
+      phone: body.phone || null,
+      address: body.address || null,
+      website: body.website || null,
+      principal_name: body.principal_name || null,
+      principal_email: body.principal_email || null,
+      student_capacity: body.student_capacity ? parseInt(body.student_capacity) : null,
+      founded_year: body.founded_year ? parseInt(body.founded_year) : null,
+      updated_at: new Date().toISOString(),
+    };
+
     // Get current school for audit log
     const { data: currentSchool } = await querySchools()
       .select('*')
@@ -82,15 +103,13 @@ export async function PUT(
 
     // Update school
     const { data: updatedSchool, error } = await querySchools()
-      .update({
-        ...body,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single();
 
     if (error) {
+      console.error('[v0] School update error:', { error: error.message, code: error.code });
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
