@@ -11,16 +11,26 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[v0] Dashboard stats GET called');
+    console.log('[v0] Request URL:', request.url);
+    console.log('[v0] Request searchParams:', request.nextUrl.searchParams.toString());
+    
     // Extract and validate school_id
     const schoolId = getSchoolIdFromRequest(request);
+    console.log('[v0] Extracted schoolId:', schoolId);
+    
     const validation = await validateSchoolIdAccess(schoolId);
+    console.log('[v0] Validation result:', validation);
 
     if (!validation.valid) {
+      console.log('[v0] Validation failed, returning 400');
       return NextResponse.json(
         { error: validation.error || 'Invalid school access' },
         { status: 400 }
       );
     }
+    
+    console.log('[v0] Validation passed, proceeding with stats fetch');
 
     // Fetch total students
     const { count: totalStudents } = await queryStudents()
