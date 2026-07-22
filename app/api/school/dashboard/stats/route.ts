@@ -7,13 +7,19 @@ import {
   queryAuditLogs,
   formatSupabaseError,
 } from '@/lib/supabase';
+import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    // Extract and validate school_id
+    const schoolId = getSchoolIdFromRequest(request);
+    const validation = await validateSchoolIdAccess(schoolId);
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     // Fetch total students

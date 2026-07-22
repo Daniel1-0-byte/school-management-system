@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryGrades, queryStudents, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
+import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const gradeEntrySchema = z.object({
   student_id: z.string().uuid(),
@@ -16,12 +17,21 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = gradeEntrySchema.parse(body);
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
     const teacherId = request.nextUrl.searchParams.get('teacher_id');
 
-    if (!schoolId || !teacherId) {
+    if (!teacherId) {
       return NextResponse.json(
-        { error: 'School ID and teacher ID required' },
+        { error: 'Teacher ID required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
         { status: 400 }
       );
     }
@@ -69,12 +79,17 @@ export async function GET(request: NextRequest) {
   try {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
     const termId = request.nextUrl.searchParams.get('term_id');
     const studentId = request.nextUrl.searchParams.get('student_id');
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     let query = queryGrades()

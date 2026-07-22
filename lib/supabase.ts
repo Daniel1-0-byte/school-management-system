@@ -110,6 +110,42 @@ export function queryStaffInvitations() {
   return getServerSupabaseClient().from('staff_invitations');
 }
 
+export function queryAcademicYears() {
+  return getServerSupabaseClient().from('academic_years');
+}
+
+export function queryTerms() {
+  return getServerSupabaseClient().from('terms');
+}
+
+export function querySubjects() {
+  return getServerSupabaseClient().from('subjects');
+}
+
+export function queryStudentEnrollments() {
+  return getServerSupabaseClient().from('student_enrollments');
+}
+
+export function queryTeacherAssignments() {
+  return getServerSupabaseClient().from('teacher_assignments');
+}
+
+export function queryGuardians() {
+  return getServerSupabaseClient().from('guardians');
+}
+
+export function queryStudentGuardians() {
+  return getServerSupabaseClient().from('student_guardians');
+}
+
+export function queryPickupPersons() {
+  return getServerSupabaseClient().from('pickup_persons');
+}
+
+export function queryReportCards() {
+  return getServerSupabaseClient().from('report_cards');
+}
+
 // ============================================================================
 // PAGINATION HELPER
 // ============================================================================
