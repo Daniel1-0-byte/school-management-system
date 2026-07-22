@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Plus, Search, Download, Upload, Loader2, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Loader2, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SchoolService } from '@/lib/services/school-service';
 import { StaffTransformer, type Staff } from '@/lib/transformers/staff-transformer';
-import { StaffBulkImport } from '@/components/staff-bulk-import';
+import { ImportExportToolbar } from '@/components/import-export-toolbar';
+import { ImportWizard } from '@/components/import-wizard';
+import { ExportDialog } from '@/components/export-dialog';
 
 export default function StaffPage() {
   const router = useRouter();
@@ -16,7 +18,9 @@ export default function StaffPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [showImport, setShowImport] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const pageSize = 20;
