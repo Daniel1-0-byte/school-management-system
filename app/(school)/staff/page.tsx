@@ -46,6 +46,21 @@ export default function StaffPage() {
     getSchoolId();
   }, []);
 
+  const transformStaffData = (rawData: any[]): Staff[] => {
+    return rawData.map((item) => ({
+      id: item.id,
+      firstName: item.first_name || '',
+      lastName: item.last_name || '',
+      email: item.email || '',
+      phone: item.phone_number || undefined,
+      role: item.system_role || '',
+      department: item.department || undefined,
+      joinDate: item.join_date || '',
+      status: item.status || 'active',
+      qualifications: item.qualifications || undefined,
+    }));
+  };
+
   const fetchStaff = async () => {
     if (!schoolId) return;
     try {
@@ -66,8 +81,8 @@ export default function StaffPage() {
       });
       if (!response.ok) throw new Error('Failed to fetch staff');
 
-      const data: PaginatedResponse<Staff> = await response.json();
-      setStaff(data.data);
+      const data = await response.json();
+      setStaff(transformStaffData(data.data || []));
       setTotal(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -256,12 +271,21 @@ export default function StaffPage() {
                 </tr>
               </thead>
               <tbody>
-                {staff.map((member) => (
+                {staff.map((member) => {
+                  const initials = `${member.firstName || ''} ${member.lastName || ''}`
+                    .trim()
+                    .split(' ')
+                    .map((n) => n.charAt(0))
+                    .join('')
+                    .toUpperCase()
+                    || '?';
+                  
+                  return (
                   <tr key={member.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                          {member.firstName.charAt(0).toUpperCase()}
+                          {initials}
                         </div>
                         <div>
                           <p className="font-medium text-foreground">{member.firstName} {member.lastName}</p>
@@ -312,7 +336,8 @@ export default function StaffPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
