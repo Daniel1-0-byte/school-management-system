@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryStaff, formatSupabaseError } from '@/lib/supabase';
+import { queryProfiles, formatSupabaseError } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const bulkStaffSchema = z.object({
@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
         const member = staff[i];
         const validatedData = bulkStaffSchema.parse(member);
 
-        const { error } = await queryStaff()
+        const { error } = await queryProfiles()
           .insert({
             ...validatedData,
             school_id: schoolId,
-            user_id: crypto.randomUUID(),
+            id: crypto.randomUUID(),
           })
           .select()
           .single();
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all staff for export
-    const { data, error } = await queryStaff().select('*').eq('school_id', schoolId);
+    const { data, error } = await queryProfiles().select('*').eq('school_id', schoolId);
 
     if (error) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });

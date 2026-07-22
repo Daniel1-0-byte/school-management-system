@@ -8,6 +8,10 @@ import { apiClient, type ApiResponse } from './api-client';
 import { StudentTransformer, type StudentRecord } from '@/lib/transformers/student-transformer';
 import { StaffTransformer, type StaffRecord, type Staff } from '@/lib/transformers/staff-transformer';
 import { ClassTransformer, type ClassRecord, type Class } from '@/lib/transformers/class-transformer';
+import { AcademicYearTransformer, type AcademicYearRecord, type AcademicYear } from '@/lib/transformers/academic-year-transformer';
+import { TermTransformer, type TermRecord, type Term } from '@/lib/transformers/term-transformer';
+import { SubjectTransformer, type SubjectRecord, type Subject } from '@/lib/transformers/subject-transformer';
+import { GuardianTransformer, type GuardianRecord, type Guardian } from '@/lib/transformers/guardian-transformer';
 import type { Student } from '@/types';
 
 export interface PaginationParams {
@@ -462,5 +466,273 @@ export class SchoolService {
         error: err instanceof Error ? err.message : 'Failed to export classes',
       };
     }
+  }
+
+  /**
+   * ACADEMIC YEARS - CRUD
+   */
+  static async getAcademicYears(schoolId: string, params: PaginationParams = {}): Promise<{ years: AcademicYear[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: AcademicYearRecord[]; total: number }>('/academic-years', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { years: [], total: 0, error: response.error };
+    }
+
+    return {
+      years: AcademicYearTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createAcademicYear(schoolId: string, data: Partial<AcademicYear>): Promise<{ year?: AcademicYear; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...AcademicYearTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<AcademicYearRecord>('/academic-years', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      year: response.data ? AcademicYearTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateAcademicYear(schoolId: string, yearId: string, data: Partial<AcademicYear>): Promise<{ year?: AcademicYear; error?: string }> {
+    const payload = AcademicYearTransformer.fromUI(data);
+
+    const response = await apiClient.put<AcademicYearRecord>(`/academic-years/${yearId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      year: response.data ? AcademicYearTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteAcademicYear(schoolId: string, yearId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/academic-years/${yearId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * TERMS - CRUD
+   */
+  static async getTerms(schoolId: string, params: PaginationParams = {}): Promise<{ terms: Term[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: TermRecord[]; total: number }>('/terms', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { terms: [], total: 0, error: response.error };
+    }
+
+    return {
+      terms: TermTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createTerm(schoolId: string, data: Partial<Term>): Promise<{ term?: Term; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...TermTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<TermRecord>('/terms', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      term: response.data ? TermTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateTerm(schoolId: string, termId: string, data: Partial<Term>): Promise<{ term?: Term; error?: string }> {
+    const payload = TermTransformer.fromUI(data);
+
+    const response = await apiClient.put<TermRecord>(`/terms/${termId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      term: response.data ? TermTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteTerm(schoolId: string, termId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/terms/${termId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * SUBJECTS - CRUD
+   */
+  static async getSubjects(schoolId: string, params: PaginationParams = {}): Promise<{ subjects: Subject[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: SubjectRecord[]; total: number }>('/subjects', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { subjects: [], total: 0, error: response.error };
+    }
+
+    return {
+      subjects: SubjectTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createSubject(schoolId: string, data: Partial<Subject>): Promise<{ subject?: Subject; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...SubjectTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<SubjectRecord>('/subjects', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      subject: response.data ? SubjectTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateSubject(schoolId: string, subjectId: string, data: Partial<Subject>): Promise<{ subject?: Subject; error?: string }> {
+    const payload = SubjectTransformer.fromUI(data);
+
+    const response = await apiClient.put<SubjectRecord>(`/subjects/${subjectId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      subject: response.data ? SubjectTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteSubject(schoolId: string, subjectId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/subjects/${subjectId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * GUARDIANS - CRUD
+   */
+  static async getGuardians(schoolId: string, params: PaginationParams = {}): Promise<{ guardians: Guardian[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: GuardianRecord[]; total: number }>('/guardians', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { guardians: [], total: 0, error: response.error };
+    }
+
+    return {
+      guardians: GuardianTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createGuardian(schoolId: string, data: Partial<Guardian>): Promise<{ guardian?: Guardian; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...GuardianTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<GuardianRecord>('/guardians', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      guardian: response.data ? GuardianTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateGuardian(schoolId: string, guardianId: string, data: Partial<Guardian>): Promise<{ guardian?: Guardian; error?: string }> {
+    const payload = GuardianTransformer.fromUI(data);
+
+    const response = await apiClient.put<GuardianRecord>(`/guardians/${guardianId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      guardian: response.data ? GuardianTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteGuardian(schoolId: string, guardianId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/guardians/${guardianId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
   }
 }
