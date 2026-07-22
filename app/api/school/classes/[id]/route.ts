@@ -17,7 +17,15 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -31,7 +39,7 @@ export async function GET(
     const { data, error } = await queryClasses()
       .select('*')
       .eq('id', id)
-      .eq('school_id', schoolId!)
+      .eq('school_id', schoolId)
       .single();
 
     if (error) {
@@ -54,7 +62,15 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
     const validatedData = classUpdateSchema.parse(body);
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -68,7 +84,7 @@ export async function PUT(
     const { data, error } = await queryClasses()
       .update(validatedData)
       .eq('id', id)
-      .eq('school_id', schoolId!)
+      .eq('school_id', schoolId)
       .select()
       .single();
 
@@ -93,7 +109,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -107,7 +131,7 @@ export async function DELETE(
     const { error } = await queryClasses()
       .delete()
       .eq('id', id)
-      .eq('school_id', schoolId!);
+      .eq('school_id', schoolId);
 
     if (error) {
       console.error('[v0] Class DELETE error:', error);
