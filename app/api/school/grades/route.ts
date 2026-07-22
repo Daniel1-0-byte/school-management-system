@@ -15,66 +15,96 @@ const gradeEntrySchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validatedData = gradeEntrySchema.parse(body);
     const schoolId = await getSchoolIdFromRequest(request);
-    const teacherId = request.nextUrl.searchParams.get('teacher_id');
-
-    if (!teacherId) {
-      return NextResponse.json(
-        { error: 'Teacher ID required' },
-        { status: 400 }
-      );
+    if (!schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Type guard to ensure schoolId is a string
-    if (typeof schoolId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid school ID' },
-        { status: 400 }
-      );
+    const accessError = await validateSchoolIdAccess(schoolId);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
     }
 
-    // Validate school_id access
-    const validation = await validateSchoolIdAccess(schoolId);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error || 'Invalid school access' },
-        { status: 400 }
-      );
-    }
+    const body = await request.json();
 
-    // Determine letter grade based on percentage score
-    let letterGrade = validatedData.letter_grade;
-    if (!letterGrade && validatedData.grade_type === 'percentage') {
-      if (validatedData.score >= 90) letterGrade = 'A';
-      else if (validatedData.score >= 80) letterGrade = 'B';
-      else if (validatedData.score >= 70) letterGrade = 'C';
-      else if (validatedData.score >= 60) letterGrade = 'D';
-      else letterGrade = 'F';
-    }
+    // Support both old single entry format and new bulk format
+    if (body.records) {
+      // New bulk format from grade form
+      const { class_id, subject_id, assessment_type, records } = z.object({
+        school_id: z.string().uuid(),
+        class_id: z.string().uuid(),
+        subject_id: z.string().uuid(),
+        assessment_type: z.enum(['exam', 'quiz', 'assignment', 'project']),
+        records: z.array(
+          z.object({
+            studentId: z.string().uuid(),
+            studentName: z.string(),
+            marks: z.number().min(0).max(100),
+            grade: z.string(),
+          })
+        ),
+      }).parse(body);
 
-    const { data, error } = await queryGrades()
-      .insert({
-        ...validatedData,
+      const gradeRecords = records.map((record) => ({
         school_id: schoolId,
-        teacher_id: teacherId,
-        letter_grade: letterGrade,
-        recorded_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+        student_id: record.studentId,
+        subject_id,
+        class_id,
+        assessment_type,
+        marks: record.marks,
+        grade: record.grade,
+        created_at: new Date().toISOString(),
+      }));
 
-    if (error) {
-      console.error('[v0] Grades POST error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      const { error } = await queryGrades().insert(gradeRecords);
+
+      if (error) {
+        console.error('[v0] Grades POST error:', error);
+        return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        count: gradeRecords.length,
+        message: `Successfully recorded grades for ${gradeRecords.length} students`,
+      });
+    } else {
+      // Old single entry format
+      const validatedData = gradeEntrySchema.parse(body);
+
+      let letterGrade = validatedData.letter_grade;
+      if (!letterGrade && validatedData.grade_type === 'percentage') {
+        if (validatedData.score >= 90) letterGrade = 'A';
+        else if (validatedData.score >= 80) letterGrade = 'B';
+        else if (validatedData.score >= 70) letterGrade = 'C';
+        else if (validatedData.score >= 60) letterGrade = 'D';
+        else letterGrade = 'F';
+      }
+
+      const { data, error } = await queryGrades()
+        .insert({
+          ...validatedData,
+          school_id: schoolId,
+          letter_grade: letterGrade,
+          recorded_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[v0] Grades POST error:', error);
+        return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      }
+
+      return NextResponse.json(data, { status: 201 });
     }
-
-    return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('[v0] Grades POST error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.errors },
+        { status: 400 }
+      );
     }
     return NextResponse.json(
       { error: 'Failed to save grades' },

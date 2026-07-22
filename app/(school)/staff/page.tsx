@@ -1,22 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Phone, UserCheck } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Phone, Download, Upload, UserCheck } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
-import { PaginatedResponse } from '@/types';
-
-interface Staff {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  role: string;
-  department?: string;
-  joinDate: string;
-  status: 'active' | 'inactive';
-  qualifications?: string;
-}
+import type { Staff } from '@/lib/transformers/staff-transformer';
+import { SchoolService } from '@/lib/services/school-service';
+import { StaffBulkImport } from '@/components/staff-bulk-import';
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -26,10 +15,8 @@ export default function StaffPage() {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [status, setStatus] = useState('active');
-  const [showAddForm, setShowAddForm] = useState(false);
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     const getSchoolId = async () => {
@@ -46,44 +33,23 @@ export default function StaffPage() {
     getSchoolId();
   }, []);
 
-  const transformStaffData = (rawData: any[]): Staff[] => {
-    return rawData.map((item) => ({
-      id: item.id,
-      firstName: item.first_name || '',
-      lastName: item.last_name || '',
-      email: item.email || '',
-      phone: item.phone_number || undefined,
-      role: item.system_role || '',
-      department: item.department || undefined,
-      joinDate: item.join_date || '',
-      status: item.status || 'active',
-      qualifications: item.qualifications || undefined,
-    }));
-  };
-
   const fetchStaff = async () => {
     if (!schoolId) return;
     try {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        school_id: schoolId,
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-        status,
-        ...(search && { search }),
-        ...(roleFilter && { role: roleFilter }),
+      const result = await SchoolService.getStaff(schoolId, {
+        page,
+        pageSize,
       });
 
-      const response = await fetch(`/api/school/staff?${params.toString()}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch staff');
-
-      const data = await response.json();
-      setStaff(transformStaffData(data.data || []));
-      setTotal(data.total);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setStaff(result.staff);
+        setTotal(result.total);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -93,31 +59,39 @@ export default function StaffPage() {
 
   useEffect(() => {
     fetchStaff();
-  }, [schoolId, page, pageSize, search, roleFilter, status]);
+  }, [schoolId, page, pageSize, search]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this staff member?')) return;
 
     try {
-      const response = await fetch(`/api/school/staff/${id}`, { 
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to delete staff');
-      await fetchStaff();
+      const result = await SchoolService.deleteStaff(schoolId!, id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setError(null);
+        await fetchStaff();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete staff member');
     }
   };
 
-  const roles = [
-    'Teacher',
-    'Principal',
-    'Vice Principal',
-    'Accountant',
-    'Administrator',
-    'Coordinator',
-  ];
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!schoolId) return;
+    try {
+      const result = await SchoolService.exportStaff(schoolId, format);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.click();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -127,13 +101,42 @@ export default function StaffPage() {
           <h1 className="text-3xl font-bold text-foreground">Staff</h1>
           <p className="text-muted-foreground mt-1">Manage school staff and personnel</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Staff</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportDialog(!showImportDialog)}
+            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+          >
+            <Upload className="w-5 h-5" />
+            <span>Import</span>
+          </button>
+          <div className="relative group">
+            <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
+              <Download className="w-5 h-5" />
+              <span>Export</span>
+            </button>
+            <div className="absolute right-0 mt-0 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('csv')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => handleExport('json')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm border-t border-border"
+              >
+                Export JSON
+              </button>
+            </div>
+          </div>
+          <a
+            href="/staff/add"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Staff</span>
+          </a>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -147,56 +150,26 @@ export default function StaffPage() {
         </div>
       )}
 
-      {/* Add Staff Form */}
-      {showAddForm && (
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Add New Staff Member</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="First Name"
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="text"
-              placeholder="Last Name"
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="tel"
-              placeholder="Phone"
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <select className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary">
-              <option value="">Select Role</option>
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
-            <input
-              type="date"
-              placeholder="Join Date"
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">
-              Add Staff
-            </button>
+      {/* Import Dialog */}
+      {showImportDialog && schoolId && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Bulk Import Staff</h3>
             <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+              onClick={() => setShowImportDialog(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Cancel
+              ✕
             </button>
           </div>
+          <StaffBulkImport
+            schoolId={schoolId}
+            onSuccess={async (count) => {
+              await fetchStaff();
+              setShowImportDialog(false);
+            }}
+            onClose={() => setShowImportDialog(false)}
+          />
         </div>
       )}
 
@@ -216,32 +189,7 @@ export default function StaffPage() {
               className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
             />
           </div>
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-          >
-            <option value="">All Roles</option>
-            {roles.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+
         </div>
       </div>
 
@@ -312,7 +260,7 @@ export default function StaffPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {formatDate(member.joinDate)}
+                      {member.dateOfJoining ? formatDate(member.dateOfJoining) : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${

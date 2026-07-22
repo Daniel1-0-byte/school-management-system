@@ -1,25 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Phone, UserCheck } from 'lucide-react';
-import { Student, PaginatedResponse } from '@/types';
-
-interface StudentWithDetails extends Student {
-  guardianName?: string;
-  classInfo?: string;
-}
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Download, Upload } from 'lucide-react';
+import type { Student } from '@/types';
+import { SchoolService } from '@/lib/services/school-service';
+import { StudentTransformer } from '@/lib/transformers/student-transformer';
+import { StudentBulkImport } from '@/components/student-bulk-import';
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<StudentWithDetails[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [classFilter, setClassFilter] = useState('');
-  const [status, setStatus] = useState('active');
+  const [status, setStatus] = useState<'active' | 'inactive' | 'graduated'>('active');
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     const getSchoolId = async () => {
@@ -42,23 +40,19 @@ export default function StudentsPage() {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        school_id: schoolId,
-        page: page.toString(),
-        pageSize: pageSize.toString(),
+      const result = await SchoolService.getStudents(schoolId, {
+        page,
+        pageSize,
+        search: search || undefined,
         status,
-        ...(search && { search }),
-        ...(classFilter && { classId: classFilter }),
       });
 
-      const response = await fetch(`/api/school/students?${params.toString()}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch students');
-
-      const data: PaginatedResponse<StudentWithDetails> = await response.json();
-      setStudents(data.data);
-      setTotal(data.total);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setStudents(result.students);
+        setTotal(result.total);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -68,20 +62,38 @@ export default function StudentsPage() {
 
   useEffect(() => {
     fetchStudents();
-  }, [schoolId, page, pageSize, search, classFilter, status]);
+  }, [schoolId, page, pageSize, search, status]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this student?')) return;
 
     try {
-      const response = await fetch(`/api/school/students/${id}`, { 
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to delete student');
-      await fetchStudents();
+      const result = await SchoolService.deleteStudent(schoolId!, id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setError(null);
+        await fetchStudents();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete student');
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!schoolId) return;
+    try {
+      const result = await SchoolService.exportStudents(schoolId, format);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.click();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
     }
   };
 
@@ -93,13 +105,42 @@ export default function StudentsPage() {
           <h1 className="text-3xl font-bold text-foreground">Students</h1>
           <p className="text-muted-foreground mt-1">Manage student records and enrollment</p>
         </div>
-        <a
-          href="/students/add"
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Student</span>
-        </a>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportDialog(!showImportDialog)}
+            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+          >
+            <Upload className="w-5 h-5" />
+            <span>Import</span>
+          </button>
+          <div className="relative group">
+            <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
+              <Download className="w-5 h-5" />
+              <span>Export</span>
+            </button>
+            <div className="absolute right-0 mt-0 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('csv')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => handleExport('json')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm border-t border-border"
+              >
+                Export JSON
+              </button>
+            </div>
+          </div>
+          <a
+            href="/students/add"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Student</span>
+          </a>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -110,6 +151,29 @@ export default function StudentsPage() {
             <p className="text-sm font-medium text-red-600">Error</p>
             <p className="text-sm text-red-600/80">{error}</p>
           </div>
+        </div>
+      )}
+
+      {/* Import Dialog */}
+      {showImportDialog && schoolId && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Bulk Import Students</h3>
+            <button
+              onClick={() => setShowImportDialog(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+          <StudentBulkImport
+            schoolId={schoolId}
+            onSuccess={async (count) => {
+              await fetchStudents();
+              setShowImportDialog(false);
+            }}
+            onClose={() => setShowImportDialog(false)}
+          />
         </div>
       )}
 
@@ -129,30 +193,18 @@ export default function StudentsPage() {
               className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
             />
           </div>
-          <select
-            value={classFilter}
-            onChange={(e) => {
-              setClassFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-          >
-            <option value="">All Classes</option>
-            <option value="class-1">Class 1</option>
-            <option value="class-2">Class 2</option>
-            <option value="class-3">Class 3</option>
-          </select>
+
           <select
             value={status}
             onChange={(e) => {
-              setStatus(e.target.value);
+              setStatus(e.target.value as 'active' | 'inactive' | 'graduated');
               setPage(1);
             }}
             className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
           >
             <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
             <option value="graduated">Graduated</option>
-            <option value="withdrawn">Withdrawn</option>
           </select>
         </div>
       </div>
@@ -174,10 +226,9 @@ export default function StudentsPage() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">ID</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Admission #</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Class</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Contact</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Guardian</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Date of Birth</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Status</th>
                   <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">Actions</th>
                 </tr>
@@ -188,23 +239,16 @@ export default function StudentsPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                          {(student.firstName?.[0] || 'S').toUpperCase()}
+                          {StudentTransformer.initials(student)}
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{student.firstName} {student.lastName}</p>
+                          <p className="font-medium text-foreground">{StudentTransformer.displayName(student)}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{student.rollNumber || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{student.classInfo || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {student.email && (
-                        <a href={`mailto:${student.email}`} className="flex items-center gap-1 hover:text-primary">
-                          <Mail className="w-4 h-4" />
-                        </a>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{student.guardianName || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{student.admissionNumber || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{student.currentClassName || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                         student.status === 'active'
