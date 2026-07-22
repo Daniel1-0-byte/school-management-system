@@ -2,7 +2,6 @@ import { ModuleConfig, FileFormat, ValidationResult, ImportResult, ExportOptions
 import { parseCSV, convertToCSV, validateCSVFile } from '@/lib/import-export/csv';
 import { TemplateGenerator } from '@/lib/import-export/template-generator';
 import { ImportValidator } from '@/lib/import-export/validators';
-import * as XLSX from 'xlsx';
 
 /**
  * Central service for all import/export operations

@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail, Download, Upload } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Mail } from 'lucide-react';
 import type { Student } from '@/types';
 import { SchoolService } from '@/lib/services/school-service';
 import { StudentTransformer } from '@/lib/transformers/student-transformer';
-import { StudentBulkImport } from '@/components/student-bulk-import';
+import { ImportExportToolbar } from '@/components/import-export-toolbar';
+import { ImportWizard } from '@/components/import-wizard';
+import { ExportDialog } from '@/components/export-dialog';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -17,7 +19,9 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive' | 'graduated'>('active');
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const getSchoolId = async () => {
@@ -80,22 +84,7 @@ export default function StudentsPage() {
     }
   };
 
-  const handleExport = async (format: 'csv' | 'json') => {
-    if (!schoolId) return;
-    try {
-      const result = await SchoolService.exportStudents(schoolId, format);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.url) {
-        // Trigger download
-        const link = document.createElement('a');
-        link.href = result.url;
-        link.click();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed');
-    }
-  };
+
 
   return (
     <div className="space-y-6">
@@ -106,33 +95,14 @@ export default function StudentsPage() {
           <p className="text-muted-foreground mt-1">Manage student records and enrollment</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowImportDialog(!showImportDialog)}
-            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            <span>Import</span>
-          </button>
-          <div className="relative group">
-            <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
-              <Download className="w-5 h-5" />
-              <span>Export</span>
-            </button>
-            <div className="absolute right-0 mt-0 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-              <button
-                onClick={() => handleExport('csv')}
-                className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={() => handleExport('json')}
-                className="w-full text-left px-4 py-2 hover:bg-muted text-sm border-t border-border"
-              >
-                Export JSON
-              </button>
-            </div>
-          </div>
+          <ImportExportToolbar
+            moduleName="students"
+            onImport={() => setShowImportWizard(true)}
+            onExport={() => setShowExportDialog(true)}
+            selectedCount={selectedStudents.size}
+            totalCount={total}
+            schoolId={schoolId}
+          />
           <a
             href="/students/add"
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
@@ -154,27 +124,28 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Import Dialog */}
-      {showImportDialog && schoolId && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bulk Import Students</h3>
-            <button
-              onClick={() => setShowImportDialog(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-          <StudentBulkImport
-            schoolId={schoolId}
-            onSuccess={async (count) => {
-              await fetchStudents();
-              setShowImportDialog(false);
-            }}
-            onClose={() => setShowImportDialog(false)}
-          />
-        </div>
+      {/* Import Wizard */}
+      {showImportWizard && schoolId && (
+        <ImportWizard
+          moduleName="students"
+          schoolId={schoolId}
+          onClose={() => setShowImportWizard(false)}
+          onSuccess={async () => {
+            await fetchStudents();
+            setShowImportWizard(false);
+          }}
+        />
+      )}
+
+      {/* Export Dialog */}
+      {showExportDialog && schoolId && (
+        <ExportDialog
+          moduleName="students"
+          schoolId={schoolId}
+          selectedCount={selectedStudents.size}
+          totalCount={total}
+          onClose={() => setShowExportDialog(false)}
+        />
       )}
 
       {/* Filters */}

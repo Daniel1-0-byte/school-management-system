@@ -1,7 +1,5 @@
 import { ModuleConfig, ColumnDefinition, TemplateMetadata } from './types';
 import { convertToCSV, downloadCSV } from './csv';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 
 /**
  * Generates import templates in various formats
@@ -17,50 +15,7 @@ export class TemplateGenerator {
     return convertToCSV(config.sampleData, headers);
   }
 
-  /**
-   * Generate Excel template with multiple sheets
-   * Sheet 1: Template with sample data
-   * Sheet 2: Column descriptions and documentation
-   */
-  static generateExcelTemplate(config: ModuleConfig): XLSX.WorkBook {
-    const workbook = XLSX.utils.book_new();
 
-    // Sheet 1: Template with sample data
-    const templateData = [
-      config.columns.map((col) => col.csvHeader),
-      ...config.sampleData.map((row) =>
-        config.columns.map((col) => row[col.csvHeader] ?? '')
-      ),
-    ];
-
-    const templateSheet = XLSX.utils.aoa_to_sheet(templateData);
-    XLSX.utils.book_append_sheet(workbook, templateSheet, 'Import Template');
-
-    // Sheet 2: Documentation
-    const docData: any[][] = [
-      ['Column Name', 'Display Name', 'Required', 'Data Type', 'Description', 'Accepted Values', 'Example'],
-    ];
-
-    config.columns.forEach((col) => {
-      docData.push([
-        col.csvHeader,
-        col.displayName,
-        col.required ? 'Yes' : 'No',
-        col.dataType,
-        col.description,
-        col.enumValues ? col.enumValues.join('; ') : col.relationship ? `Link to ${col.relationship.table}` : '',
-        col.example,
-      ]);
-    });
-
-    const docSheet = XLSX.utils.aoa_to_sheet(docData);
-    XLSX.utils.book_append_sheet(workbook, docSheet, 'Column Guide');
-
-    // Set column widths
-    docSheet['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 35 }, { wch: 40 }, { wch: 30 }];
-
-    return workbook;
-  }
 
   /**
    * Download CSV template
@@ -71,14 +26,7 @@ export class TemplateGenerator {
     downloadCSV(csv, name);
   }
 
-  /**
-   * Download Excel template
-   */
-  static downloadExcelTemplate(config: ModuleConfig, filename?: string): void {
-    const workbook = this.generateExcelTemplate(config);
-    const name = filename || `${config.moduleName.toLowerCase()}_import_template.xlsx`;
-    XLSX.writeFile(workbook, name);
-  }
+
 
   /**
    * Generate README content for template
@@ -147,9 +95,15 @@ export class TemplateGenerator {
    */
   static downloadReadme(config: ModuleConfig, filename?: string): void {
     const content = this.generateReadme(config);
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const name = filename || `${config.moduleName.toLowerCase()}_IMPORT_GUIDE.md`;
-    saveAs(blob, name);
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename || `${config.moduleName.toLowerCase()}_IMPORT_GUIDE.md`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   /**

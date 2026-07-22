@@ -1,9 +1,6 @@
-import Papa from 'papaparse';
-import { FileFormat } from './types';
-
 /**
  * CSV parsing functionality
- * Handles reading CSV files with proper error handling and data transformation
+ * Native implementation for browser and server-side CSV handling
  */
 
 export interface ParseOptions {
@@ -21,6 +18,59 @@ export const defaultParseOptions: ParseOptions = {
 };
 
 /**
+ * Native CSV parser - handles basic CSV parsing without external dependencies
+ */
+function parseCSVString(content: string, hasHeader: boolean): { data: any[]; headers: string[] } {
+  const lines = content.split('\n').filter(line => line.trim());
+  const headers = hasHeader ? parseCSVLine(lines[0]) : [];
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+
+  const data = dataLines.map((line, rowIndex) => {
+    const values = parseCSVLine(line);
+    if (!hasHeader) return values;
+    
+    const row: Record<string, any> = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || '';
+    });
+    return row;
+  });
+
+  return { data, headers };
+}
+
+/**
+ * Parse a single CSV line handling quoted values and commas within quotes
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        current += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === ',' && !insideQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
+/**
  * Parse CSV file and return structured data
  */
 export function parseCSV(file: File, options: Partial<ParseOptions> = {}): Promise<{
@@ -30,30 +80,35 @@ export function parseCSV(file: File, options: Partial<ParseOptions> = {}): Promi
 }> {
   return new Promise((resolve, reject) => {
     const mergedOptions = { ...defaultParseOptions, ...options };
+    const reader = new FileReader();
 
-    Papa.parse(file, {
-      header: mergedOptions.header,
-      skipEmptyLines: mergedOptions.skipEmptyLines,
-      dynamicTyping: mergedOptions.dynamicTyping,
-      encoding: mergedOptions.encoding,
-      complete: (results) => {
-        const errors = results.errors.map((err) => ({
-          message: err.message,
-          row: err.row,
-        }));
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const { data, headers } = parseCSVString(content, mergedOptions.header);
+        
+        const filtered = mergedOptions.skipEmptyLines 
+          ? data.filter((row) => {
+              if (typeof row === 'string') return row.length > 0;
+              return Object.values(row).some(v => v);
+            })
+          : data;
 
         resolve({
-          data: results.data || [],
-          errors,
-          meta: {
-            fields: results.meta.fields,
-          },
+          data: filtered,
+          errors: [],
+          meta: { fields: headers },
         });
-      },
-      error: (error) => {
-        reject(new Error(`CSV parsing failed: ${error.message}`));
-      },
-    });
+      } catch (error) {
+        reject(new Error(`CSV parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(new Error('Failed to read file'));
+    };
+
+    reader.readAsText(file, mergedOptions.encoding || 'UTF-8');
   });
 }
 
