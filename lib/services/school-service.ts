@@ -12,6 +12,8 @@ import { AcademicYearTransformer, type AcademicYearRecord, type AcademicYear } f
 import { TermTransformer, type TermRecord, type Term } from '@/lib/transformers/term-transformer';
 import { SubjectTransformer, type SubjectRecord, type Subject } from '@/lib/transformers/subject-transformer';
 import { GuardianTransformer, type GuardianRecord, type Guardian } from '@/lib/transformers/guardian-transformer';
+import { AttendanceTransformer, type AttendanceRecord, type Attendance } from '@/lib/transformers/attendance-transformer';
+import { GradeTransformer, type GradeRecord, type Grade } from '@/lib/transformers/grade-transformer';
 import type { Student } from '@/types';
 
 export interface PaginationParams {
@@ -726,6 +728,250 @@ export class SchoolService {
 
   static async deleteGuardian(schoolId: string, guardianId: string): Promise<{ success: boolean; error?: string }> {
     const response = await apiClient.delete<void>(`/guardians/${guardianId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * DASHBOARD - Statistics and Analytics
+   */
+  static async getDashboardStats(schoolId: string): Promise<{
+    totalStudents: number;
+    totalStaff: number;
+    totalClasses: number;
+    averageAttendance: number;
+    error?: string;
+  }> {
+    try {
+      const [studentsResult, staffResult, classesResult, attendanceResult] = await Promise.all([
+        apiClient.get<{ count: number }>('/students/stats', { school_id: schoolId }),
+        apiClient.get<{ count: number }>('/staff/stats', { school_id: schoolId }),
+        apiClient.get<{ count: number }>('/classes/stats', { school_id: schoolId }),
+        apiClient.get<{ average: number }>('/attendance/average', { school_id: schoolId }),
+      ]);
+
+      return {
+        totalStudents: studentsResult.data?.count || 0,
+        totalStaff: staffResult.data?.count || 0,
+        totalClasses: classesResult.data?.count || 0,
+        averageAttendance: attendanceResult.data?.average || 0,
+      };
+    } catch (err) {
+      return {
+        totalStudents: 0,
+        totalStaff: 0,
+        totalClasses: 0,
+        averageAttendance: 0,
+        error: err instanceof Error ? err.message : 'Failed to fetch dashboard stats',
+      };
+    }
+  }
+
+  static async getEnrollmentTrend(
+    schoolId: string,
+    months: number = 6
+  ): Promise<{ data?: { month: string; value: number }[]; error?: string }> {
+    try {
+      const response = await apiClient.get<{ data: { month: string; value: number }[] }>(
+        `/analytics/enrollment-trend`,
+        {
+          school_id: schoolId,
+          months: months.toString(),
+        }
+      );
+
+      if (response.error) {
+        return { error: response.error };
+      }
+
+      return { data: response.data || [] };
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : 'Failed to fetch enrollment trend',
+      };
+    }
+  }
+
+  static async getAttendanceByClass(schoolId: string): Promise<{
+    data?: { className: string; rate: number }[];
+    error?: string;
+  }> {
+    try {
+      const response = await apiClient.get<{ data: { className: string; rate: number }[] }>(
+        `/analytics/attendance-by-class`,
+        {
+          school_id: schoolId,
+        }
+      );
+
+      if (response.error) {
+        return { error: response.error };
+      }
+
+      return { data: response.data || [] };
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : 'Failed to fetch attendance by class',
+      };
+    }
+  }
+
+  /**
+   * ATTENDANCE - CRUD
+   */
+  static async getAttendance(schoolId: string, params: PaginationParams = {}): Promise<{ attendance: Attendance[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: AttendanceRecord[]; total: number }>('/attendance', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { attendance: [], total: 0, error: response.error };
+    }
+
+    return {
+      attendance: AttendanceTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createAttendance(schoolId: string, data: Partial<Attendance>): Promise<{ attendance?: Attendance; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...AttendanceTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<AttendanceRecord>('/attendance', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      attendance: response.data ? AttendanceTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateAttendance(schoolId: string, attendanceId: string, data: Partial<Attendance>): Promise<{ attendance?: Attendance; error?: string }> {
+    const payload = AttendanceTransformer.fromUI(data);
+
+    const response = await apiClient.put<AttendanceRecord>(`/attendance/${attendanceId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      attendance: response.data ? AttendanceTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteAttendance(schoolId: string, attendanceId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/attendance/${attendanceId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  static async bulkAttendance(schoolId: string, records: Array<{ studentId: string; date: string; status: string }>): Promise<{ count?: number; error?: string }> {
+    try {
+      const response = await fetch('/api/school/attendance/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          school_id: schoolId,
+          records,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        return { error: data.error || 'Failed to bulk insert attendance' };
+      }
+
+      const data = await response.json();
+      return { count: data.count };
+    } catch (err) {
+      return {
+        error: err instanceof Error ? err.message : 'Failed to bulk insert attendance',
+      };
+    }
+  }
+
+  /**
+   * GRADES - CRUD
+   */
+  static async getGrades(schoolId: string, params: PaginationParams = {}): Promise<{ grades: Grade[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: GradeRecord[]; total: number }>('/grades', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { grades: [], total: 0, error: response.error };
+    }
+
+    return {
+      grades: GradeTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createGrade(schoolId: string, data: Partial<Grade>): Promise<{ grade?: Grade; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...GradeTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<GradeRecord>('/grades', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      grade: response.data ? GradeTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateGrade(schoolId: string, gradeId: string, data: Partial<Grade>): Promise<{ grade?: Grade; error?: string }> {
+    const payload = GradeTransformer.fromUI(data);
+
+    const response = await apiClient.put<GradeRecord>(`/grades/${gradeId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      grade: response.data ? GradeTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteGrade(schoolId: string, gradeId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/grades/${gradeId}`, {
       school_id: schoolId,
     });
 

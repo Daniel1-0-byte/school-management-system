@@ -81,56 +81,56 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validatedData = attendanceRecordSchema.parse(body);
     const schoolId = await getSchoolIdFromRequest(request);
-
-    // Type guard to ensure schoolId is a string
-    if (typeof schoolId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid school ID' },
-        { status: 400 }
-      );
+    if (!schoolId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Validate school_id access
-    const validation = await validateSchoolIdAccess(schoolId);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error || 'Invalid school access' },
-        { status: 400 }
-      );
+    const accessError = await validateSchoolIdAccess(schoolId);
+    if (accessError) {
+      return NextResponse.json({ error: accessError }, { status: 403 });
     }
 
-    // Delete existing records for the date
-    await queryAttendance()
-      .delete()
-      .eq('school_id', schoolId)
-      .eq('class_id', validatedData.class_id)
-      .eq('date', validatedData.date);
+    const body = await request.json();
 
-    // Insert new records
-    const records = validatedData.attendance.map((a: any) => ({
+    const { date, class_id, records } = z.object({
+      date: z.string().date(),
+      class_id: z.string().uuid(),
+      records: z.array(
+        z.object({
+          studentId: z.string().uuid(),
+          studentName: z.string(),
+          status: z.enum(['present', 'absent', 'leave']),
+        })
+      ),
+    }).parse(body);
+
+    // Insert attendance records
+    const attendanceRecords = records.map((record) => ({
       school_id: schoolId,
-      class_id: validatedData.class_id,
-      student_id: a.student_id,
-      date: validatedData.date,
-      status: a.status,
-      recorded_by: null, // Will be set by trigger or middleware
+      student_id: record.studentId,
+      date,
+      status: record.status,
+      class_id,
+      created_at: new Date().toISOString(),
     }));
 
-    const { error } = await queryAttendance().insert(records);
+    const { error } = await queryAttendance().insert(attendanceRecords);
 
     if (error) {
       console.error('[v0] Attendance POST error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, count: records.length });
+    return NextResponse.json({
+      success: true,
+      count: attendanceRecords.length,
+      message: `Successfully recorded attendance for ${attendanceRecords.length} students`,
+    });
   } catch (error) {
     console.error('[v0] Attendance POST error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
     }
     return NextResponse.json(
       { error: 'Failed to save attendance' },
