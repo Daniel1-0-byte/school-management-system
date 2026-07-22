@@ -18,11 +18,19 @@ export async function GET(request: NextRequest) {
   try {
     const classId = request.nextUrl.searchParams.get('class_id');
     const date = request.nextUrl.searchParams.get('date');
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
 
     if (!classId || !date) {
       return NextResponse.json(
         { error: 'Class ID and date are required' },
+        { status: 400 }
+      );
+    }
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
         { status: 400 }
       );
     }
@@ -75,7 +83,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = attendanceRecordSchema.parse(body);
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);

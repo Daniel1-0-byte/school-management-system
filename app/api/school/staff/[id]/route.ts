@@ -18,7 +18,15 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -32,7 +40,7 @@ export async function GET(
     const { data, error } = await queryProfiles()
       .select('*')
       .eq('id', id)
-      .eq('school_id', schoolId!)
+      .eq('school_id', schoolId)
       .single();
 
     if (error) {
@@ -55,7 +63,15 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
     const validatedData = staffUpdateSchema.parse(body);
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -69,7 +85,7 @@ export async function PUT(
     const { data, error } = await queryProfiles()
       .update(validatedData)
       .eq('id', id)
-      .eq('school_id', schoolId!)
+      .eq('school_id', schoolId)
       .select()
       .single();
 

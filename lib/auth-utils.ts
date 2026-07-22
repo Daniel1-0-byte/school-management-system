@@ -33,10 +33,7 @@ export async function getSchoolIdFromRequest(
 export async function validateSchoolIdAccess(
   schoolId: string | null
 ): Promise<{ valid: boolean; error?: string }> {
-  console.log('[v0] validateSchoolIdAccess called with schoolId:', schoolId);
-  
   if (!schoolId) {
-    console.log('[v0] schoolId is null or empty');
     return {
       valid: false,
       error: 'School ID is required',
@@ -45,16 +42,12 @@ export async function validateSchoolIdAccess(
 
   try {
     // Verify that the school exists in the schools table
-    console.log('[v0] Querying schools table for schoolId:', schoolId);
     const { data: school, error } = await querySchools()
       .select('id')
       .eq('id', schoolId)
       .limit(1);
 
-    console.log('[v0] Schools table query result:', { school, error });
-
     if (error) {
-      console.log('[v0] Schools query error:', error);
       return {
         valid: false,
         error: 'Error validating school ID',
@@ -62,14 +55,12 @@ export async function validateSchoolIdAccess(
     }
 
     if (!school || school.length === 0) {
-      console.log('[v0] School not found with ID:', schoolId);
       return {
         valid: false,
         error: 'Invalid school ID',
       };
     }
 
-    console.log('[v0] School validation successful for:', schoolId);
     return { valid: true };
   } catch (err) {
     console.error('[v0] Error validating school ID:', err);

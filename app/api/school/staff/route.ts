@@ -19,8 +19,16 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
     const search = request.nextUrl.searchParams.get('search') || '';
     const role = request.nextUrl.searchParams.get('role') || '';
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
     const status = request.nextUrl.searchParams.get('status') || 'active';
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
@@ -75,7 +83,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = staffSchema.parse(body);
-    const schoolId = getSchoolIdFromRequest(request);
+    const schoolId = await getSchoolIdFromRequest(request);
+
+    // Type guard to ensure schoolId is a string
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid school ID' },
+        { status: 400 }
+      );
+    }
 
     // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
