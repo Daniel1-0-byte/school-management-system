@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Download, Upload, MoreVertical, Copy, Archive, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Download, Upload, MoreVertical, Copy, Archive, Trash2, AlertCircle } from 'lucide-react';
 import { ModuleConfig, BulkOperationType } from '@/lib/import-export/types';
+import { getModuleConfig } from '@/lib/import-export/column-definitions';
 import { ImportWizard } from './import-wizard';
 import { ExportDialog } from './export-dialog';
 import { ImportExportService } from '@/lib/services/import-export-service';
@@ -10,7 +11,7 @@ import { ImportExportService } from '@/lib/services/import-export-service';
 interface ImportExportToolbarProps {
   schoolId: string;
   moduleName: string;
-  config: ModuleConfig;
+  config?: ModuleConfig;
   selectedRows?: string[];
   onImportSuccess?: () => void;
   onBulkActionComplete?: () => void;
@@ -21,13 +22,42 @@ interface ImportExportToolbarProps {
 export function ImportExportToolbar({
   schoolId,
   moduleName,
-  config,
+  config: propConfig,
   selectedRows = [],
   onImportSuccess,
   onBulkActionComplete,
   hasFilters,
   existingRecords,
 }: ImportExportToolbarProps) {
+  const [config, setConfig] = useState<ModuleConfig | null>(propConfig || null);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (propConfig) {
+      setConfig(propConfig);
+      setConfigError(null);
+      return;
+    }
+
+    // Try to fetch config if not provided
+    try {
+      const fetchedConfig = getModuleConfig(moduleName);
+      if (fetchedConfig) {
+        setConfig(fetchedConfig);
+        setConfigError(null);
+      } else {
+        const errorMsg = `No configuration found for module: ${moduleName}. Import/Export features will be limited.`;
+        setConfigError(errorMsg);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[v0] ImportExportToolbar:', errorMsg);
+        }
+      }
+    } catch (error) {
+      const errorMsg = `Failed to load configuration for module: ${moduleName}`;
+      setConfigError(errorMsg);
+      console.error('[v0] ImportExportToolbar:', errorMsg, error);
+    }
+  }, [moduleName, propConfig]);
   const [showImportWizard, setShowImportWizard] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
@@ -66,7 +96,22 @@ export function ImportExportToolbar({
     }
   };
 
-  const availableBulkOps = config.supportsBulkOps || [];
+  const availableBulkOps = config?.supportsBulkOps || [];
+
+  // Show error in development mode if config is missing
+  if (!config && process.env.NODE_ENV === 'development') {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-2 border border-yellow-500/30 bg-yellow-500/10 rounded-lg text-yellow-700 text-xs font-medium">
+        <AlertCircle className="w-4 h-4" />
+        No config for {moduleName}
+      </div>
+    );
+  }
+
+  // Gracefully disable import/export if no config found
+  if (!config) {
+    return null;
+  }
 
   return (
     <>

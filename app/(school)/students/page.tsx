@@ -8,6 +8,7 @@ import { StudentTransformer } from '@/lib/transformers/student-transformer';
 import { ImportExportToolbar } from '@/components/import-export-toolbar';
 import { ImportWizard } from '@/components/import-wizard';
 import { ExportDialog } from '@/components/export-dialog';
+import { getModuleConfig } from '@/lib/import-export/column-definitions';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -96,12 +97,13 @@ export default function StudentsPage() {
         </div>
         <div className="flex gap-2">
           <ImportExportToolbar
+            schoolId={schoolId || ''}
             moduleName="students"
-            onImport={() => setShowImportWizard(true)}
-            onExport={() => setShowExportDialog(true)}
-            selectedCount={selectedStudents.size}
-            totalCount={total}
-            schoolId={schoolId}
+            config={getModuleConfig('students') || undefined}
+            selectedRows={Array.from(selectedStudents)}
+            onImportSuccess={fetchStudents}
+            onBulkActionComplete={fetchStudents}
+            hasFilters={!!search || status !== 'active'}
           />
           <a
             href="/students/add"

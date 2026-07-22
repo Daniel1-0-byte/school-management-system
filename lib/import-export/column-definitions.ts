@@ -495,6 +495,12 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
   },
 };
 
+// Create aliases for modules with different naming conventions
+export const COLUMN_DEFINITIONS = {
+  ...moduleConfigs,
+  staff: moduleConfigs.teachers, // staff page uses "staff" module name
+};
+
 export function getModuleConfig(moduleName: string): ModuleConfig | null {
-  return moduleConfigs[moduleName] || null;
+  return COLUMN_DEFINITIONS[moduleName.toLowerCase()] || null;
 }
