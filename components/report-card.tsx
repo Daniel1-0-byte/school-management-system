@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Download, Print } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 
 interface ReportCardProps {
   studentName: string;
@@ -72,7 +72,7 @@ export function ReportCard({
           onClick={handlePrint}
           className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
         >
-          <Print className="w-4 h-4" />
+          <Printer className="w-4 h-4" />
           Print
         </button>
         <button
