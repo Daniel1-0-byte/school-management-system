@@ -147,6 +147,26 @@ export function queryReportCards() {
 }
 
 // ============================================================================
+// CURRICULUM SYSTEM QUERY HELPERS
+// ============================================================================
+
+export function queryCurriculums() {
+  return getServerSupabaseClient().from('system_curriculums');
+}
+
+export function querySystemClasses() {
+  return getServerSupabaseClient().from('system_classes');
+}
+
+export function querySystemSubjects() {
+  return getServerSupabaseClient().from('system_subjects');
+}
+
+export function querySystemClassSubjects() {
+  return getServerSupabaseClient().from('system_class_subjects');
+}
+
+// ============================================================================
 // PAGINATION HELPER
 // ============================================================================
 
