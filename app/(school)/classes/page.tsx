@@ -1,18 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Users } from 'lucide-react';
-import { PaginatedResponse } from '@/types';
-
-interface Class {
-  id: string;
-  name: string;
-  section: string;
-  teacherName: string;
-  studentCount: number;
-  roomNumber: string;
-  capacity: number;
-}
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Users, Download, Upload } from 'lucide-react';
+import type { Class } from '@/lib/transformers/class-transformer';
+import { SchoolService } from '@/lib/services/school-service';
+import { ClassBulkImport } from '@/components/class-bulk-import';
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<Class[]>([]);
@@ -22,15 +14,8 @@ export default function ClassesPage() {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    section: '',
-    teacherId: '',
-    roomNumber: '',
-    capacity: '50',
-  });
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
     const getSchoolId = async () => {
@@ -53,21 +38,17 @@ export default function ClassesPage() {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        school_id: schoolId,
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-        ...(search && { search }),
+      const result = await SchoolService.getClasses(schoolId, {
+        page,
+        pageSize,
       });
 
-      const response = await fetch(`/api/school/classes?${params.toString()}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch classes');
-
-      const data: PaginatedResponse<Class> = await response.json();
-      setClasses(data.data);
-      setTotal(data.total);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setClasses(result.classes);
+        setTotal(result.total);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -79,38 +60,35 @@ export default function ClassesPage() {
     fetchClasses();
   }, [schoolId, page, pageSize, search]);
 
-  const handleAddClass = async () => {
-    try {
-      const response = await fetch('/api/school/classes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error('Failed to add class');
-
-      setFormData({ name: '', section: '', teacherId: '', roomNumber: '', capacity: '50' });
-      setShowAddForm(false);
-      setPage(1);
-      setTimeout(() => fetchClasses(), 300);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add class');
-    }
-  };
-
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this class?')) return;
 
     try {
-      const response = await fetch(`/api/school/classes/${id}`, { 
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to delete class');
-      await fetchClasses();
+      const result = await SchoolService.deleteClass(schoolId!, id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setError(null);
+        await fetchClasses();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete class');
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!schoolId) return;
+    try {
+      const result = await SchoolService.exportClasses(schoolId, format);
+      if (result.error) {
+        setError(result.error);
+      } else if (result.url) {
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.click();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
     }
   };
 
@@ -122,13 +100,42 @@ export default function ClassesPage() {
           <h1 className="text-3xl font-bold text-foreground">Classes</h1>
           <p className="text-muted-foreground mt-1">Manage school classes and sections</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Class</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportDialog(!showImportDialog)}
+            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+          >
+            <Upload className="w-5 h-5" />
+            <span>Import</span>
+          </button>
+          <div className="relative group">
+            <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
+              <Download className="w-5 h-5" />
+              <span>Export</span>
+            </button>
+            <div className="absolute right-0 mt-0 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <button
+                onClick={() => handleExport('csv')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={() => handleExport('json')}
+                className="w-full text-left px-4 py-2 hover:bg-muted text-sm border-t border-border"
+              >
+                Export JSON
+              </button>
+            </div>
+          </div>
+          <a
+            href="/classes/add"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Class</span>
+          </a>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -139,54 +146,26 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* Add Class Form */}
-      {showAddForm && (
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Add New Class</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Class Name (e.g., 10-A)"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="text"
-              placeholder="Section"
-              value={formData.section}
-              onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="text"
-              placeholder="Room Number"
-              value={formData.roomNumber}
-              onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-            <input
-              type="number"
-              placeholder="Capacity"
-              value={formData.capacity}
-              onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
-              className="px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div className="flex gap-2">
+      {/* Import Dialog */}
+      {showImportDialog && schoolId && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Bulk Import Classes</h3>
             <button
-              onClick={handleAddClass}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+              onClick={() => setShowImportDialog(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Add Class
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
-            >
-              Cancel
+              ✕
             </button>
           </div>
+          <ClassBulkImport
+            schoolId={schoolId}
+            onSuccess={async (count) => {
+              await fetchClasses();
+              setShowImportDialog(false);
+            }}
+            onClose={() => setShowImportDialog(false)}
+          />
         </div>
       )}
 
@@ -225,13 +204,16 @@ export default function ClassesPage() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-foreground">{classItem.name}</h3>
-                  <p className="text-sm text-muted-foreground">Section: {classItem.section}</p>
+                  <h3 className="text-xl font-bold text-foreground">{classItem.className}</h3>
+                  <p className="text-sm text-muted-foreground">Grade {classItem.gradeLevel}, Section {classItem.section}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                  <a 
+                    href={`/classes/${classItem.id}/edit`}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
-                  </button>
+                  </a>
                   <button
                     onClick={() => handleDelete(classItem.id)}
                     className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
@@ -243,30 +225,22 @@ export default function ClassesPage() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Room</span>
-                  <span className="font-medium text-foreground">{classItem.roomNumber}</span>
+                  <span className="text-sm text-muted-foreground">Grade Level</span>
+                  <span className="font-medium text-foreground">{classItem.gradeLevel}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>Students</span>
-                  </div>
-                  <span className="font-medium text-foreground">
-                    {classItem.studentCount} / {classItem.capacity}
+                  <span className="text-sm text-muted-foreground">Capacity</span>
+                  <span className="font-medium text-foreground">{classItem.capacity || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm text-muted-foreground">Status</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${classItem.status === 'active' ? 'bg-green-500/20 text-green-600' : 'bg-gray-500/20 text-gray-600'}`}>
+                    {classItem.status}
                   </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Class Teacher</span>
-                  <span className="font-medium text-foreground">{classItem.teacherName || 'N/A'}</span>
                 </div>
               </div>
 
-              <div className="mt-4 w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${(classItem.studentCount / classItem.capacity) * 100}%` }}
-                />
-              </div>
+
             </div>
           ))
         )}

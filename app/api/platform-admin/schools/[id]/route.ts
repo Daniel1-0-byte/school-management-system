@@ -12,11 +12,12 @@ import {
 // GET /api/platform-admin/schools/[id] - Get school details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
+    const { id } = await params;
 
     if (!adminId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
 
     const { data: school, error } = await querySchools()
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -38,10 +39,10 @@ export async function GET(
     ] = await Promise.all([
       queryProfiles()
         .select('id, system_role, status')
-        .eq('school_id', params.id),
+        .eq('school_id', id),
       queryStudents()
         .select('id')
-        .eq('school_id', params.id),
+        .eq('school_id', id),
     ]);
 
     return NextResponse.json({
@@ -65,12 +66,13 @@ export async function GET(
 // PUT /api/platform-admin/schools/[id] - Update school
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminIdOrError = await requirePlatformAdmin('schools:update');
     if (adminIdOrError instanceof NextResponse) return adminIdOrError;
     const adminId = adminIdOrError;
+    const { id } = await params;
 
     const body = await request.json();
 
@@ -78,7 +80,7 @@ export async function PUT(
     if (body.status && !body.name && !body.email) {
       const { data: updatedSchool, error } = await querySchools()
         .update({ status: body.status, updated_at: new Date().toISOString() })
-        .eq('id', params.id)
+        .eq('id', id)
         .select()
         .single();
 
@@ -119,13 +121,13 @@ export async function PUT(
     // Get current school for audit log
     const { data: currentSchool } = await querySchools()
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     // Update school
     const { data: updatedSchool, error } = await querySchools()
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -139,7 +141,7 @@ export async function PUT(
       actor_id: adminId,
       action: 'school_updated',
       target_type: 'school',
-      target_id: params.id,
+      target_id: id,
       target_name: updatedSchool.name,
       ip_address: request.headers.get('x-forwarded-for') || 'unknown',
       user_agent: request.headers.get('user-agent'),
@@ -155,23 +157,24 @@ export async function PUT(
 // DELETE /api/platform-admin/schools/[id] - Delete school
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const adminIdOrError = await requirePlatformAdmin('schools:delete');
     if (adminIdOrError instanceof NextResponse) return adminIdOrError;
     const adminId = adminIdOrError;
+    const { id } = await params;
 
     // Get school for audit log
     const { data: school } = await querySchools()
       .select('name')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     // Delete school
     const { error } = await querySchools()
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
@@ -182,7 +185,7 @@ export async function DELETE(
       actor_id: adminId,
       action: 'school_deleted',
       target_type: 'school',
-      target_id: params.id,
+      target_id: id,
       target_name: school?.name,
       ip_address: request.headers.get('x-forwarded-for') || 'unknown',
       user_agent: request.headers.get('user-agent'),
