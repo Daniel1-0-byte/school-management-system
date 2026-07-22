@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient, formatSupabaseError } from '@/lib/supabase';
+import { validateSchoolIdAccess } from '@/lib/auth-utils';
 
 /**
  * Auto-provision a school with default data when it's approved
@@ -12,8 +13,13 @@ export async function POST(request: NextRequest) {
   try {
     const { schoolId } = await request.json();
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     const supabase = getServerSupabaseClient();

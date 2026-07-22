@@ -1,4 +1,68 @@
 import type { Profile, SystemRole } from '@/types';
+import { NextRequest } from 'next/server';
+import { queryProfiles } from './supabase';
+
+/**
+ * Extract school_id from request context and validate access
+ * This is a simplified validation that assumes the school_id is passed as a query parameter
+ * In a production system with proper Supabase auth integration, this would validate against auth.uid()
+ */
+export async function getSchoolIdFromRequest(
+  request: NextRequest
+): Promise<string | null> {
+  try {
+    // NOTE: In current implementation, school_id comes from query params
+    // In production with Supabase auth, this would:
+    // 1. Extract user ID from Supabase JWT (auth.uid())
+    // 2. Look up user's school_id from profiles table
+    // 3. Return that school_id
+    // For now, APIs should validate school_id parameter matches an existing school
+    const schoolId = request.nextUrl.searchParams.get('school_id');
+    return schoolId;
+  } catch (err) {
+    console.error('[v0] Error extracting school ID:', err);
+    return null;
+  }
+}
+
+/**
+ * Validate that school_id is provided and valid
+ * This performs basic validation without auth integration
+ * In production, this would also validate that the authenticated user has access to this school
+ */
+export async function validateSchoolIdAccess(
+  schoolId: string | null
+): Promise<{ valid: boolean; error?: string }> {
+  if (!schoolId) {
+    return {
+      valid: false,
+      error: 'School ID is required',
+    };
+  }
+
+  try {
+    // Verify that the school exists
+    const { data: school, error } = await queryProfiles()
+      .select('school_id')
+      .eq('school_id', schoolId)
+      .limit(1);
+
+    if (error || !school || school.length === 0) {
+      return {
+        valid: false,
+        error: 'Invalid school ID',
+      };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    console.error('[v0] Error validating school ID:', err);
+    return {
+      valid: false,
+      error: 'Error validating school access',
+    };
+  }
+}
 
 /**
  * Get client IP address from request headers

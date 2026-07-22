@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryProfiles, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
+import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const staffSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
@@ -18,11 +19,16 @@ export async function GET(request: NextRequest) {
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
     const search = request.nextUrl.searchParams.get('search') || '';
     const role = request.nextUrl.searchParams.get('role') || '';
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
     const status = request.nextUrl.searchParams.get('status') || 'active';
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     let query = queryProfiles()
@@ -69,10 +75,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = staffSchema.parse(body);
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     const { data, error } = await queryProfiles()

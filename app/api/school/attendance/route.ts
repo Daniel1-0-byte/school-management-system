@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryAttendance, queryStudents, formatSupabaseError } from '@/lib/supabase';
+import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const attendanceRecordSchema = z.object({
   class_id: z.string().uuid(),
@@ -17,11 +18,20 @@ export async function GET(request: NextRequest) {
   try {
     const classId = request.nextUrl.searchParams.get('class_id');
     const date = request.nextUrl.searchParams.get('date');
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
 
-    if (!classId || !date || !schoolId) {
+    if (!classId || !date) {
       return NextResponse.json(
-        { error: 'Class ID, school ID, and date are required' },
+        { error: 'Class ID and date are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
         { status: 400 }
       );
     }
@@ -65,10 +75,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = attendanceRecordSchema.parse(body);
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    const schoolId = getSchoolIdFromRequest(request);
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 });
+    // Validate school_id access
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || 'Invalid school access' },
+        { status: 400 }
+      );
     }
 
     // Delete existing records for the date
