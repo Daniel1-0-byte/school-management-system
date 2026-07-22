@@ -14,6 +14,8 @@ import { SubjectTransformer, type SubjectRecord, type Subject } from '@/lib/tran
 import { GuardianTransformer, type GuardianRecord, type Guardian } from '@/lib/transformers/guardian-transformer';
 import { AttendanceTransformer, type AttendanceRecord, type Attendance } from '@/lib/transformers/attendance-transformer';
 import { GradeTransformer, type GradeRecord, type Grade } from '@/lib/transformers/grade-transformer';
+import { TeacherAssignmentTransformer, type TeacherAssignmentRecord, type TeacherAssignment } from '@/lib/transformers/teacher-assignment-transformer';
+import { NotificationTransformer, type NotificationRecord, type Notification } from '@/lib/transformers/notification-transformer';
 import type { Student } from '@/types';
 
 export interface PaginationParams {
@@ -980,5 +982,173 @@ export class SchoolService {
     }
 
     return { success: true };
+  }
+
+  /**
+   * TEACHER ASSIGNMENTS - CRUD
+   */
+  static async getTeacherAssignments(schoolId: string, params: PaginationParams = {}): Promise<{ assignments: TeacherAssignment[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: TeacherAssignmentRecord[]; total: number }>('/teacher-assignments', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { assignments: [], total: 0, error: response.error };
+    }
+
+    return {
+      assignments: TeacherAssignmentTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createTeacherAssignment(schoolId: string, data: Partial<TeacherAssignment>): Promise<{ assignment?: TeacherAssignment; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...TeacherAssignmentTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<TeacherAssignmentRecord>('/teacher-assignments', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      assignment: response.data ? TeacherAssignmentTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateTeacherAssignment(schoolId: string, assignmentId: string, data: Partial<TeacherAssignment>): Promise<{ assignment?: TeacherAssignment; error?: string }> {
+    const payload = TeacherAssignmentTransformer.fromUI(data);
+
+    const response = await apiClient.put<TeacherAssignmentRecord>(`/teacher-assignments/${assignmentId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      assignment: response.data ? TeacherAssignmentTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteTeacherAssignment(schoolId: string, assignmentId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/teacher-assignments/${assignmentId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * NOTIFICATIONS - CRUD
+   */
+  static async getNotifications(schoolId: string, params: PaginationParams = {}): Promise<{ notifications: Notification[]; total: number; error?: string }> {
+    const response = await apiClient.get<{ data: NotificationRecord[]; total: number }>('/notifications', {
+      school_id: schoolId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 20,
+    });
+
+    if (response.error) {
+      return { notifications: [], total: 0, error: response.error };
+    }
+
+    return {
+      notifications: NotificationTransformer.toUIList(response.data || []),
+      total: response.total || 0,
+    };
+  }
+
+  static async createNotification(schoolId: string, data: Partial<Notification>): Promise<{ notification?: Notification; error?: string }> {
+    const payload = {
+      school_id: schoolId,
+      ...NotificationTransformer.fromUI(data),
+    };
+
+    const response = await apiClient.post<NotificationRecord>('/notifications', payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      notification: response.data ? NotificationTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async updateNotification(schoolId: string, notificationId: string, data: Partial<Notification>): Promise<{ notification?: Notification; error?: string }> {
+    const payload = NotificationTransformer.fromUI(data);
+
+    const response = await apiClient.put<NotificationRecord>(`/notifications/${notificationId}`, payload, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return {
+      notification: response.data ? NotificationTransformer.toUI(response.data) : undefined,
+    };
+  }
+
+  static async deleteNotification(schoolId: string, notificationId: string): Promise<{ success: boolean; error?: string }> {
+    const response = await apiClient.delete<void>(`/notifications/${notificationId}`, {
+      school_id: schoolId,
+    });
+
+    if (response.error) {
+      return { success: false, error: response.error };
+    }
+
+    return { success: true };
+  }
+
+  static async sendNotification(schoolId: string, data: {
+    recipientId: string;
+    type: 'success' | 'warning' | 'info' | 'error';
+    title: string;
+    message: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch('/api/school/notifications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          school_id: schoolId,
+          recipient_id: data.recipientId,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { success: false, error: errorData.error || 'Failed to send notification' };
+      }
+
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to send notification',
+      };
+    }
   }
 }
