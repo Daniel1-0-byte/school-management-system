@@ -1151,4 +1151,40 @@ export class SchoolService {
       };
     }
   }
+
+  /**
+   * STREAMS - GET ALL (Phase 3)
+   * Fetch all class streams for a school
+   * Used during student admission to select stream enrollment
+   */
+  static async getStreams(
+    schoolId: string,
+    activeOnly: boolean = true
+  ): Promise<{ streams: any[]; error?: string }> {
+    try {
+      const response = await fetch(
+        `/api/school/streams?activeOnly=${activeOnly}`,
+        {
+          credentials: 'include',
+          headers: {
+            'X-School-Id': schoolId,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { streams: [], error: error.error || 'Failed to fetch streams' };
+      }
+
+      const { data } = await response.json();
+      return { streams: data || [] };
+    } catch (err) {
+      console.error('[v0] SchoolService.getStreams error:', err);
+      return {
+        streams: [],
+        error: err instanceof Error ? err.message : 'Failed to fetch streams',
+      };
+    }
+  }
 }

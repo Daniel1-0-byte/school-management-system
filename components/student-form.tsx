@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, AlertCircle, Loader2 } from 'lucide-react';
 import type { Student } from '@/types';
 import { StudentValidator, type StudentCreateInput } from '@/lib/validators/student-validator';
+import { SchoolService } from '@/lib/services/school-service';
 
 interface StudentFormProps {
   student?: Student;
@@ -19,6 +20,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
     dateOfBirth: undefined,
     admissionNumber: undefined,
     currentClassId: undefined,
+    currentStreamId: undefined, // Phase 3
     parentalStatus: undefined,
     medicalNotes: undefined,
     allergies: undefined,
@@ -27,8 +29,39 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [streams, setStreams] = useState<any[]>([]); // Phase 3: School streams
+  const [loadingStreams, setLoadingStreams] = useState(false);
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
+  // Phase 3: Fetch streams on mount
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get school ID from session
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          const sid = data.session?.schoolId;
+          if (sid) {
+            setSchoolId(sid);
+            
+            // Fetch streams
+            setLoadingStreams(true);
+            const result = await SchoolService.getStreams(sid, true);
+            if (!result.error && result.streams) {
+              setStreams(result.streams);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Failed to load streams:', err);
+      } finally {
+        setLoadingStreams(false);
+      }
+    };
+
+    fetchData();
+
     if (student) {
       setFormData({
         firstName: student.firstName || '',
@@ -36,6 +69,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
         dateOfBirth: student.dateOfBirth,
         admissionNumber: student.admissionNumber,
         currentClassId: student.currentClassId,
+        currentStreamId: student.currentStreamId, // Phase 3
         parentalStatus: student.parentalStatus,
         medicalNotes: student.medicalNotes,
         allergies: student.allergies,
@@ -175,20 +209,33 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
           {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
         </div>
 
-        {/* Class ID */}
+        {/* Stream Selection - Phase 3 */}
         <div>
-          <label className="block text-sm font-medium text-foreground mb-2">Class</label>
-          <input
-            type="text"
-            name="currentClassId"
-            value={formData.currentClassId || ''}
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Class Stream <span className="text-red-600">*</span>
+          </label>
+          <select
+            name="currentStreamId"
+            value={formData.currentStreamId || ''}
             onChange={handleChange}
-            placeholder="Enter class ID"
+            disabled={loadingStreams || streams.length === 0}
             className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none ${
-              errors.currentClassId ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
-            }`}
-          />
-          {errors.currentClassId && <p className="text-sm text-red-600 mt-1">{errors.currentClassId}</p>}
+              errors.currentStreamId ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
+            } ${loadingStreams ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <option value="">
+              {loadingStreams ? 'Loading streams...' : 'Select a stream'}
+            </option>
+            {streams.map((stream) => (
+              <option key={stream.id} value={stream.id}>
+                {stream.name} {stream.section ? `- Section ${stream.section}` : ''}
+              </option>
+            ))}
+          </select>
+          {errors.currentStreamId && <p className="text-sm text-red-600 mt-1">{errors.currentStreamId}</p>}
+          {!loadingStreams && streams.length === 0 && (
+            <p className="text-sm text-yellow-600 mt-1">No streams available. Create streams in the Classes section first.</p>
+          )}
         </div>
 
         {/* Parental Status */}

@@ -9,6 +9,7 @@ import { ImportExportToolbar } from '@/components/import-export-toolbar';
 import { ImportWizard } from '@/components/import-wizard';
 import { ExportDialog } from '@/components/export-dialog';
 import { getModuleConfig } from '@/lib/import-export/column-definitions';
+import { StreamService } from '@/lib/services/stream-service';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -200,7 +201,7 @@ export default function StudentsPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Name</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Admission #</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Class</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Stream</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Date of Birth</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Status</th>
                   <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">Actions</th>
@@ -220,7 +221,11 @@ export default function StudentsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{student.admissionNumber || 'N/A'}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{student.currentClassName || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      <span className="inline-block px-2 py-1 bg-blue-500/10 text-blue-600 rounded text-xs font-medium">
+                        {student.currentStreamName || student.currentClassName || 'N/A'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
