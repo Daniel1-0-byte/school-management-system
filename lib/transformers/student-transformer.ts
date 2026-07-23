@@ -14,6 +14,8 @@ export interface StudentRecord {
   admission_number?: string;
   current_class_id?: string;
   current_class_name?: string;
+  current_stream_id?: string; // Phase 3: Stream instead of class
+  current_stream_name?: string;
   status: 'active' | 'inactive' | 'graduated';
   parental_status?: string;
   medical_notes?: string;
@@ -36,6 +38,8 @@ export class StudentTransformer {
       admissionNumber: record.admission_number,
       currentClassId: record.current_class_id,
       currentClassName: record.current_class_name,
+      currentStreamId: record.current_stream_id, // Phase 3
+      currentStreamName: record.current_stream_name, // Phase 3
       status: record.status,
       parentalStatus: record.parental_status,
       medicalNotes: record.medical_notes,
@@ -63,6 +67,8 @@ export class StudentTransformer {
       admission_number: student.admissionNumber,
       current_class_id: student.currentClassId,
       current_class_name: student.currentClassName,
+      current_stream_id: student.currentStreamId, // Phase 3
+      current_stream_name: student.currentStreamName, // Phase 3
       status: student.status,
       parental_status: student.parentalStatus,
       medical_notes: student.medicalNotes,
