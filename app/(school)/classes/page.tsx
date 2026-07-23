@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, BookOpen } from 'lucide-react';
-import { StreamService, StreamWithSubjects } from '@/lib/services/stream-service';
+import type { StreamWithSubjects } from '@/lib/services/stream-service';
 
 export default function ClassesPage() {
   const [streams, setStreams] = useState<StreamWithSubjects[]>([]);
@@ -41,22 +41,34 @@ export default function ClassesPage() {
       setLoading(true);
       setError(null);
 
-      const result = await StreamService.getSchoolStreams(schoolId, academicYearId || undefined);
-
-      if (result.error) {
-        setError(result.error);
-      } else {
-        let filtered = result.data || [];
-
-        // Apply status filter
-        if (activeFilters.status !== 'all') {
-          filtered = filtered.filter((s) => s.status === activeFilters.status);
-        }
-
-        setStreams(filtered);
+      // Use API endpoint instead of calling service directly (avoid server env var access from client)
+      const url = new URL('/api/school/streams', window.location.origin);
+      if (academicYearId) {
+        url.searchParams.append('academicYearId', academicYearId);
       }
+      if (activeFilters.status !== 'all') {
+        url.searchParams.append('status', activeFilters.status);
+      }
+
+      const response = await fetch(url.toString(), { 
+        credentials: 'include',
+        headers: {
+          'X-School-Id': schoolId,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to fetch streams');
+        setStreams([]);
+        return;
+      }
+
+      const data = await response.json();
+      setStreams(data.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch streams');
+      setStreams([]);
     } finally {
       setLoading(false);
     }
@@ -70,12 +82,21 @@ export default function ClassesPage() {
     if (!confirm('Are you sure you want to deactivate this stream? This action cannot be undone.')) return;
 
     try {
-      const result = await StreamService.deactivateStream(streamId);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        await fetchStreams();
+      const response = await fetch(`/api/school/streams/${streamId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'X-School-Id': schoolId || '',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to deactivate stream');
+        return;
       }
+
+      await fetchStreams();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to deactivate stream');
     }
