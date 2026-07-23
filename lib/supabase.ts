@@ -167,6 +167,22 @@ export function querySystemClassSubjects() {
 }
 
 // ============================================================================
+// SCHOOL STREAMS QUERY HELPERS (Phase 2)
+// ============================================================================
+
+export function querySchoolClassStreams() {
+  return getServerSupabaseClient().from('school_class_streams');
+}
+
+export function querySchoolClassStreamSubjects() {
+  return getServerSupabaseClient().from('school_class_stream_subjects');
+}
+
+export function queryClassMigrationMap() {
+  return getServerSupabaseClient().from('class_migration_map');
+}
+
+// ============================================================================
 // PAGINATION HELPER
 // ============================================================================
 

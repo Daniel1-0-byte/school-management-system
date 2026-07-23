@@ -131,14 +131,34 @@ CREATE POLICY "school_class_stream_subjects_insert_admin" ON public.school_class
   );
 
 -- ============================================================================
--- UPDATE FOREIGN KEY REFERENCES
+-- UPDATE FOREIGN KEY REFERENCES - PREPARE FOR MIGRATION
 -- ============================================================================
--- These tables need to reference streams instead of classes now:
--- - student_enrollments
--- - teacher_assignments  
--- - attendance_records
--- - grade_entries
--- These will be updated via data migration script, not in this migration
+-- Add stream columns to tables that currently reference school_classes
+-- Old columns are kept for backward compatibility during migration
+
+-- Add stream_id to student_enrollments
+ALTER TABLE public.student_enrollments
+ADD COLUMN IF NOT EXISTS stream_id UUID REFERENCES public.school_class_streams(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_student_enrollments_stream_id ON public.student_enrollments(stream_id);
+
+-- Add stream_id to teacher_assignments
+ALTER TABLE public.teacher_assignments
+ADD COLUMN IF NOT EXISTS stream_id UUID REFERENCES public.school_class_streams(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_teacher_assignments_stream_id ON public.teacher_assignments(stream_id);
+
+-- Add stream_id to attendance_records
+ALTER TABLE public.attendance_records
+ADD COLUMN IF NOT EXISTS stream_id UUID REFERENCES public.school_class_streams(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_attendance_records_stream_id ON public.attendance_records(stream_id);
+
+-- Add stream_id to grade_entries
+ALTER TABLE public.grade_entries
+ADD COLUMN IF NOT EXISTS stream_id UUID REFERENCES public.school_class_streams(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_grade_entries_stream_id ON public.grade_entries(stream_id);
 
 -- ============================================================================
 -- MIGRATION STATUS AND NOTES
