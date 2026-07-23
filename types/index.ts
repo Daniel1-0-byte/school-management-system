@@ -123,6 +123,8 @@ export interface Student {
   status: 'active' | 'inactive' | 'graduated';
   currentClassName?: string | null;
   currentClassId?: string | null;
+  currentStreamId?: string | null; // Phase 3: Stream ID
+  currentStreamName?: string | null; // Phase 3: Stream name
   parentalStatus?: string | null;
   medicalNotes?: string | null;
   allergies?: string | null;
