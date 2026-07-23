@@ -10,6 +10,8 @@ const studentSchema = z.object({
   admission_number: z.string().optional(),
   current_class_id: z.string().uuid().optional(),
   current_class_name: z.string().optional(),
+  current_stream_id: z.string().uuid().optional(), // Phase 3: Stream ID
+  current_stream_name: z.string().optional(), // Phase 3: Stream name
   status: z.enum(['active', 'inactive', 'graduated']).default('active'),
   parental_status: z.string().optional(),
   medical_notes: z.string().optional(),
@@ -102,11 +104,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Phase 3: Prefer stream_id over class_id
+    const enrollmentData = {
+      ...validatedData,
+      school_id: schoolId,
+      // Use stream_id as primary enrollment point (Phase 3)
+      current_stream_id: validatedData.current_stream_id,
+      current_stream_name: validatedData.current_stream_name,
+    };
+
     const { data, error } = await queryStudents()
-      .insert({
-        ...validatedData,
-        school_id: schoolId,
-      })
+      .insert(enrollmentData)
       .select()
       .single();
 
