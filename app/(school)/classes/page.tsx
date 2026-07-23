@@ -1,94 +1,83 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, Users, Download, Upload } from 'lucide-react';
-import type { Class } from '@/lib/transformers/class-transformer';
-import { SchoolService } from '@/lib/services/school-service';
-import { ClassBulkImport } from '@/components/class-bulk-import';
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, BookOpen } from 'lucide-react';
+import { StreamService, StreamWithSubjects } from '@/lib/services/stream-service';
 
 export default function ClassesPage() {
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [streams, setStreams] = useState<StreamWithSubjects[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<{
+    status: 'all' | 'active' | 'inactive';
+  }>({
+    status: 'active',
+  });
 
+  // Get school and academic year from session
   useEffect(() => {
-    const getSchoolId = async () => {
+    const getSchoolContext = async () => {
       try {
         const response = await fetch('/api/auth/session', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           setSchoolId(data.session?.schoolId || null);
+          setAcademicYearId(data.session?.academicYearId || null);
         }
       } catch (err) {
-        console.error('[v0] Failed to get school ID:', err);
+        console.error('[v0] Failed to get school context:', err);
       }
     };
-    getSchoolId();
+    getSchoolContext();
   }, []);
 
-  const fetchClasses = async () => {
+  // Fetch streams
+  const fetchStreams = async () => {
     if (!schoolId) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      const result = await SchoolService.getClasses(schoolId, {
-        page,
-        pageSize,
-      });
+      const result = await StreamService.getSchoolStreams(schoolId, academicYearId || undefined);
 
       if (result.error) {
         setError(result.error);
       } else {
-        setClasses(result.classes);
-        setTotal(result.total);
+        let filtered = result.data || [];
+
+        // Apply status filter
+        if (activeFilters.status !== 'all') {
+          filtered = filtered.filter((s) => s.status === activeFilters.status);
+        }
+
+        setStreams(filtered);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Failed to fetch streams');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchClasses();
-  }, [schoolId, page, pageSize, search]);
+    fetchStreams();
+  }, [schoolId, academicYearId, activeFilters]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this class?')) return;
+  const handleDeleteStream = async (streamId: string) => {
+    if (!confirm('Are you sure you want to deactivate this stream? This action cannot be undone.')) return;
 
     try {
-      const result = await SchoolService.deleteClass(schoolId!, id);
+      const result = await StreamService.deactivateStream(streamId);
       if (result.error) {
         setError(result.error);
       } else {
-        setError(null);
-        await fetchClasses();
+        await fetchStreams();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete class');
-    }
-  };
-
-  const handleExport = async (format: 'csv' | 'json') => {
-    if (!schoolId) return;
-    try {
-      const result = await SchoolService.exportClasses(schoolId, format);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.url) {
-        const link = document.createElement('a');
-        link.href = result.url;
-        link.click();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed');
+      setError(err instanceof Error ? err.message : 'Failed to deactivate stream');
     }
   };
 
@@ -97,45 +86,18 @@ export default function ClassesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Classes</h1>
-          <p className="text-muted-foreground mt-1">Manage school classes and sections</p>
+          <h1 className="text-3xl font-bold text-foreground">Class Streams</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage streams for the {activeFilters.status === 'active' ? 'current' : ''} academic year
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowImportDialog(!showImportDialog)}
-            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            <span>Import</span>
-          </button>
-          <div className="relative group">
-            <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
-              <Download className="w-5 h-5" />
-              <span>Export</span>
-            </button>
-            <div className="absolute right-0 mt-0 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-              <button
-                onClick={() => handleExport('csv')}
-                className="w-full text-left px-4 py-2 hover:bg-muted text-sm"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={() => handleExport('json')}
-                className="w-full text-left px-4 py-2 hover:bg-muted text-sm border-t border-border"
-              >
-                Export JSON
-              </button>
-            </div>
-          </div>
-          <a
-            href="/classes/add"
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Class</span>
-          </a>
-        </div>
+        <a
+          href="/classes/add"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Add Stream</span>
+        </a>
       </div>
 
       {/* Error Message */}
@@ -146,76 +108,75 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* Import Dialog */}
-      {showImportDialog && schoolId && (
-        <div className="bg-card border border-border rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bulk Import Classes</h3>
-            <button
-              onClick={() => setShowImportDialog(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-          <ClassBulkImport
-            schoolId={schoolId}
-            onSuccess={async (count) => {
-              await fetchClasses();
-              setShowImportDialog(false);
-            }}
-            onClose={() => setShowImportDialog(false)}
-          />
-        </div>
-      )}
-
-      {/* Search */}
+      {/* Filter Tabs */}
       <div className="bg-card border border-border rounded-lg p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search classes..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-          />
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveFilters({ ...activeFilters, status: 'active' })}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeFilters.status === 'active'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            Active Streams
+          </button>
+          <button
+            onClick={() => setActiveFilters({ ...activeFilters, status: 'inactive' })}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeFilters.status === 'inactive'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            Inactive Streams
+          </button>
+          <button
+            onClick={() => setActiveFilters({ ...activeFilters, status: 'all' })}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              activeFilters.status === 'all'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            All Streams
+          </button>
         </div>
       </div>
 
-      {/* Classes Grid */}
+      {/* Streams Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full flex items-center justify-center min-h-[300px]">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
-        ) : classes.length === 0 ? (
+        ) : streams.length === 0 ? (
           <div className="col-span-full text-center py-12">
-            <p className="text-muted-foreground">No classes found</p>
+            <BookOpen className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+            <p className="text-muted-foreground text-lg">No streams found</p>
+            <p className="text-sm text-muted-foreground mt-2">Create your first stream to get started</p>
           </div>
         ) : (
-          classes.map((classItem) => (
+          streams.map((stream) => (
             <div
-              key={classItem.id}
+              key={stream.id}
               className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow"
             >
+              {/* Header */}
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-foreground">{classItem.className}</h3>
-                  <p className="text-sm text-muted-foreground">Grade {classItem.gradeLevel}, Section {classItem.section}</p>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-foreground">{stream.streamName}</h3>
+                  <p className="text-sm text-muted-foreground">{stream.systemClass?.name}</p>
                 </div>
                 <div className="flex gap-2">
-                  <a 
-                    href={`/classes/${classItem.id}/edit`}
+                  <a
+                    href={`/classes/${stream.id}/edit`}
                     className="p-2 hover:bg-muted rounded-lg transition-colors"
                   >
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
                   </a>
                   <button
-                    onClick={() => handleDelete(classItem.id)}
+                    onClick={() => handleDeleteStream(stream.id)}
                     className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4 text-red-600" />
@@ -223,53 +184,57 @@ export default function ClassesPage() {
                 </div>
               </div>
 
+              {/* Details */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Grade Level</span>
-                  <span className="font-medium text-foreground">{classItem.gradeLevel}</span>
+                  <span className="text-sm text-muted-foreground">Class Level</span>
+                  <span className="font-medium text-foreground">{stream.systemClass?.name || 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Capacity</span>
-                  <span className="font-medium text-foreground">{classItem.capacity || 'N/A'}</span>
+                  <span className="font-medium text-foreground">{stream.capacity || 'Unlimited'}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <span className="text-sm text-muted-foreground">Subjects</span>
+                  <span className="font-medium text-foreground">{stream.subjects?.length || 0}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${classItem.status === 'active' ? 'bg-green-500/20 text-green-600' : 'bg-gray-500/20 text-gray-600'}`}>
-                    {classItem.status}
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${
+                      stream.status === 'active'
+                        ? 'bg-green-500/20 text-green-600'
+                        : 'bg-gray-500/20 text-gray-600'
+                    }`}
+                  >
+                    {stream.status}
                   </span>
                 </div>
               </div>
 
-
+              {/* Subjects Preview */}
+              {stream.subjects && stream.subjects.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Core Subjects:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {stream.subjects
+                      .filter((s) => s.isCore)
+                      .slice(0, 3)
+                      .map((subject) => (
+                        <span key={subject.id} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                          {subject.subject?.code || 'N/A'}
+                        </span>
+                      ))}
+                    {stream.subjects.filter((s) => s.isCore).length > 3 && (
+                      <span className="text-xs text-muted-foreground px-2 py-1">+{stream.subjects.filter((s) => s.isCore).length - 3}</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}
       </div>
-
-      {/* Pagination */}
-      {total > pageSize && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} classes
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page * pageSize >= total}
-              className="px-4 py-2 border border-border rounded-lg hover:bg-muted disabled:opacity-50 transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

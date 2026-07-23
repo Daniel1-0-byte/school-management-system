@@ -19,7 +19,8 @@ import {
 interface DashboardStats {
   totalStudents: number;
   totalTeachers: number;
-  totalClasses: number;
+  totalClasses: number; // Now represents streams
+  totalStreams?: number;
   attendanceRate: number;
   recentActivities: Activity[];
   upcomingEvents: UpcomingEvent[];
@@ -196,9 +197,9 @@ export default function DashboardPage() {
           color="bg-purple-500/10"
         />
         <StatCard
-          icon={<Users className="w-6 h-6 text-green-500" />}
-          label="Total Classes"
-          value={stats?.totalClasses || 0}
+          icon={<BookOpen className="w-6 h-6 text-green-500" />}
+          label="Class Streams"
+          value={stats?.totalStreams || stats?.totalClasses || 0}
           subtext="Active"
           color="bg-green-500/10"
         />
