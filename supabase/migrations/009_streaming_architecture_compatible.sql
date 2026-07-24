@@ -138,100 +138,102 @@ CREATE INDEX IF NOT EXISTS idx_grade_entries_stream_id ON public.grade_entries(s
 -- ENABLE RLS ON NEW TABLES
 -- ============================================================================
 
--- system_curriculums - Read-only for schools, admin write only
 ALTER TABLE public.system_curriculums ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY IF NOT EXISTS "system_curriculums_select_all" ON public.system_curriculums
-  FOR SELECT
-  USING (true);
-
-CREATE POLICY IF NOT EXISTS "system_curriculums_insert_admin_only" ON public.system_curriculums
-  FOR INSERT
-  WITH CHECK (auth.uid() IS NULL);
-
-CREATE POLICY IF NOT EXISTS "system_curriculums_update_admin_only" ON public.system_curriculums
-  FOR UPDATE
-  USING (auth.uid() IS NULL)
-  WITH CHECK (auth.uid() IS NULL);
-
--- system_classes - Read-only for schools, admin write only
 ALTER TABLE public.system_classes ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY IF NOT EXISTS "system_classes_select_all" ON public.system_classes
-  FOR SELECT
-  USING (true);
-
-CREATE POLICY IF NOT EXISTS "system_classes_insert_admin_only" ON public.system_classes
-  FOR INSERT
-  WITH CHECK (auth.uid() IS NULL);
-
-CREATE POLICY IF NOT EXISTS "system_classes_update_admin_only" ON public.system_classes
-  FOR UPDATE
-  USING (auth.uid() IS NULL)
-  WITH CHECK (auth.uid() IS NULL);
-
--- system_subjects - Read-only for schools, admin write only
 ALTER TABLE public.system_subjects ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY IF NOT EXISTS "system_subjects_select_all" ON public.system_subjects
-  FOR SELECT
-  USING (true);
-
-CREATE POLICY IF NOT EXISTS "system_subjects_insert_admin_only" ON public.system_subjects
-  FOR INSERT
-  WITH CHECK (auth.uid() IS NULL);
-
-CREATE POLICY IF NOT EXISTS "system_subjects_update_admin_only" ON public.system_subjects
-  FOR UPDATE
-  USING (auth.uid() IS NULL)
-  WITH CHECK (auth.uid() IS NULL);
-
--- system_class_subjects - Read-only for schools, admin write only
 ALTER TABLE public.system_class_subjects ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY IF NOT EXISTS "system_class_subjects_select_all" ON public.system_class_subjects
-  FOR SELECT
-  USING (true);
-
-CREATE POLICY IF NOT EXISTS "system_class_subjects_insert_admin_only" ON public.system_class_subjects
-  FOR INSERT
-  WITH CHECK (auth.uid() IS NULL);
-
-CREATE POLICY IF NOT EXISTS "system_class_subjects_update_admin_only" ON public.system_class_subjects
-  FOR UPDATE
-  USING (auth.uid() IS NULL)
-  WITH CHECK (auth.uid() IS NULL);
-
--- school_class_streams - School-scoped access
 ALTER TABLE public.school_class_streams ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "school_class_streams_select" ON public.school_class_streams
-  FOR SELECT
-  USING (
-    auth.uid() IS NULL 
-    OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
-  );
+-- ============================================================================
+-- CREATE RLS POLICIES (PostgreSQL-compatible with DROP/CREATE pattern)
+-- ============================================================================
 
-CREATE POLICY IF NOT EXISTS "school_class_streams_insert" ON public.school_class_streams
-  FOR INSERT
-  WITH CHECK (
-    auth.uid() IS NULL 
-    OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
-  );
+DO $$
+BEGIN
+  -- system_curriculums policies (read-only for authenticated users)
+  DROP POLICY IF EXISTS "system_curriculums_select_all" ON public.system_curriculums;
+  CREATE POLICY "system_curriculums_select_all" ON public.system_curriculums
+    FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "school_class_streams_update" ON public.school_class_streams
-  FOR UPDATE
-  USING (
-    auth.uid() IS NULL 
-    OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
-  );
+  DROP POLICY IF EXISTS "system_curriculums_insert_admin_only" ON public.system_curriculums;
+  CREATE POLICY "system_curriculums_insert_admin_only" ON public.system_curriculums
+    FOR INSERT WITH CHECK (false);
 
-CREATE POLICY IF NOT EXISTS "school_class_streams_delete" ON public.school_class_streams
-  FOR DELETE
-  USING (
-    auth.uid() IS NULL 
-    OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
-  );
+  DROP POLICY IF EXISTS "system_curriculums_update_admin_only" ON public.system_curriculums;
+  CREATE POLICY "system_curriculums_update_admin_only" ON public.system_curriculums
+    FOR UPDATE USING (false) WITH CHECK (false);
+
+  -- system_classes policies (read-only for authenticated users)
+  DROP POLICY IF EXISTS "system_classes_select_all" ON public.system_classes;
+  CREATE POLICY "system_classes_select_all" ON public.system_classes
+    FOR SELECT USING (true);
+
+  DROP POLICY IF EXISTS "system_classes_insert_admin_only" ON public.system_classes;
+  CREATE POLICY "system_classes_insert_admin_only" ON public.system_classes
+    FOR INSERT WITH CHECK (false);
+
+  DROP POLICY IF EXISTS "system_classes_update_admin_only" ON public.system_classes;
+  CREATE POLICY "system_classes_update_admin_only" ON public.system_classes
+    FOR UPDATE USING (false) WITH CHECK (false);
+
+  -- system_subjects policies (read-only for authenticated users)
+  DROP POLICY IF EXISTS "system_subjects_select_all" ON public.system_subjects;
+  CREATE POLICY "system_subjects_select_all" ON public.system_subjects
+    FOR SELECT USING (true);
+
+  DROP POLICY IF EXISTS "system_subjects_insert_admin_only" ON public.system_subjects;
+  CREATE POLICY "system_subjects_insert_admin_only" ON public.system_subjects
+    FOR INSERT WITH CHECK (false);
+
+  DROP POLICY IF EXISTS "system_subjects_update_admin_only" ON public.system_subjects;
+  CREATE POLICY "system_subjects_update_admin_only" ON public.system_subjects
+    FOR UPDATE USING (false) WITH CHECK (false);
+
+  -- system_class_subjects policies (read-only for authenticated users)
+  DROP POLICY IF EXISTS "system_class_subjects_select_all" ON public.system_class_subjects;
+  CREATE POLICY "system_class_subjects_select_all" ON public.system_class_subjects
+    FOR SELECT USING (true);
+
+  DROP POLICY IF EXISTS "system_class_subjects_insert_admin_only" ON public.system_class_subjects;
+  CREATE POLICY "system_class_subjects_insert_admin_only" ON public.system_class_subjects
+    FOR INSERT WITH CHECK (false);
+
+  DROP POLICY IF EXISTS "system_class_subjects_update_admin_only" ON public.system_class_subjects;
+  CREATE POLICY "system_class_subjects_update_admin_only" ON public.system_class_subjects
+    FOR UPDATE USING (false) WITH CHECK (false);
+
+  -- school_class_streams policies (school-scoped access)
+  DROP POLICY IF EXISTS "school_class_streams_select" ON public.school_class_streams;
+  CREATE POLICY "school_class_streams_select" ON public.school_class_streams
+    FOR SELECT USING (
+      auth.uid() IS NULL 
+      OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
+    );
+
+  DROP POLICY IF EXISTS "school_class_streams_insert" ON public.school_class_streams;
+  CREATE POLICY "school_class_streams_insert" ON public.school_class_streams
+    FOR INSERT WITH CHECK (
+      auth.uid() IS NULL 
+      OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
+    );
+
+  DROP POLICY IF EXISTS "school_class_streams_update" ON public.school_class_streams;
+  CREATE POLICY "school_class_streams_update" ON public.school_class_streams
+    FOR UPDATE USING (
+      auth.uid() IS NULL 
+      OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
+    );
+
+  DROP POLICY IF EXISTS "school_class_streams_delete" ON public.school_class_streams;
+  CREATE POLICY "school_class_streams_delete" ON public.school_class_streams
+    FOR DELETE USING (
+      auth.uid() IS NULL 
+      OR school_id = (SELECT school_id FROM public.profiles WHERE id = auth.uid() LIMIT 1)
+    );
+
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
 
 -- ============================================================================
 -- SEED GHANA EDUCATION SERVICE CURRICULUM
