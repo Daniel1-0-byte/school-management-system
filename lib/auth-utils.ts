@@ -4,20 +4,29 @@ import { queryProfiles, querySchools } from './supabase';
 
 /**
  * Extract school_id from request context and validate access
- * This is a simplified validation that assumes the school_id is passed as a query parameter
+ * This is a simplified validation that assumes the school_id is passed as a query parameter or header
  * In a production system with proper Supabase auth integration, this would validate against auth.uid()
  */
 export async function getSchoolIdFromRequest(
   request: NextRequest
 ): Promise<string | null> {
   try {
-    // NOTE: In current implementation, school_id comes from query params
+    // NOTE: In current implementation, school_id comes from query params or X-School-Id header
+    // Check header first (client-sent via X-School-Id), then fall back to query params
     // In production with Supabase auth, this would:
     // 1. Extract user ID from Supabase JWT (auth.uid())
     // 2. Look up user's school_id from profiles table
     // 3. Return that school_id
     // For now, APIs should validate school_id parameter matches an existing school
-    const schoolId = request.nextUrl.searchParams.get('school_id');
+    
+    // Try header first (modern pattern used by client components)
+    let schoolId = request.headers.get('X-School-Id');
+    
+    // Fall back to query parameter (legacy pattern for backward compatibility)
+    if (!schoolId) {
+      schoolId = request.nextUrl.searchParams.get('school_id');
+    }
+    
     return schoolId;
   } catch (err) {
     console.error('[v0] Error extracting school ID:', err);
