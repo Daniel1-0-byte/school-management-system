@@ -160,4 +160,44 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Input and placeholder text styling */
+  input,
+  textarea,
+  select {
+    @apply text-foreground;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-slate-600 opacity-100;
+  }
+
+  /* Light mode overrides for inputs */
+  :root input,
+  :root textarea,
+  :root select {
+    @apply text-slate-900 caret-slate-900;
+  }
+
+  :root input::placeholder,
+  :root textarea::placeholder {
+    @apply text-slate-500 opacity-100;
+  }
+
+  /* Dark mode placeholder styling */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    @apply text-slate-400 opacity-100;
+  }
+
+  /* Icon color inheritance for toggles and buttons */
+  button {
+    @apply text-foreground;
+  }
+
+  /* Ensure icons in buttons inherit text color */
+  button svg {
+    color: currentColor;
+  }
 }
