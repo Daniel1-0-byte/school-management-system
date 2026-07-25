@@ -7,7 +7,8 @@ import { StreamForm } from '@/components/stream-form';
 export default function EditStreamPage() {
   const router = useRouter();
   const params = useParams();
-  const streamId = params.id as string;
+  // Ensure params.id is a string and not undefined
+  const streamId = (params.id as string) || '';
 
   return (
     <div className="space-y-6">
@@ -28,12 +29,16 @@ export default function EditStreamPage() {
 
       {/* Form Container */}
       <div className="bg-card border border-border rounded-lg p-6 max-w-2xl">
-        <StreamForm
-          streamId={streamId}
-          onSuccess={() => {
-            router.push('/classes');
-          }}
-        />
+        {streamId ? (
+          <StreamForm
+            streamId={streamId}
+            onSuccess={() => {
+              router.push('/classes');
+            }}
+          />
+        ) : (
+          <p className="text-muted-foreground">Loading...</p>
+        )}
       </div>
     </div>
   );

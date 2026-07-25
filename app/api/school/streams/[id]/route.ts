@@ -73,6 +73,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         ...(status !== undefined && { status }),
       })
       .eq('id', params.id)
+      .eq('school_id', schoolId)
       .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
       .single();
 
