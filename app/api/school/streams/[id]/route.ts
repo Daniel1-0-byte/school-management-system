@@ -4,6 +4,11 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // Validate stream ID is not undefined, null, or the string "undefined"
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+      return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
+    }
+
     const schoolId = await getSchoolIdFromRequest(request);
 
     if (typeof schoolId !== 'string') {
@@ -38,6 +43,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // Validate stream ID is not undefined, null, or the string "undefined"
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+      return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
+    }
+
     const schoolId = await getSchoolIdFromRequest(request);
 
     if (typeof schoolId !== 'string') {
@@ -91,6 +101,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    // Validate stream ID is not undefined, null, or the string "undefined"
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+      return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
+    }
+
     const schoolId = await getSchoolIdFromRequest(request);
 
     if (typeof schoolId !== 'string') {

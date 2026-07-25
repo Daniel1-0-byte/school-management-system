@@ -79,7 +79,13 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
 
   // Fetch stream details if editing (only when streamId and schoolId exist)
   useEffect(() => {
-    if (!streamId || !schoolId) {
+    // Explicit checks to prevent undefined/null/empty streamId
+    if (!streamId || typeof streamId !== 'string' || streamId === 'undefined' || streamId === 'null' || streamId.length === 0) {
+      setLoadingClasses(false);
+      return;
+    }
+    
+    if (!schoolId || typeof schoolId !== 'string' || schoolId.length === 0) {
       setLoadingClasses(false);
       return;
     }
