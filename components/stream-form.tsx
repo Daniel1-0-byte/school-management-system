@@ -148,6 +148,8 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
 
       const method = streamId ? 'PATCH' : 'POST';
       const endpoint = streamId ? `/api/school/streams/${streamId}` : '/api/school/streams';
+      
+      console.log('[v0] Submitting stream form:', { streamId, method, endpoint, schoolId });
 
       const response = await fetch(endpoint, {
         method,

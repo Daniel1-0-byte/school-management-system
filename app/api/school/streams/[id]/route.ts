@@ -4,8 +4,11 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log('[v0] GET /streams/[id] - params.id:', params.id, 'type:', typeof params.id);
+    
     // Validate stream ID is not undefined, null, or the string "undefined"
-    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || (typeof params.id === 'string' && params.id.length === 0)) {
+      console.log('[v0] GET validation failed for stream ID:', params.id);
       return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
     }
 
@@ -43,8 +46,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log('[v0] PATCH /streams/[id] - params.id:', params.id, 'type:', typeof params.id);
+    
     // Validate stream ID is not undefined, null, or the string "undefined"
-    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || (typeof params.id === 'string' && params.id.length === 0)) {
+      console.log('[v0] PATCH validation failed for stream ID:', params.id);
       return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
     }
 
@@ -101,8 +107,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log('[v0] DELETE /streams/[id] - params.id:', params.id, 'type:', typeof params.id);
+    
     // Validate stream ID is not undefined, null, or the string "undefined"
-    if (!params.id || params.id === 'undefined' || params.id === 'null' || params.id.length === 0) {
+    if (!params.id || params.id === 'undefined' || params.id === 'null' || (typeof params.id === 'string' && params.id.length === 0)) {
+      console.log('[v0] DELETE validation failed for stream ID:', params.id);
       return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
     }
 
