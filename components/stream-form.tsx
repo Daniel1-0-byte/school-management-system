@@ -37,54 +37,78 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [schoolId, setSchoolId] = useState<string | null>(null);
 
-  // Fetch school classes and current stream data
+  // Get school ID from session first
   useEffect(() => {
-    const fetchData = async () => {
+    const getSchoolId = async () => {
       try {
-        // Get school ID from session
         const response = await fetch('/api/auth/session', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           const sid = data.session?.schoolId || null;
           setSchoolId(sid);
-
-          // Fetch school classes
-          const classesResponse = await fetch('/api/school/classes', { 
-            credentials: 'include',
-            headers: { 'X-School-Id': sid }
-          });
-          if (classesResponse.ok) {
-            const classesData = await classesResponse.json();
-            setSchoolClasses(classesData.data || []);
-          }
         }
+      } catch (err) {
+        console.error('[v0] Error getting school ID:', err);
+      }
+    };
 
-        // If editing, fetch stream details
-        if (streamId && schoolId) {
-          const streamResponse = await fetch(`/api/school/streams/${streamId}`, { 
-            credentials: 'include',
-            headers: { 'X-School-Id': schoolId }
-          });
-          if (streamResponse.ok) {
-            const streamData = await streamResponse.json();
-            if (streamData.data) {
-              const stream = streamData.data;
-              setFormData({
-                name: stream.name || '',
-                school_class_id: stream.school_class_id || '',
-                capacity: stream.capacity || undefined,
-              });
-            }
+    getSchoolId();
+  }, []);
+
+  // Fetch school classes once schoolId is available
+  useEffect(() => {
+    if (!schoolId) return;
+
+    const fetchClasses = async () => {
+      try {
+        const classesResponse = await fetch('/api/school/classes', { 
+          credentials: 'include',
+          headers: { 'X-School-Id': schoolId }
+        });
+        if (classesResponse.ok) {
+          const classesData = await classesResponse.json();
+          setSchoolClasses(classesData.data || []);
+        }
+      } catch (err) {
+        console.error('[v0] Error fetching classes:', err);
+      }
+    };
+
+    fetchClasses();
+  }, [schoolId]);
+
+  // Fetch stream details if editing (only when streamId and schoolId exist)
+  useEffect(() => {
+    if (!streamId || !schoolId) {
+      setLoadingClasses(false);
+      return;
+    }
+
+    const fetchStreamData = async () => {
+      try {
+        const streamResponse = await fetch(`/api/school/streams/${streamId}`, { 
+          credentials: 'include',
+          headers: { 'X-School-Id': schoolId }
+        });
+        if (streamResponse.ok) {
+          const streamData = await streamResponse.json();
+          if (streamData.data) {
+            const stream = streamData.data;
+            setFormData({
+              name: stream.name || '',
+              school_class_id: stream.school_class_id || '',
+              capacity: stream.capacity || undefined,
+            });
           }
         }
       } catch (err) {
-        console.error('[v0] Error fetching data:', err);
+        console.error('[v0] Error fetching stream data:', err);
       } finally {
         setLoadingClasses(false);
       }
     };
 
-    fetchData();
+    fetchStreamData();
   }, [streamId, schoolId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -244,7 +268,7 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
         ) : (
           <>
             <Save className="w-4 h-4" />
-            <span>Create Stream</span>
+            <span>{streamId ? 'Update Stream' : 'Create Stream'}</span>
           </>
         )}
       </button>
