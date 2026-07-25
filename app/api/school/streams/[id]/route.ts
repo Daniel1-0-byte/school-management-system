@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StreamService } from '@/lib/services/stream-service';
+import { querySchoolClassStreams, formatSupabaseError } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -15,18 +15,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
     }
 
-    const result = await StreamService.getStreamDetails(params.id);
+    const { data, error } = await querySchoolClassStreams()
+      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
+      .eq('id', params.id)
+      .eq('school_id', schoolId)
+      .single();
 
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+      }
+      console.error('[v0] Stream GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    // Verify the stream belongs to this school
-    if (result.data && result.data.schoolId !== schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    return NextResponse.json({ data: result.data });
+    return NextResponse.json({ data });
   } catch (error) {
     console.error('[v0] Stream GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch stream' }, { status: 500 });
@@ -47,20 +50,24 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // Verify stream belongs to school before deleting
-    const streamDetails = await StreamService.getStreamDetails(params.id);
-    if (streamDetails.error || !streamDetails.data) {
-      return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+    const { data: streamData, error: selectError } = await querySchoolClassStreams()
+      .select('school_id')
+      .eq('id', params.id)
+      .eq('school_id', schoolId)
+      .single();
+
+    if (selectError || !streamData) {
+      return NextResponse.json({ error: 'Stream not found or unauthorized' }, { status: 404 });
     }
 
-    if (streamDetails.data.schoolId !== schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    // Update status to inactive
+    const { error: updateError } = await querySchoolClassStreams()
+      .update({ status: 'inactive' })
+      .eq('id', params.id);
 
-    // Deactivate the stream
-    const result = await StreamService.deactivateStream(params.id);
-
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 400 });
+    if (updateError) {
+      console.error('[v0] Stream DELETE error:', updateError);
+      return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });

@@ -2,16 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { Save, AlertCircle, Loader2 } from 'lucide-react';
-import { StreamService } from '@/lib/services/stream-service';
 import { z } from 'zod';
 
 const streamSchema = z.object({
-  streamName: z.string().min(1, 'Stream name is required'),
-  systemClassId: z.string().min(1, 'Class is required'),
+  name: z.string().min(1, 'Stream name is required'),
+  school_class_id: z.string().min(1, 'Class is required'),
   capacity: z.number().int().positive('Capacity must be a positive number').optional(),
 });
 
 type StreamFormData = z.infer<typeof streamSchema>;
+
+interface SchoolClass {
+  id: string;
+  name: string;
+  level: string;
+}
 
 interface StreamFormProps {
   streamId?: string;
@@ -20,49 +25,53 @@ interface StreamFormProps {
 
 export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
   const [formData, setFormData] = useState<StreamFormData>({
-    streamName: '',
-    systemClassId: '',
+    name: '',
+    school_class_id: '',
     capacity: undefined,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [systemClasses, setSystemClasses] = useState<any[]>([]);
+  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [schoolId, setSchoolId] = useState<string | null>(null);
-  const [academicYearId, setAcademicYearId] = useState<string | null>(null);
 
-  // Fetch system classes and current stream data
+  // Fetch school classes and current stream data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get school and academic year
+        // Get school ID from session
         const response = await fetch('/api/auth/session', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
-          setSchoolId(data.session?.schoolId || null);
-          setAcademicYearId(data.session?.academicYearId || null);
-        }
+          const sid = data.session?.schoolId || null;
+          setSchoolId(sid);
 
-        // Fetch system classes
-        const classesResponse = await fetch('/api/curriculum/classes', { credentials: 'include' });
-        if (classesResponse.ok) {
-          const classesData = await classesResponse.json();
-          setSystemClasses(classesData.data || []);
+          // Fetch school classes
+          const classesResponse = await fetch('/api/school/classes', { 
+            credentials: 'include',
+            headers: { 'X-School-Id': sid }
+          });
+          if (classesResponse.ok) {
+            const classesData = await classesResponse.json();
+            setSchoolClasses(classesData.data || []);
+          }
         }
 
         // If editing, fetch stream details
-        if (streamId) {
-          const streamResponse = await fetch(`/api/school/streams/${streamId}`, { credentials: 'include' });
+        if (streamId && schoolId) {
+          const streamResponse = await fetch(`/api/school/streams/${streamId}`, { 
+            credentials: 'include',
+            headers: { 'X-School-Id': schoolId }
+          });
           if (streamResponse.ok) {
             const streamData = await streamResponse.json();
             if (streamData.data) {
-              // Handle both camelCase and snake_case responses
               const stream = streamData.data;
               setFormData({
-                streamName: stream.streamName || stream.stream_name || '',
-                systemClassId: stream.systemClassId || stream.system_class_id || '',
+                name: stream.name || '',
+                school_class_id: stream.school_class_id || '',
                 capacity: stream.capacity || undefined,
               });
             }
@@ -76,7 +85,7 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
     };
 
     fetchData();
-  }, [streamId]);
+  }, [streamId, schoolId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -101,25 +110,35 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
     try {
       const validated = streamSchema.parse(formData);
 
-      if (!schoolId || !academicYearId) {
-        throw new Error('School or academic year not found');
+      if (!schoolId) {
+        throw new Error('School not found');
       }
 
       setSaving(true);
 
-      const result = await StreamService.createStream({
-        schoolId,
-        academicYearId,
-        systemClassId: validated.systemClassId,
-        streamName: validated.streamName,
-        capacity: validated.capacity,
+      const method = streamId ? 'PATCH' : 'POST';
+      const endpoint = streamId ? `/api/school/streams/${streamId}` : '/api/school/streams';
+
+      const response = await fetch(endpoint, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-School-Id': schoolId,
+        },
+        body: JSON.stringify({
+          name: validated.name,
+          school_class_id: validated.school_class_id,
+          capacity: validated.capacity || null,
+        }),
       });
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        onSuccess?.();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save stream');
       }
+
+      onSuccess?.();
     } catch (err) {
       if (err instanceof z.ZodError) {
         const newErrors: Record<string, string> = {};
@@ -160,15 +179,15 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
         </label>
         <input
           type="text"
-          name="streamName"
-          value={formData.streamName}
+          name="name"
+          value={formData.name}
           onChange={handleChange}
           placeholder="e.g., Stream A, Stream B"
           className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none ${
-            errors.streamName ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
+            errors.name ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
           }`}
         />
-        {errors.streamName && <p className="text-sm text-red-600 mt-1">{errors.streamName}</p>}
+        {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
       </div>
 
       {/* Class Selection */}
@@ -177,21 +196,21 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
           Class <span className="text-red-600">*</span>
         </label>
         <select
-          name="systemClassId"
-          value={formData.systemClassId}
+          name="school_class_id"
+          value={formData.school_class_id}
           onChange={handleChange}
           className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none ${
-            errors.systemClassId ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
+            errors.school_class_id ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
           }`}
         >
           <option value="">Select a class</option>
-          {systemClasses.map((cls) => (
+          {schoolClasses.map((cls) => (
             <option key={cls.id} value={cls.id}>
               {cls.name}
             </option>
           ))}
         </select>
-        {errors.systemClassId && <p className="text-sm text-red-600 mt-1">{errors.systemClassId}</p>}
+        {errors.school_class_id && <p className="text-sm text-red-600 mt-1">{errors.school_class_id}</p>}
       </div>
 
       {/* Capacity */}

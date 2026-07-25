@@ -2,10 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, BookOpen } from 'lucide-react';
-import type { StreamWithSubjects } from '@/lib/services/stream-service';
+
+export interface ClassStream {
+  id: string;
+  name: string;
+  school_class_id: string;
+  school_class?: {
+    id: string;
+    name: string;
+    level: string;
+  };
+  capacity: number | null;
+  status: string;
+  class_teacher_id: string | null;
+}
 
 export default function ClassesPage() {
-  const [streams, setStreams] = useState<StreamWithSubjects[]>([]);
+  const [streams, setStreams] = useState<ClassStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
@@ -186,8 +199,8 @@ export default function ClassesPage() {
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground">{stream.streamName}</h3>
-                  <p className="text-sm text-muted-foreground">{stream.systemClass?.name}</p>
+                  <h3 className="text-xl font-bold text-foreground">{stream.name}</h3>
+                  <p className="text-sm text-muted-foreground">{stream.school_class?.name}</p>
                 </div>
                 <div className="flex gap-2">
                   <a
@@ -209,15 +222,11 @@ export default function ClassesPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Class Level</span>
-                  <span className="font-medium text-foreground">{stream.systemClass?.name || 'N/A'}</span>
+                  <span className="font-medium text-foreground">{stream.school_class?.name || 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Capacity</span>
                   <span className="font-medium text-foreground">{stream.capacity || 'Unlimited'}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Subjects</span>
-                  <span className="font-medium text-foreground">{stream.subjects?.length || 0}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Status</span>
@@ -232,26 +241,6 @@ export default function ClassesPage() {
                   </span>
                 </div>
               </div>
-
-              {/* Subjects Preview */}
-              {stream.subjects && stream.subjects.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Core Subjects:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {stream.subjects
-                      .filter((s) => s.isCore)
-                      .slice(0, 3)
-                      .map((subject) => (
-                        <span key={subject.id} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                          {subject.subject?.code || 'N/A'}
-                        </span>
-                      ))}
-                    {stream.subjects.filter((s) => s.isCore).length > 3 && (
-                      <span className="text-xs text-muted-foreground px-2 py-1">+{stream.subjects.filter((s) => s.isCore).length - 3}</span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           ))
         )}

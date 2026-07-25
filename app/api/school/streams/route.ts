@@ -28,11 +28,11 @@ export async function GET(request: NextRequest) {
     }
 
     let query = querySchoolClassStreams()
-      .select('id, school_id, class_id, system_class_id, name, section, is_active, created_at')
+      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
       .eq('school_id', schoolId);
 
     if (activeOnly) {
-      query = query.eq('is_active', true);
+      query = query.eq('status', 'active');
     }
 
     query = query.order('name', { ascending: true });
