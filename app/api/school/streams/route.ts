@@ -39,6 +39,9 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
 
+    console.log('[API] GET streams - data:', data);
+    console.log('[API] GET streams - first stream:', data?.[0]);
+
     if (error) {
       console.error('[v0] Streams GET error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
