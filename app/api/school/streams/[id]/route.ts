@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { querySchoolClassStreams, formatSupabaseError } from '@/lib/supabase';
+import { querySchoolClassStreams, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    console.log('[GET] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
     if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {
@@ -24,21 +23,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
     }
 
-    const { data, error } = await querySchoolClassStreams()
-      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
+    const { data: stream, error: streamError } = await querySchoolClassStreams()
+      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at')
       .eq('id', id)
       .eq('school_id', schoolId)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
+    if (streamError) {
+      if (streamError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
       }
-      console.error('[v0] Stream GET error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      console.error('[v0] Stream GET error:', streamError);
+      return NextResponse.json({ error: formatSupabaseError(streamError) }, { status: 400 });
     }
 
-    return NextResponse.json({ data });
+    // Fetch school_classes data separately
+    let schoolClass = null;
+    if (stream?.school_class_id) {
+      const { data: classData } = await getServerSupabaseClient()
+        .from('school_classes')
+        .select('id, name, level')
+        .eq('id', stream.school_class_id)
+        .eq('school_id', schoolId)
+        .single();
+      schoolClass = classData;
+    }
+
+    const mergedStream = {
+      ...stream,
+      school_classes: schoolClass,
+    };
+
+    return NextResponse.json({ data: mergedStream });
   } catch (error) {
     console.error('[v0] Stream GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch stream' }, { status: 500 });
@@ -48,7 +64,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    console.log('[PATCH] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
     if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {
@@ -79,7 +94,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const body = await request.json();
-    console.log('[PATCH] body:', body);
     const { name, school_class_id, capacity, class_teacher_id, status } = body;
 
     const updatePayload = {
@@ -89,25 +103,38 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(class_teacher_id !== undefined && { class_teacher_id }),
       ...(status !== undefined && { status }),
     };
-    console.log('[PATCH] updatePayload:', updatePayload);
 
     // Update stream with provided fields
     const { error: updateError, data: updatedStream } = await querySchoolClassStreams()
       .update(updatePayload)
       .eq('id', id)
       .eq('school_id', schoolId)
-      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
+      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at')
       .single();
-
-    console.log('[PATCH] updateError:', updateError);
-    console.log('[PATCH] updatedStream:', updatedStream);
 
     if (updateError) {
       console.error('[v0] Stream PATCH error:', updateError);
       return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
     }
 
-    return NextResponse.json({ data: updatedStream });
+    // Fetch school_classes data separately
+    let schoolClass = null;
+    if (updatedStream?.school_class_id) {
+      const { data: classData } = await getServerSupabaseClient()
+        .from('school_classes')
+        .select('id, name, level')
+        .eq('id', updatedStream.school_class_id)
+        .eq('school_id', schoolId)
+        .single();
+      schoolClass = classData;
+    }
+
+    const mergedStream = {
+      ...updatedStream,
+      school_classes: schoolClass,
+    };
+
+    return NextResponse.json({ data: mergedStream });
   } catch (error) {
     console.error('[v0] Stream PATCH error:', error);
     return NextResponse.json({ error: 'Failed to update stream' }, { status: 500 });
@@ -117,7 +144,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    console.log('[DELETE] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
     if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {

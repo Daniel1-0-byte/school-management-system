@@ -7,11 +7,11 @@ export interface ClassStream {
   id: string;
   name: string;
   school_class_id: string;
-  school_class?: {
+  school_classes?: {
     id: string;
     name: string;
     level: string;
-  };
+  } | null;
   capacity: number | null;
   status: string;
   class_teacher_id: string | null;
@@ -78,7 +78,6 @@ export default function ClassesPage() {
       }
 
       const data = await response.json();
-      console.log('[v0] Fetched streams:', data.data);
       setStreams(data.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch streams');
@@ -192,9 +191,7 @@ export default function ClassesPage() {
             <p className="text-sm text-muted-foreground mt-2">Create your first stream to get started</p>
           </div>
         ) : (
-          streams.map((stream) => {
-            console.log('[v0] Rendering stream:', stream);
-            return (
+          streams.map((stream) => (
             <div
               key={stream.id}
               className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow"
@@ -203,7 +200,7 @@ export default function ClassesPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-foreground">{stream.name}</h3>
-                  <p className="text-sm text-muted-foreground">{stream.school_class?.name}</p>
+                  <p className="text-sm text-muted-foreground">{stream.school_classes?.name}</p>
                 </div>
                 <div className="flex gap-2">
                   <a
@@ -225,7 +222,7 @@ export default function ClassesPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Class Level</span>
-                  <span className="font-medium text-foreground">{stream.school_class?.level || 'N/A'}</span>
+                  <span className="font-medium text-foreground">{stream.school_classes?.level || 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Capacity</span>
@@ -245,8 +242,7 @@ export default function ClassesPage() {
                 </div>
               </div>
             </div>
-            );
-          })
+          ))
         )}
       </div>
     </div>
