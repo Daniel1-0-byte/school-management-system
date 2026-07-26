@@ -222,7 +222,7 @@ export default function ClassesPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Class Level</span>
-                  <span className="font-medium text-foreground">{stream.school_class?.name || 'N/A'}</span>
+                  <span className="font-medium text-foreground">{stream.school_class?.level || 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Capacity</span>
