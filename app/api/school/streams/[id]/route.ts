@@ -79,21 +79,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const body = await request.json();
+    console.log('[PATCH] body:', body);
     const { name, school_class_id, capacity, class_teacher_id, status } = body;
+
+    const updatePayload = {
+      ...(name !== undefined && { name }),
+      ...(school_class_id !== undefined && { school_class_id }),
+      ...(capacity !== undefined && { capacity }),
+      ...(class_teacher_id !== undefined && { class_teacher_id }),
+      ...(status !== undefined && { status }),
+    };
+    console.log('[PATCH] updatePayload:', updatePayload);
 
     // Update stream with provided fields
     const { error: updateError, data: updatedStream } = await querySchoolClassStreams()
-      .update({
-        ...(name !== undefined && { name }),
-        ...(school_class_id !== undefined && { school_class_id }),
-        ...(capacity !== undefined && { capacity }),
-        ...(class_teacher_id !== undefined && { class_teacher_id }),
-        ...(status !== undefined && { status }),
-      })
+      .update(updatePayload)
       .eq('id', id)
       .eq('school_id', schoolId)
       .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
       .single();
+
+    console.log('[PATCH] updateError:', updateError);
+    console.log('[PATCH] updatedStream:', updatedStream);
 
     if (updateError) {
       console.error('[v0] Stream PATCH error:', updateError);

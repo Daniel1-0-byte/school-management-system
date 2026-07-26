@@ -18,9 +18,23 @@ interface SchoolClass {
   level: string;
 }
 
+interface ClassStream {
+  id: string;
+  name: string;
+  school_class_id: string;
+  school_class?: {
+    id: string;
+    name: string;
+    level: string;
+  };
+  capacity: number | null;
+  status: string;
+  class_teacher_id: string | null;
+}
+
 interface StreamFormProps {
   streamId?: string;
-  onSuccess?: () => void;
+  onSuccess?: (stream?: ClassStream) => void;
 }
 
 export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
@@ -170,7 +184,11 @@ export function StreamForm({ streamId, onSuccess }: StreamFormProps) {
         throw new Error(errorData.error || 'Failed to save stream');
       }
 
-      onSuccess?.();
+      const responseData = await response.json();
+      console.log('[v0] Stream saved successfully:', responseData);
+      
+      // Call onSuccess with the updated stream data
+      onSuccess?.(responseData.data);
     } catch (err) {
       if (err instanceof z.ZodError) {
         const newErrors: Record<string, string> = {};
