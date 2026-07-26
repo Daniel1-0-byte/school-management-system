@@ -18,6 +18,7 @@ export async function GET(
     const headersList = await headers();
     const adminId = headersList.get('x-admin-id');
     const { id } = await params;
+    console.log('[GET] id:', id);
 
     if (!adminId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -73,6 +74,7 @@ export async function PUT(
     if (adminIdOrError instanceof NextResponse) return adminIdOrError;
     const adminId = adminIdOrError;
     const { id } = await params;
+    console.log('[PUT] id:', id);
 
     const body = await request.json();
 
@@ -164,6 +166,7 @@ export async function DELETE(
     if (adminIdOrError instanceof NextResponse) return adminIdOrError;
     const adminId = adminIdOrError;
     const { id } = await params;
+    console.log('[DELETE] id:', id);
 
     // Get school for audit log
     const { data: school } = await querySchools()

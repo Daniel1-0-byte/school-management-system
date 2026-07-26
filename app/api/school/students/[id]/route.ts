@@ -21,6 +21,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    console.log('[GET] id:', id);
     const schoolId = await getSchoolIdFromRequest(request);
 
     // Type guard to ensure schoolId is a string
@@ -64,6 +65,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    console.log('[PUT] id:', id);
     const body = await request.json();
     const validatedData = studentUpdateSchema.parse(body);
     const schoolId = await getSchoolIdFromRequest(request);
@@ -113,6 +115,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    console.log('[DELETE] id:', id);
     const schoolId = await getSchoolIdFromRequest(request);
 
     // Type guard to ensure schoolId is a string

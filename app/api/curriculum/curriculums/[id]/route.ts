@@ -2,17 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CurriculumService } from '@/lib/services/curriculum-service';
 import { getServerSupabaseClient } from '@/lib/supabase';
 
-interface RouteParams {
-  params: { id: string };
-}
-
 /**
  * GET /api/curriculum/curriculums/[id]
  * Get detailed curriculum with all classes and subjects
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
+    console.log('[GET] id:', id);
 
     if (!id) {
       return NextResponse.json(

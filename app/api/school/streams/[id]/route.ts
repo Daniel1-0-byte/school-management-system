@@ -5,7 +5,7 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    console.log('[v0] GET /streams/[id] - id:', id, 'type:', typeof id);
+    console.log('[GET] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
     if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {
@@ -45,13 +45,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log('[v0] PATCH /streams/[id] - params.id:', params.id, 'type:', typeof params.id);
+    const { id } = await params;
+    console.log('[PATCH] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
-    if (!params.id || params.id === 'undefined' || params.id === 'null' || (typeof params.id === 'string' && params.id.length === 0)) {
-      console.log('[v0] PATCH validation failed for stream ID:', params.id);
+    if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {
+      console.log('[v0] PATCH validation failed for stream ID:', id);
       return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
     }
 
@@ -69,7 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     // Verify stream belongs to school before updating
     const { data: streamData, error: selectError } = await querySchoolClassStreams()
       .select('school_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('school_id', schoolId)
       .single();
 
@@ -89,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         ...(class_teacher_id !== undefined && { class_teacher_id }),
         ...(status !== undefined && { status }),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('school_id', schoolId)
       .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at, school_classes:school_class_id(id, name, level)')
       .single();
@@ -106,13 +107,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log('[v0] DELETE /streams/[id] - params.id:', params.id, 'type:', typeof params.id);
+    const { id } = await params;
+    console.log('[DELETE] id:', id);
     
     // Validate stream ID is not undefined, null, or the string "undefined"
-    if (!params.id || params.id === 'undefined' || params.id === 'null' || (typeof params.id === 'string' && params.id.length === 0)) {
-      console.log('[v0] DELETE validation failed for stream ID:', params.id);
+    if (!id || id === 'undefined' || id === 'null' || (typeof id === 'string' && id.length === 0)) {
+      console.log('[v0] DELETE validation failed for stream ID:', id);
       return NextResponse.json({ error: 'Invalid stream ID' }, { status: 400 });
     }
 
@@ -130,7 +132,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     // Verify stream belongs to school before deleting
     const { data: streamData, error: selectError } = await querySchoolClassStreams()
       .select('school_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('school_id', schoolId)
       .single();
 
@@ -141,7 +143,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     // Update status to inactive
     const { error: updateError } = await querySchoolClassStreams()
       .update({ status: 'inactive' })
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (updateError) {
       console.error('[v0] Stream DELETE error:', updateError);
