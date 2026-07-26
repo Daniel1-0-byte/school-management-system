@@ -78,6 +78,7 @@ export default function ClassesPage() {
       }
 
       const data = await response.json();
+      console.log('[v0] Fetched streams:', data.data);
       setStreams(data.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch streams');
@@ -191,7 +192,9 @@ export default function ClassesPage() {
             <p className="text-sm text-muted-foreground mt-2">Create your first stream to get started</p>
           </div>
         ) : (
-          streams.map((stream) => (
+          streams.map((stream) => {
+            console.log('[v0] Rendering stream:', stream);
+            return (
             <div
               key={stream.id}
               className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow"
@@ -242,7 +245,8 @@ export default function ClassesPage() {
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
