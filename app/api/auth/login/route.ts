@@ -54,6 +54,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (authError || !authData.session) {
+      console.error('[v0][LOGIN] Auth error:', {
+        error: authError?.message,
+        code: authError?.status,
+        email,
+        timestamp: new Date().toISOString()
+      });
       return NextResponse.json(
         { success: false, error: 'Invalid email or password' },
         { status: 401 }
