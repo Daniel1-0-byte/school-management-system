@@ -226,3 +226,64 @@ export const SUPABASE_ERROR_CODES = {
   UNDEFINED_TABLE: '42P01',
   PERMISSION_DENIED: '42501',
 };
+
+// ============================================================================
+// GRADES MODULE QUERY HELPERS (Phase 1)
+// ============================================================================
+
+/**
+ * Query assessments table
+ * Assessments represent grading tasks with session/workflow tracking
+ */
+export function queryAssessments() {
+  return getServerSupabaseClient()
+    .from('assessments')
+    .select('*');
+}
+
+/**
+ * Query school grading policies
+ * Stores per-school grading configuration (weights, scales)
+ */
+export function querySchoolGradingPolicies() {
+  return getServerSupabaseClient()
+    .from('school_grading_policies')
+    .select('*');
+}
+
+/**
+ * Query grade entries with optional joins
+ * Enhanced to support 3-score model (class_score, exam_score, total_score)
+ */
+export function queryGradeEntriesWithAssessment() {
+  return getServerSupabaseClient()
+    .from('grade_entries')
+    .select(`
+      id,
+      student_id,
+      assessment_id,
+      class_score,
+      exam_score,
+      total_score,
+      school_id,
+      recorded_by,
+      submission_status,
+      created_at,
+      updated_at,
+      assessments:assessment_id (
+        id,
+        name,
+        assessment_type,
+        status,
+        max_marks
+      ),
+      students:student_id (
+        id,
+        admission_number,
+        profiles!students_user_id_fkey (
+          first_name,
+          last_name
+        )
+      )
+    `);
+}
