@@ -15,13 +15,19 @@ interface AssessmentSelectorProps {
 
 interface AcademicYear {
   id: string;
-  name: string;
   year: number;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
 }
 
 interface Stream {
   id: string;
   name: string;
+  school_classes: {
+    name: string;
+    level: string;
+  } | null;
 }
 
 interface Assessment {
@@ -156,7 +162,7 @@ export function AssessmentSelector({
             </option>
             {academicYears.map((year) => (
               <option key={year.id} value={year.id}>
-                {year.name}
+                {year.year}
               </option>
             ))}
           </select>
