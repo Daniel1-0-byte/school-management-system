@@ -21,26 +21,36 @@ export async function getSchoolIdFromRequest(
       schoolId = request.nextUrl.searchParams.get('school_id');
     }
     
-    // If still no school_id, try to extract from Supabase JWT auth token
+    // If still no school_id, try to extract from authenticated user session
     if (!schoolId) {
       try {
-        const { data, error } = await getServerSupabaseClient()
-          .auth.getUser();
+        // Get auth token from cookies (set during login)
+        const authToken = request.cookies.get('sb-auth-token')?.value;
         
-        if (error) {
-          console.warn('[v0] Failed to get auth user:', error.message);
+        if (!authToken) {
+          console.warn('[v0] No auth token found in request cookies');
           return null;
         }
         
-        if (!data.user?.id) {
-          console.warn('[v0] No authenticated user found');
+        // Parse JWT to get user ID (without verifying, just extracting payload)
+        const parts = authToken.split('.');
+        if (parts.length !== 3) {
+          console.warn('[v0] Invalid JWT format in auth token');
           return null;
         }
         
-        // Look up user's profile to find their school_id
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        const userId = payload.sub;
+        
+        if (!userId) {
+          console.warn('[v0] No user ID found in auth token');
+          return null;
+        }
+        
+        // Look up user's profile to find their school_id using service role
         const { data: profile, error: profileError } = await queryProfiles()
           .select('school_id')
-          .eq('user_id', data.user.id)
+          .eq('id', userId)
           .single();
         
         if (profileError) {
