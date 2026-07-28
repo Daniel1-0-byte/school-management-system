@@ -1,6 +1,6 @@
 import type { Profile, SystemRole } from '@/types';
 import { NextRequest } from 'next/server';
-import { queryProfiles, querySchools } from './supabase';
+import { getServerSupabaseClient, queryProfiles, querySchools } from './supabase';
 
 /**
  * Extract school_id from request context and validate access
