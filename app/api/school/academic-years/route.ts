@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await getServerSupabaseClient()
       .from('academic_years')
-      .select('id, name, year, start_date, end_date, is_active')
+      .select('id, year, start_date, end_date, is_active')
       .eq('school_id', schoolId)
       .order('year', { ascending: false });
 
