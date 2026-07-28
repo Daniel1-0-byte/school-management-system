@@ -4,27 +4,60 @@ import { queryProfiles, querySchools } from './supabase';
 
 /**
  * Extract school_id from request context and validate access
- * This is a simplified validation that assumes the school_id is passed as a query parameter or header
- * In a production system with proper Supabase auth integration, this would validate against auth.uid()
+ * Priority order:
+ * 1. X-School-Id header (explicitly provided)
+ * 2. school_id query parameter (backward compatibility)
+ * 3. Extract from Supabase JWT auth token (user's school)
  */
 export async function getSchoolIdFromRequest(
   request: NextRequest
 ): Promise<string | null> {
   try {
-    // NOTE: In current implementation, school_id comes from query params or X-School-Id header
-    // Check header first (client-sent via X-School-Id), then fall back to query params
-    // In production with Supabase auth, this would:
-    // 1. Extract user ID from Supabase JWT (auth.uid())
-    // 2. Look up user's school_id from profiles table
-    // 3. Return that school_id
-    // For now, APIs should validate school_id parameter matches an existing school
-    
-    // Try header first (modern pattern used by client components)
+    // Try header first (modern pattern, explicitly provided)
     let schoolId = request.headers.get('X-School-Id');
     
-    // Fall back to query parameter (legacy pattern for backward compatibility)
+    // Fall back to query parameter (legacy/backward compatibility)
     if (!schoolId) {
       schoolId = request.nextUrl.searchParams.get('school_id');
+    }
+    
+    // If still no school_id, try to extract from Supabase JWT auth token
+    if (!schoolId) {
+      try {
+        const { data, error } = await getServerSupabaseClient()
+          .auth.getUser();
+        
+        if (error) {
+          console.warn('[v0] Failed to get auth user:', error.message);
+          return null;
+        }
+        
+        if (!data.user?.id) {
+          console.warn('[v0] No authenticated user found');
+          return null;
+        }
+        
+        // Look up user's profile to find their school_id
+        const { data: profile, error: profileError } = await queryProfiles()
+          .select('school_id')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        if (profileError) {
+          console.warn('[v0] Failed to get user profile:', profileError.message);
+          return null;
+        }
+        
+        if (!profile?.school_id) {
+          console.warn('[v0] User profile has no school_id');
+          return null;
+        }
+        
+        schoolId = profile.school_id;
+      } catch (err) {
+        console.error('[v0] Error extracting school_id from auth:', err);
+        return null;
+      }
     }
     
     return schoolId;
