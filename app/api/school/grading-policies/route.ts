@@ -27,24 +27,21 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { 
-            error: 'No grading policy configured for this school',
-            data: {
-              school_id: schoolId,
-              class_score_weight: 30,
-              exam_score_weight: 70,
-              grade_scale: { A: 80, B: 70, C: 60, D: 50, F: 0 },
-              remarks_scale: {
-                excellent: 'Excellent performance',
-                good: 'Good performance',
-                fair: 'Fair performance',
-                poor: 'Needs improvement',
-              },
-            }
-          },
-          { status: 404 }
-        );
+        // Return default grading policy instead of 404
+        return NextResponse.json({ 
+          data: {
+            school_id: schoolId,
+            class_score_weight: 30,
+            exam_score_weight: 70,
+            grade_scale: { A: 80, B: 70, C: 60, D: 50, F: 0 },
+            remarks_scale: {
+              excellent: 'Excellent performance',
+              good: 'Good performance',
+              fair: 'Fair performance',
+              poor: 'Needs improvement',
+            },
+          }
+        });
       }
       console.error('[v0] Grading policy GET error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });

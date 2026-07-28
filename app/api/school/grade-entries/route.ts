@@ -43,7 +43,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    return NextResponse.json({ data: data || [] });
+    // Transform response to include student_name and admission_number
+    const transformedData = (data || []).map((entry: any) => {
+      const studentProfile = entry.students?.profiles;
+      const studentName = studentProfile
+        ? `${studentProfile.first_name || ''} ${studentProfile.last_name || ''}`.trim()
+        : 'Unknown Student';
+      
+      return {
+        id: entry.id,
+        student_id: entry.student_id,
+        student_name: studentName,
+        admission_number: entry.students?.admission_number || 'N/A',
+        assessment_id: entry.assessment_id,
+        class_score: entry.class_score,
+        exam_score: entry.exam_score,
+        total_score: entry.total_score,
+        grade: entry.grade,
+        remarks: entry.remarks,
+        submission_status: entry.submission_status,
+      };
+    });
+
+    return NextResponse.json({ data: transformedData || [] });
   } catch (error) {
     console.error('[v0] Grade entries GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch grade entries' }, { status: 500 });

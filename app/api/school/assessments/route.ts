@@ -45,7 +45,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    return NextResponse.json({ data: data || [] });
+    // Enrich each assessment with progress count
+    const enrichedData = await Promise.all(
+      (data || []).map(async (assessment: any) => {
+        const { count } = await getServerSupabaseClient()
+          .from('grade_entries')
+          .select('*', { count: 'exact', head: true })
+          .eq('assessment_id', assessment.id)
+          .eq('school_id', schoolId)
+          .not('class_score', 'is', null)
+          .not('exam_score', 'is', null);
+
+        return {
+          ...assessment,
+          progress_count: count || 0,
+        };
+      })
+    );
+
+    return NextResponse.json({ data: enrichedData || [] });
   } catch (error) {
     console.error('[v0] Assessments GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch assessments' }, { status: 500 });
