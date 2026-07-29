@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
 
 interface AssessmentSelectorProps {
   selectedAcademicYear: string;
@@ -60,12 +59,18 @@ export function AssessmentSelector({
     const fetchAcademicYears = async () => {
       try {
         setLoading(true);
-        onError(null);
         const response = await fetch('/api/school/academic-years');
-        if (!response.ok) throw new Error('Failed to fetch academic years');
+        console.log('[v0] Academic years fetch response status:', response.status);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[v0] Academic years fetch error:', errorData);
+          throw new Error('Failed to fetch academic years');
+        }
         const data = await response.json();
+        console.log('[v0] Academic years fetched:', data.data?.length, 'items');
         setAcademicYears(data.data || []);
       } catch (error) {
+        console.error('[v0] Failed to fetch academic years:', error);
         onError(error instanceof Error ? error.message : 'Failed to fetch academic years');
       } finally {
         setLoading(false);
@@ -86,11 +91,16 @@ export function AssessmentSelector({
       try {
         setStreamsLoading(true);
         onError(null);
-        const response = await fetch(
-          `/api/school/streams?academic_year_id=${selectedAcademicYear}`
-        );
-        if (!response.ok) throw new Error('Failed to fetch streams');
+        const response = await fetch(`/api/school/streams?academic_year_id=${selectedAcademicYear}`);
+        console.log('[v0] Streams fetch response status:', response.status);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[v0] Streams fetch error:', errorData);
+          throw new Error('Failed to fetch streams');
+        }
         const data = await response.json();
+        console.log('[v0] Streams fetched:', data.data?.length, 'items');
+        console.log('[v0] First stream:', data.data?.[0]);
         setStreams(data.data || []);
         setSelectedStream('');
         setAssessments([]);
@@ -114,11 +124,15 @@ export function AssessmentSelector({
       try {
         setAssessmentsLoading(true);
         onError(null);
-        const response = await fetch(
-          `/api/school/assessments?academic_year_id=${selectedAcademicYear}&stream_id=${selectedStream}`
-        );
-        if (!response.ok) throw new Error('Failed to fetch assessments');
+        const response = await fetch(`/api/school/assessments?stream_id=${selectedStream}`);
+        console.log('[v0] Assessment fetch response status:', response.status);
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('[v0] Assessment fetch error:', errorData);
+          throw new Error('Failed to fetch assessments');
+        }
         const data = await response.json();
+        console.log('[v0] Assessments fetched:', data.data?.length, 'items');
         setAssessments(data.data || []);
         setSelectedAssessment('');
       } catch (error) {
@@ -184,7 +198,9 @@ export function AssessmentSelector({
             </option>
             {streams.map((stream) => (
               <option key={stream.id} value={stream.id}>
-                {stream.name}
+                {stream.school_classes?.level && stream.school_classes?.name
+                  ? `${stream.school_classes.level} - ${stream.name}`
+                  : stream.name}
               </option>
             ))}
           </select>
@@ -206,7 +222,7 @@ export function AssessmentSelector({
             </option>
             {assessments.map((assessment) => (
               <option key={assessment.id} value={assessment.id}>
-                {assessment.name}
+                {assessment.name} ({assessment.progress_count || 0} students)
               </option>
             ))}
           </select>
@@ -220,28 +236,26 @@ export function AssessmentSelector({
             const assessment = assessments.find((a) => a.id === selectedAssessment);
             if (!assessment) return null;
             return (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Assessment Type</p>
-                    <p className="font-medium text-foreground capitalize">
-                      {assessment.assessment_type.replace('_', ' ')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Progress</p>
-                    <p className="font-medium text-foreground">
-                      {assessment.progress_count} / {assessment.total_students} students
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusBadge(assessment.status)}`}>
-                      {assessment.status.replace('_', ' ').toUpperCase()}
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Assessment Type</p>
+                  <p className="font-medium text-foreground capitalize">
+                    {assessment.assessment_type.replace('_', ' ')}
+                  </p>
                 </div>
-              </>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Progress</p>
+                  <p className="font-medium text-foreground">
+                    {assessment.progress_count} / {assessment.total_students} students
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusBadge(assessment.status)}`}>
+                    {assessment.status.replace('_', ' ').toUpperCase()}
+                  </span>
+                </div>
+              </div>
             );
           })()}
         </div>
