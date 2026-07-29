@@ -7,6 +7,7 @@ import { GradeEntryTable } from './grade-entry-table';
 interface GradeDashboardProps {
   subjectId: string;
   streamId: string;
+  termId: string;
   onError: (error: string | null) => void;
 }
 
@@ -30,6 +31,7 @@ interface GradingPolicy {
 export function GradeDashboard({
   subjectId,
   streamId,
+  termId,
   onError,
 }: GradeDashboardProps) {
   const [grades, setGrades] = useState<GradeEntry[]>([]);
@@ -37,6 +39,7 @@ export function GradeDashboard({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [assessmentId, setAssessmentId] = useState<string>('');
 
   // Fetch grades and grading policy on mount
   useEffect(() => {
@@ -45,13 +48,34 @@ export function GradeDashboard({
         setLoading(true);
         onError(null);
 
-        // Fetch grades for this subject/stream combination
-        const gradesResponse = await fetch(
-          `/api/school/grade-entries?subject_id=${subjectId}&stream_id=${streamId}`
+        // First, find or create assessment for this subject/stream/term combination
+        const assessmentResponse = await fetch(
+          `/api/school/assessments?subject_id=${subjectId}&stream_id=${streamId}&term_id=${termId}`
         );
-        if (!gradesResponse.ok) throw new Error('Failed to fetch grades');
-        const gradesData = await gradesResponse.json();
-        setGrades(gradesData.data || []);
+        if (!assessmentResponse.ok) {
+          console.error('[v0] Assessment lookup failed:', await assessmentResponse.json());
+          throw new Error('Failed to find assessment for this subject');
+        }
+        const assessmentData = await assessmentResponse.json();
+        const assessments = assessmentData.data || [];
+        
+        if (assessments.length === 0) {
+          console.log('[v0] No assessment found for subject/stream/term, grades list will be empty');
+          setGrades([]);
+          setAssessmentId('');
+        } else {
+          // Use the first (should be only one) matching assessment
+          const currentAssessment = assessments[0];
+          setAssessmentId(currentAssessment.id);
+
+          // Fetch grades for this assessment
+          const gradesResponse = await fetch(
+            `/api/school/grade-entries?assessment_id=${currentAssessment.id}`
+          );
+          if (!gradesResponse.ok) throw new Error('Failed to fetch grades');
+          const gradesData = await gradesResponse.json();
+          setGrades(gradesData.data || []);
+        }
 
         // Fetch grading policy
         const policyResponse = await fetch('/api/school/grading-policies');
@@ -66,10 +90,10 @@ export function GradeDashboard({
       }
     };
 
-    if (subjectId && streamId) {
+    if (subjectId && streamId && termId) {
       fetchData();
     }
-  }, [subjectId, streamId, onError]);
+  }, [subjectId, streamId, termId, onError]);
 
   // Calculate total score and grade based on policy
   const calculateTotalAndGrade = (classScore: number | null, examScore: number | null) => {

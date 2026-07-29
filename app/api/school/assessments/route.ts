@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters for filtering
     const academicYearId = request.nextUrl.searchParams.get('academic_year_id');
+    const termId = request.nextUrl.searchParams.get('term_id');
     const streamId = request.nextUrl.searchParams.get('stream_id');
     const subjectId = request.nextUrl.searchParams.get('subject_id');
     const status = request.nextUrl.searchParams.get('status');
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
 
     // Apply filters
     if (academicYearId) query = query.eq('academic_year_id', academicYearId);
+    if (termId) query = query.eq('term_id', termId);
     if (streamId) query = query.eq('stream_id', streamId);
     if (subjectId) query = query.eq('subject_id', subjectId);
     if (status) query = query.eq('status', status);

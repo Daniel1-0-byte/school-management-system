@@ -7,6 +7,7 @@ import { GradeDashboard } from '@/components/grades/grade-dashboard';
 
 export default function GradesPage() {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('');
+  const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [selectedStream, setSelectedStream] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +15,7 @@ export default function GradesPage() {
   // Reset error when selection changes
   useEffect(() => {
     setError(null);
-  }, [selectedAcademicYear, selectedStream, selectedSubject]);
+  }, [selectedAcademicYear, selectedTerm, selectedStream, selectedSubject]);
 
   return (
     <div className="space-y-6 pb-8">
@@ -47,6 +48,8 @@ export default function GradesPage() {
         setSelectedStream={setSelectedStream}
         selectedSubject={selectedSubject}
         setSelectedSubject={setSelectedSubject}
+        selectedTerm={selectedTerm}
+        setSelectedTerm={setSelectedTerm}
         onError={setError}
       />
 
@@ -55,6 +58,7 @@ export default function GradesPage() {
         <GradeDashboard
           subjectId={selectedSubject}
           streamId={selectedStream}
+          termId={selectedTerm}
           onError={setError}
         />
       )}

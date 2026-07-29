@@ -27,11 +27,26 @@ interface Stream {
   } | null;
 }
 
+interface Term {
+  id: string;
+  academic_year_id: string;
+  term_number: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
+
 interface Subject {
   id: string;
   name: string;
   code: string;
   student_count: number;
+}
+
+interface SubjectSelectorPropsExtended extends SubjectSelectorProps {
+  selectedTerm?: string;
+  setSelectedTerm?: (value: string) => void;
 }
 
 export function SubjectSelector({
@@ -42,11 +57,16 @@ export function SubjectSelector({
   selectedSubject,
   setSelectedSubject,
   onError,
-}: SubjectSelectorProps) {
+  selectedTerm: propSelectedTerm = '',
+  setSelectedTerm: propSetSelectedTerm,
+}: SubjectSelectorPropsExtended) {
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [terms, setTerms] = useState<Term[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState(propSelectedTerm);
   const [loading, setLoading] = useState(false);
+  const [termsLoading, setTermsLoading] = useState(false);
   const [streamsLoading, setStreamsLoading] = useState(false);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
 
@@ -69,9 +89,37 @@ export function SubjectSelector({
     fetchAcademicYears();
   }, [onError]);
 
-  // Fetch streams when academic year changes
+  // Fetch terms when academic year changes
   useEffect(() => {
     if (!selectedAcademicYear) {
+      setTerms([]);
+      setSelectedTerm('');
+      return;
+    }
+
+    const fetchTerms = async () => {
+      try {
+        setTermsLoading(true);
+        const response = await fetch(
+          `/api/school/terms?academic_year_id=${selectedAcademicYear}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch terms');
+        const data = await response.json();
+        setTerms(data.data || []);
+        setSelectedTerm('');
+      } catch (error) {
+        console.error('[v0] Failed to fetch terms:', error);
+        onError('Failed to load terms');
+      } finally {
+        setTermsLoading(false);
+      }
+    };
+    fetchTerms();
+  }, [selectedAcademicYear, onError]);
+
+  // Fetch streams when term changes
+  useEffect(() => {
+    if (!selectedTerm) {
       setStreams([]);
       setSelectedStream('');
       return;
@@ -95,7 +143,7 @@ export function SubjectSelector({
       }
     };
     fetchStreams();
-  }, [selectedAcademicYear, setSelectedStream, onError]);
+  }, [selectedTerm, setSelectedStream, onError]);
 
   // Fetch subjects when stream changes
   useEffect(() => {
@@ -127,7 +175,7 @@ export function SubjectSelector({
     <div className="bg-card border border-border rounded-lg p-6 space-y-4">
       <h2 className="text-lg font-semibold text-foreground">Select Class and Subject</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Academic Year */}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
@@ -140,11 +188,36 @@ export function SubjectSelector({
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="">
-              {loading ? 'Loading...' : 'Select Academic Year'}
+              {loading ? 'Loading...' : 'Select Year'}
             </option>
             {academicYears.map((year) => (
               <option key={year.id} value={year.id}>
                 {year.year}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Term */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Term
+          </label>
+          <select
+            value={selectedTerm}
+            onChange={(e) => {
+              setSelectedTerm(e.target.value);
+              propSetSelectedTerm?.(e.target.value);
+            }}
+            disabled={!selectedAcademicYear || termsLoading}
+            className="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          >
+            <option value="">
+              {termsLoading ? 'Loading...' : 'Select Term'}
+            </option>
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {term.name}
               </option>
             ))}
           </select>
@@ -158,7 +231,7 @@ export function SubjectSelector({
           <select
             value={selectedStream}
             onChange={(e) => setSelectedStream(e.target.value)}
-            disabled={!selectedAcademicYear || streamsLoading}
+            disabled={!selectedTerm || streamsLoading}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="">
