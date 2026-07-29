@@ -5,7 +5,7 @@ import { Loader2, Save, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { GradeEntryTable } from './grade-entry-table';
 
 interface GradeDashboardProps {
-  assessmentId: string;
+  subjectId: string;
   streamId: string;
   onError: (error: string | null) => void;
 }
@@ -28,7 +28,7 @@ interface GradingPolicy {
 }
 
 export function GradeDashboard({
-  assessmentId,
+  subjectId,
   streamId,
   onError,
 }: GradeDashboardProps) {
@@ -45,9 +45,9 @@ export function GradeDashboard({
         setLoading(true);
         onError(null);
 
-        // Fetch grades for this assessment
+        // Fetch grades for this subject/stream combination
         const gradesResponse = await fetch(
-          `/api/school/grade-entries?assessment_id=${assessmentId}`
+          `/api/school/grade-entries?subject_id=${subjectId}&stream_id=${streamId}`
         );
         if (!gradesResponse.ok) throw new Error('Failed to fetch grades');
         const gradesData = await gradesResponse.json();
@@ -66,10 +66,10 @@ export function GradeDashboard({
       }
     };
 
-    if (assessmentId) {
+    if (subjectId && streamId) {
       fetchData();
     }
-  }, [assessmentId, onError]);
+  }, [subjectId, streamId, onError]);
 
   // Calculate total score and grade based on policy
   const calculateTotalAndGrade = (classScore: number | null, examScore: number | null) => {

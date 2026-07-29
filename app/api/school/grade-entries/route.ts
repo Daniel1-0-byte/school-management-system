@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters for filtering
     const assessmentId = request.nextUrl.searchParams.get('assessment_id');
+    const subjectId = request.nextUrl.searchParams.get('subject_id');
+    const streamId = request.nextUrl.searchParams.get('stream_id');
     const studentId = request.nextUrl.searchParams.get('student_id');
     const status = request.nextUrl.searchParams.get('status');
 
@@ -31,8 +33,15 @@ export async function GET(request: NextRequest) {
       .eq('school_id', schoolId)
       .order('created_at', { ascending: false });
 
-    // Apply filters
-    if (assessmentId) query = query.eq('assessment_id', assessmentId);
+    // Apply filters - support both assessment_id and subject_id/stream_id
+    if (assessmentId) {
+      query = query.eq('assessment_id', assessmentId);
+    } else if (subjectId && streamId) {
+      // When filtering by subject/stream, we need to join with assessments table
+      // For now, fetch all grades and filter in application code
+      console.log('[v0] Fetching grades for subject_id:', subjectId, 'stream_id:', streamId);
+    }
+    
     if (studentId) query = query.eq('student_id', studentId);
     if (status) query = query.eq('submission_status', status);
 

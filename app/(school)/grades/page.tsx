@@ -1,22 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, AlertCircle, Book } from 'lucide-react';
-import { AssessmentSelector } from '@/components/grades/assessment-selector';
+import { AlertCircle, Book } from 'lucide-react';
+import { SubjectSelector } from '@/components/grades/subject-selector';
 import { GradeDashboard } from '@/components/grades/grade-dashboard';
 
 export default function GradesPage() {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('');
   const [selectedStream, setSelectedStream] = useState<string>('');
-  const [selectedAssessment, setSelectedAssessment] = useState<string>('');
-  const [loading, setLoading] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Reset selection when academic year or stream changes
+  // Reset error when selection changes
   useEffect(() => {
-    setSelectedAssessment('');
     setError(null);
-  }, [selectedAcademicYear, selectedStream]);
+  }, [selectedAcademicYear, selectedStream, selectedSubject]);
 
   return (
     <div className="space-y-6 pb-8">
@@ -28,7 +26,7 @@ export default function GradesPage() {
             Grade Entry
           </h1>
           <p className="text-muted-foreground mt-2">
-            Enter and manage student grades for assessments
+            Enter student grades for class and exam scores
           </p>
         </div>
       </div>
@@ -41,35 +39,35 @@ export default function GradesPage() {
         </div>
       )}
 
-      {/* Assessment Selection Panel */}
-      <AssessmentSelector
+      {/* Subject Selection Panel */}
+      <SubjectSelector
         selectedAcademicYear={selectedAcademicYear}
         setSelectedAcademicYear={setSelectedAcademicYear}
         selectedStream={selectedStream}
         setSelectedStream={setSelectedStream}
-        selectedAssessment={selectedAssessment}
-        setSelectedAssessment={setSelectedAssessment}
+        selectedSubject={selectedSubject}
+        setSelectedSubject={setSelectedSubject}
         onError={setError}
       />
 
-      {/* Grade Dashboard - Only show if assessment is selected */}
-      {selectedAssessment && (
+      {/* Grade Dashboard - Only show if subject is selected */}
+      {selectedSubject && (
         <GradeDashboard
-          assessmentId={selectedAssessment}
+          subjectId={selectedSubject}
           streamId={selectedStream}
           onError={setError}
         />
       )}
 
       {/* Empty State */}
-      {!selectedAssessment && (
+      {!selectedSubject && (
         <div className="bg-card border border-border rounded-lg p-12 text-center">
           <Book className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            No Assessment Selected
+            No Subject Selected
           </h3>
           <p className="text-muted-foreground mb-4">
-            Select an assessment to begin entering grades
+            Select a subject to begin entering grades for the class
           </p>
         </div>
       )}
