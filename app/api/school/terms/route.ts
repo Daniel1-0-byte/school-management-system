@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
+import { formatSupabaseError, queryTerms } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 /**
@@ -34,12 +34,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch terms for the academic year
-    const { data: terms, error: termsError } = await getServerSupabaseClient()
-      .from('academic_year_terms')
-      .select('id, academic_year_id, term_number, name, start_date, end_date, is_active, created_at, updated_at')
+    // Fetch terms for the academic year from public.terms table
+    const { data: terms, error: termsError } = await queryTerms()
+      .select('id, academic_year_id, type, start_date, end_date, report_card_deadline, created_at, updated_at')
+      .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
-      .order('term_number', { ascending: true });
+      .order('start_date', { ascending: true });
 
     if (termsError) {
       console.error('[v0] Terms GET error:', termsError);

@@ -30,11 +30,10 @@ interface Stream {
 interface Term {
   id: string;
   academic_year_id: string;
-  term_number: number;
-  name: string;
+  type: string; // 'term_1', 'term_2', 'term_3'
   start_date: string;
   end_date: string;
-  is_active: boolean;
+  report_card_deadline: string | null;
 }
 
 interface Subject {
@@ -215,11 +214,16 @@ export function SubjectSelector({
             <option value="">
               {termsLoading ? 'Loading...' : 'Select Term'}
             </option>
-            {terms.map((term) => (
-              <option key={term.id} value={term.id}>
-                {term.name}
-              </option>
-            ))}
+            {terms.map((term) => {
+              const termLabel = term.type === 'term_1' ? 'Term 1' : 
+                                term.type === 'term_2' ? 'Term 2' : 
+                                term.type === 'term_3' ? 'Term 3' : term.type;
+              return (
+                <option key={term.id} value={term.id}>
+                  {termLabel} ({term.start_date} to {term.end_date})
+                </option>
+              );
+            })}
           </select>
         </div>
 
