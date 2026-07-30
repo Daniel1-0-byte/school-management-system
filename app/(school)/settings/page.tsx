@@ -9,6 +9,7 @@ interface SettingsSection {
   label: string;
   icon: React.ReactNode;
   href: string;
+  enabled?: boolean;
 }
 
 export default function SettingsPage() {
@@ -25,10 +26,10 @@ export default function SettingsPage() {
   });
 
   const sections: SettingsSection[] = [
-    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings/school-info' },
-    { id: 'academic', label: 'Academic Setup', icon: <Calendar className="w-5 h-5" />, href: '/settings/academic-setup' },
-    { id: 'fees', label: 'Fee Structure', icon: <DollarSign className="w-5 h-5" />, href: '/settings/fees' },
-    { id: 'security', label: 'Security', icon: <Lock className="w-5 h-5" />, href: '/settings/security' },
+    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings/school-info', enabled: false },
+    { id: 'academic', label: 'Academic Years & Terms', icon: <Calendar className="w-5 h-5" />, href: '/settings/academic-years', enabled: true },
+    { id: 'fees', label: 'Fee Structure', icon: <DollarSign className="w-5 h-5" />, href: '/settings/fees', enabled: false },
+    { id: 'security', label: 'Security', icon: <Lock className="w-5 h-5" />, href: '/settings/security', enabled: false },
   ];
 
   const handleSave = async () => {
@@ -47,6 +48,12 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleNavigate = (href: string, enabled: boolean) => {
+    if (enabled) {
+      router.push(href);
     }
   };
 
@@ -73,11 +80,21 @@ export default function SettingsPage() {
             {sections.map((section) => (
               <button
                 key={section.id}
-                onClick={() => router.push(section.href)}
-                className="w-full flex items-center gap-3 px-4 py-3 border-b border-border hover:bg-muted transition-colors text-left last:border-0"
+                onClick={() => handleNavigate(section.href, section.enabled || false)}
+                disabled={!section.enabled}
+                className={`w-full flex items-center gap-3 px-4 py-3 border-b border-border text-left last:border-0 transition-colors ${
+                  section.enabled
+                    ? 'hover:bg-muted cursor-pointer'
+                    : 'opacity-60 cursor-not-allowed'
+                }`}
               >
-                <span className="text-primary">{section.icon}</span>
-                <span className="text-sm font-medium text-foreground">{section.label}</span>
+                <span className={section.enabled ? 'text-primary' : 'text-muted-foreground'}>{section.icon}</span>
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-foreground">{section.label}</span>
+                  {!section.enabled && (
+                    <div className="text-xs text-amber-600 font-semibold mt-0.5">Coming Soon</div>
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -110,10 +127,10 @@ export default function SettingsPage() {
               {/* Address */}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Address</label>
-                <textarea
+                <input
+                  type="text"
                   value={schoolInfo.address}
                   onChange={(e) => setSchoolInfo({ ...schoolInfo, address: e.target.value })}
-                  rows={3}
                   className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
                 />
               </div>
@@ -194,18 +211,18 @@ export default function SettingsPage() {
             <h3 className="font-semibold text-blue-600 mb-4">Manage Other Settings</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
-                onClick={() => router.push('/settings/academic-setup')}
+                onClick={() => router.push('/settings/academic-years')}
                 className="p-4 rounded-lg bg-background border border-border hover:border-primary transition-colors text-left"
               >
-                <p className="font-medium text-foreground">Academic Year Setup</p>
-                <p className="text-xs text-muted-foreground mt-1">Configure academic years and terms</p>
+                <p className="font-medium text-foreground">Academic Years & Terms</p>
+                <p className="text-xs text-muted-foreground mt-1">Create and manage academic years and terms</p>
               </button>
               <button
-                onClick={() => router.push('/settings/fees')}
-                className="p-4 rounded-lg bg-background border border-border hover:border-primary transition-colors text-left"
+                disabled
+                className="p-4 rounded-lg bg-background border border-border opacity-60 cursor-not-allowed text-left"
               >
                 <p className="font-medium text-foreground">Fee Structure</p>
-                <p className="text-xs text-muted-foreground mt-1">Set up fee categories and amounts</p>
+                <p className="text-xs text-amber-600 font-semibold mt-1">Coming Soon</p>
               </button>
             </div>
           </div>
