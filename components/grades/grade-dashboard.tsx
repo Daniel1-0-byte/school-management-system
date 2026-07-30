@@ -7,6 +7,7 @@ import { GradeEntryTable } from './grade-entry-table';
 interface GradeDashboardProps {
   subjectId: string;
   streamId: string;
+  termId: string;
   onError: (error: string | null) => void;
 }
 
@@ -30,6 +31,7 @@ interface GradingPolicy {
 export function GradeDashboard({
   subjectId,
   streamId,
+  termId,
   onError,
 }: GradeDashboardProps) {
   const [grades, setGrades] = useState<GradeEntry[]>([]);
@@ -46,23 +48,46 @@ export function GradeDashboard({
         setLoading(true);
         onError(null);
 
-        // First, find assessment for this subject/stream combination
+        // First, find or create assessment for this subject/stream/term combination
         const assessmentResponse = await fetch(
-          `/api/school/assessments?subject_id=${subjectId}&stream_id=${streamId}`
+          `/api/school/assessments?subject_id=${subjectId}&stream_id=${streamId}&term_id=${termId}`
         );
         if (!assessmentResponse.ok) {
-          console.error('[v0] Assessment lookup failed:', await assessmentResponse.json());
-          throw new Error('Failed to find assessment for this subject');
+          const errorData = await assessmentResponse.json();
+          console.error('[v0] Assessment lookup failed:', errorData);
+          throw new Error('Failed to find assessment for this subject/term');
         }
         const assessmentData = await assessmentResponse.json();
-        const assessments = assessmentData.data || [];
+        let assessments = assessmentData.data || [];
         
         if (assessments.length === 0) {
-          console.log('[v0] No assessment found for subject/stream/term, grades list will be empty');
+          console.log('[v0] No assessment found for subject/stream/term, attempting to create one');
+          // Try to create an assessment for this combination
+          const createResponse = await fetch('/api/school/assessments/auto-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subject_id: subjectId,
+              stream_id: streamId,
+              term_id: termId,
+            }),
+          });
+          
+          if (createResponse.ok) {
+            const createdAssessment = await createResponse.json();
+            if (createdAssessment.data) {
+              assessments = [createdAssessment.data];
+              console.log('[v0] Created new assessment:', createdAssessment.data.id);
+            }
+          }
+        }
+
+        if (assessments.length === 0) {
+          console.log('[v0] No assessment found and could not create one, grades list will be empty');
           setGrades([]);
           setAssessmentId('');
         } else {
-          // Use the first (should be only one) matching assessment
+          // Use the first matching assessment
           const currentAssessment = assessments[0];
           setAssessmentId(currentAssessment.id);
 
@@ -88,10 +113,10 @@ export function GradeDashboard({
       }
     };
 
-    if (subjectId && streamId) {
+    if (subjectId && streamId && termId) {
       fetchData();
     }
-  }, [subjectId, streamId, onError]);
+  }, [subjectId, streamId, termId, onError]);
 
   // Calculate total score and grade based on policy
   const calculateTotalAndGrade = (classScore: number | null, examScore: number | null) => {
