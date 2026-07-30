@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
 
     const terms = [
       {
+        school_id: schoolId,
         academic_year_id: academicYear.id,
         type: 'term_1',
         start_date: startDate.toISOString().split('T')[0],
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
           .split('T')[0],
       },
       {
+        school_id: schoolId,
         academic_year_id: academicYear.id,
         type: 'term_2',
         start_date: new Date(startDate.getTime() + daysPerTerm * (1000 * 60 * 60 * 24))
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
           .split('T')[0],
       },
       {
+        school_id: schoolId,
         academic_year_id: academicYear.id,
         type: 'term_3',
         start_date: new Date(startDate.getTime() + daysPerTerm * 2 * (1000 * 60 * 60 * 24))
@@ -153,7 +156,14 @@ export async function POST(request: NextRequest) {
       },
     ];
 
-    await client.from('terms').insert(terms);
+    const { error: termsError } = await client.from('terms').insert(terms);
+    
+    if (termsError) {
+      console.error('[v0] Terms creation error:', termsError);
+      // Delete the academic year since terms creation failed
+      await client.from('academic_years').delete().eq('id', academicYear.id);
+      return NextResponse.json({ error: 'Failed to create terms' }, { status: 400 });
+    }
 
     return NextResponse.json({ data: academicYear }, { status: 201 });
   } catch (error) {
