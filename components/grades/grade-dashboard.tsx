@@ -7,7 +7,6 @@ import { GradeEntryTable } from './grade-entry-table';
 interface GradeDashboardProps {
   subjectId: string;
   streamId: string;
-  termId: string;
   onError: (error: string | null) => void;
 }
 
@@ -31,7 +30,6 @@ interface GradingPolicy {
 export function GradeDashboard({
   subjectId,
   streamId,
-  termId,
   onError,
 }: GradeDashboardProps) {
   const [grades, setGrades] = useState<GradeEntry[]>([]);
@@ -48,9 +46,9 @@ export function GradeDashboard({
         setLoading(true);
         onError(null);
 
-        // First, find or create assessment for this subject/stream/term combination
+        // First, find assessment for this subject/stream combination
         const assessmentResponse = await fetch(
-          `/api/school/assessments?subject_id=${subjectId}&stream_id=${streamId}&term_id=${termId}`
+          `/api/school/assessments?subject_id=${subjectId}&stream_id=${streamId}`
         );
         if (!assessmentResponse.ok) {
           console.error('[v0] Assessment lookup failed:', await assessmentResponse.json());
@@ -90,10 +88,10 @@ export function GradeDashboard({
       }
     };
 
-    if (subjectId && streamId && termId) {
+    if (subjectId && streamId) {
       fetchData();
     }
-  }, [subjectId, streamId, termId, onError]);
+  }, [subjectId, streamId, onError]);
 
   // Calculate total score and grade based on policy
   const calculateTotalAndGrade = (classScore: number | null, examScore: number | null) => {

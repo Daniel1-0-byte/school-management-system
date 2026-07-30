@@ -58,7 +58,6 @@ export default function GradesPage() {
         <GradeDashboard
           subjectId={selectedSubject}
           streamId={selectedStream}
-          termId={selectedTerm}
           onError={setError}
         />
       )}

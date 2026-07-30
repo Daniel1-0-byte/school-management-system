@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch terms for the academic year from public.terms table
+    // Note: terms table is shared across schools - filter by academic_year_id only
     const { data: terms, error: termsError } = await queryTerms()
       .select('id, academic_year_id, type, start_date, end_date, report_card_deadline, created_at, updated_at')
-      .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
       .order('start_date', { ascending: true });
 
