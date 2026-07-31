@@ -8,7 +8,7 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
@@ -22,7 +22,7 @@ export async function PATCH(
       return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { type, start_date, end_date, report_card_deadline } = body;
 
@@ -99,7 +99,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
@@ -113,7 +113,7 @@ export async function DELETE(
       return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const client = getServerSupabaseClient();
 
     // Get term to verify it belongs to this school's academic year
