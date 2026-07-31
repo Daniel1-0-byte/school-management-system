@@ -40,7 +40,6 @@ interface Subject {
   id: string;
   name: string;
   code: string;
-  description?: string;
 }
 
 interface SubjectSelectorPropsExtended extends SubjectSelectorProps {

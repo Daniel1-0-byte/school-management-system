@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Fetch all subjects for this school
     const { data: subjects, error: subjectsError } = await getServerSupabaseClient()
       .from('subjects')
-      .select('id, name, code, description')
+      .select('id, name, code')
       .eq('school_id', schoolId)
       .order('name');
 
