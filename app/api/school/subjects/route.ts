@@ -55,18 +55,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(streamSubjectsError) }, { status: 400 });
     }
 
-    // Count enrolled students for each subject
-    const { data: students, error: studentsError } = await getServerSupabaseClient()
-      .from('students')
-      .select('id, stream_id')
+    // Count enrolled students in this stream
+    const { count: studentCount, error: studentsError } = await getServerSupabaseClient()
+      .from('student_enrollments')
+      .select('*', { count: 'exact', head: true })
       .eq('stream_id', streamId);
 
     if (studentsError) {
-      console.error('[v0] Students count error:', studentsError);
-      // Continue anyway - just won't have student count
+      console.error('[v0] Student count error:', studentsError);
+      // Continue anyway - just won't have accurate student count
     }
-
-    const studentCount = students?.length || 0;
 
     // Transform response to flatten subject data
     const transformedData = (streamSubjects || [])
@@ -76,7 +74,7 @@ export async function GET(request: NextRequest) {
         name: item.system_subjects.name,
         code: item.system_subjects.code,
         description: item.system_subjects.description,
-        student_count: studentCount,
+        student_count: studentCount || 0,
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
