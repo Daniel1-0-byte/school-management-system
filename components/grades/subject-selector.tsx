@@ -40,7 +40,7 @@ interface Subject {
   id: string;
   name: string;
   code: string;
-  student_count: number;
+  description?: string;
 }
 
 interface SubjectSelectorPropsExtended extends SubjectSelectorProps {
@@ -144,9 +144,9 @@ export function SubjectSelector({
     fetchStreams();
   }, [selectedTerm, setSelectedStream, onError]);
 
-  // Fetch subjects when stream changes
+  // Fetch subjects when academic year is selected (subjects are school-specific, not stream-specific)
   useEffect(() => {
-    if (!selectedStream) {
+    if (!selectedAcademicYear) {
       setSubjects([]);
       setSelectedSubject('');
       return;
@@ -155,7 +155,7 @@ export function SubjectSelector({
     const fetchSubjects = async () => {
       try {
         setSubjectsLoading(true);
-        const response = await fetch(`/api/school/subjects?stream_id=${selectedStream}`);
+        const response = await fetch('/api/school/subjects');
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
         setSubjects(data.data || []);
@@ -168,7 +168,7 @@ export function SubjectSelector({
       }
     };
     fetchSubjects();
-  }, [selectedStream, setSelectedSubject, onError]);
+  }, [selectedAcademicYear, setSelectedSubject, onError]);
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-4">
@@ -267,7 +267,7 @@ export function SubjectSelector({
             </option>
             {subjects.map((subject) => (
               <option key={subject.id} value={subject.id}>
-                {subject.name} ({subject.student_count} students)
+                {subject.name}
               </option>
             ))}
           </select>
