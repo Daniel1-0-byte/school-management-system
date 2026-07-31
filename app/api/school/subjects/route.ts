@@ -40,15 +40,15 @@ export async function GET(request: NextRequest) {
       .from('school_class_stream_subjects')
       .select(`
         id,
-        subject_id,
-        subjects:subject_id (
+        system_subject_id,
+        system_subjects:system_subject_id (
           id,
           name,
           code,
           description
         )
       `)
-      .eq('school_class_stream_id', streamId);
+      .eq('stream_id', streamId);
 
     if (streamSubjectsError) {
       console.error('[v0] Stream subjects GET error:', streamSubjectsError);
@@ -70,12 +70,12 @@ export async function GET(request: NextRequest) {
 
     // Transform response to flatten subject data
     const transformedData = (streamSubjects || [])
-      .filter((item: any) => item.subjects)
+      .filter((item: any) => item.system_subjects)
       .map((item: any) => ({
-        id: item.subject_id,
-        name: item.subjects.name,
-        code: item.subjects.code,
-        description: item.subjects.description,
+        id: item.system_subject_id,
+        name: item.system_subjects.name,
+        code: item.system_subjects.code,
+        description: item.system_subjects.description,
         student_count: studentCount,
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
