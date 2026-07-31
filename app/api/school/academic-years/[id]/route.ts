@@ -33,19 +33,20 @@ export async function PATCH(
 
     const client = getServerSupabaseClient();
 
-    // If making active, deactivate all other years
+    // If making active, deactivate all other years for this school first
     if (is_active) {
       await client
         .from('academic_years')
         .update({ is_active: false })
-        .eq('school_id', schoolId);
+        .eq('school_id', schoolId)
+        .neq('id', id);
     }
 
     // Update academic year
     const { data, error } = await client
       .from('academic_years')
       .update({
-        ...(year && { year }),
+        ...(year !== undefined && { year }),
         ...(start_date && { start_date }),
         ...(end_date && { end_date }),
         ...(is_active !== undefined && { is_active }),

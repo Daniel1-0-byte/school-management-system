@@ -175,23 +175,22 @@ export function AcademicYearsManagement({ onYearCreated }: Props) {
 
   const handleSetActive = async (year: AcademicYear) => {
     try {
+      setSaving(true);
       const response = await fetch(`/api/school/academic-years/${year.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: true }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to set active year');
-      }
-
-      setSuccessMessage('Academic year activated');
-      fetchAcademicYears();
-
+      if (!response.ok) throw new Error('Failed to set active year');
+      setSuccessMessage('Academic year activated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
+      await fetchAcademicYears();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to set active year');
+      setError(err instanceof Error ? err.message : 'Failed to activate year');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -259,10 +258,10 @@ export function AcademicYearsManagement({ onYearCreated }: Props) {
               {academicYears.map((year) => (
                 <React.Fragment key={year.id}>
                   <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 text-sm text-foreground font-medium">{year.year}</td>
+                    <td className="px-6 py-4 text-sm text-foreground font-medium">{year.year}-{year.year + 1}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(year.start_date)}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{formatDate(year.end_date)}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{year.terms_count} terms</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{year.terms_count || 0} terms</td>
                     <td className="px-6 py-4 text-sm">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
