@@ -323,7 +323,21 @@ export function AcademicYearsManagement({ onYearCreated }: Props) {
                   {expandedYearId === year.id && (
                     <tr className="border-b border-border bg-muted/20">
                       <td colSpan={6} className="px-6 py-4">
-                        <TermsSection yearId={year.id} year={year} terms={terms[year.id] || []} />
+                        <TermsSection
+                          yearId={year.id}
+                          year={year}
+                          terms={terms[year.id] || []}
+                          onTermsUpdated={() => {
+                            const fetchTerms = async () => {
+                              const response = await fetch(`/api/school/terms?academic_year_id=${year.id}`);
+                              if (response.ok) {
+                                const data = await response.json();
+                                setTerms((prev) => ({ ...prev, [year.id]: data.data || [] }));
+                              }
+                            };
+                            fetchTerms();
+                          }}
+                        />
                       </td>
                     </tr>
                   )}
@@ -437,13 +451,16 @@ function TermsSection({
   yearId,
   year,
   terms,
+  onTermsUpdated,
 }: {
   yearId: string;
   year: AcademicYear;
   terms: Term[];
+  onTermsUpdated?: () => void;
 }) {
   const [isAddingTerm, setIsAddingTerm] = useState(false);
   const [editingTermId, setEditingTermId] = useState<string | null>(null);
+  const [confirmDeleteTermId, setConfirmDeleteTermId] = useState<string | null>(null);
   const [termData, setTermData] = useState({
     type: 'term_1',
     start_date: '',
@@ -453,7 +470,18 @@ function TermsSection({
   const [termError, setTermError] = useState<string | null>(null);
   const [savingTerm, setSavingTerm] = useState(false);
 
-  const handleAddTerm = async () => {
+  const handleEditTerm = (term: Term) => {
+    setEditingTermId(term.id);
+    setTermData({
+      type: term.type,
+      start_date: term.start_date,
+      end_date: term.end_date,
+      report_card_deadline: term.report_card_deadline || '',
+    });
+    setTermError(null);
+  };
+
+  const handleSaveTerm = async () => {
     try {
       if (!termData.type || !termData.start_date || !termData.end_date) {
         setTermError('Please fill in required fields');
@@ -461,20 +489,30 @@ function TermsSection({
       }
 
       setSavingTerm(true);
-      const response = await fetch('/api/school/terms', {
-        method: 'POST',
+      const method = editingTermId ? 'PATCH' : 'POST';
+      const url = editingTermId
+        ? `/api/school/terms/${editingTermId}`
+        : '/api/school/terms';
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          academic_year_id: yearId,
-          ...termData,
-        }),
+        body: JSON.stringify(
+          editingTermId
+            ? termData
+            : {
+                academic_year_id: yearId,
+                ...termData,
+              }
+        ),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create term');
+        throw new Error(data.error || `Failed to ${editingTermId ? 'update' : 'create'} term`);
       }
 
+      setEditingTermId(null);
       setIsAddingTerm(false);
       setTermData({
         type: 'term_1',
@@ -484,17 +522,51 @@ function TermsSection({
       });
       setTermError(null);
 
-      // Refetch terms
-      const termsResponse = await fetch(`/api/school/terms?academic_year_id=${yearId}`);
-      if (termsResponse.ok) {
-        const data = await termsResponse.json();
-        // Update parent component (simplified)
-      }
+      onTermsUpdated?.();
     } catch (err) {
-      setTermError(err instanceof Error ? err.message : 'Failed to create term');
+      setTermError(err instanceof Error ? err.message : 'Failed to save term');
     } finally {
       setSavingTerm(false);
     }
+  };
+
+  const handleDeleteTerm = (termId: string) => {
+    setConfirmDeleteTermId(termId);
+  };
+
+  const confirmDeleteTerm = async () => {
+    try {
+      if (!confirmDeleteTermId) return;
+
+      setSavingTerm(true);
+      const response = await fetch(`/api/school/terms/${confirmDeleteTermId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete term');
+      }
+
+      setConfirmDeleteTermId(null);
+      onTermsUpdated?.();
+    } catch (err) {
+      setTermError(err instanceof Error ? err.message : 'Failed to delete term');
+    } finally {
+      setSavingTerm(false);
+    }
+  };
+
+  const handleAddTerm = async () => {
+    setEditingTermId(null);
+    setTermData({
+      type: 'term_1',
+      start_date: '',
+      end_date: '',
+      report_card_deadline: '',
+    });
+    setTermError(null);
+    setIsAddingTerm(true);
   };
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString();
@@ -530,10 +602,20 @@ function TermsSection({
                 )}
               </div>
               <div className="flex gap-2">
-                <button className="p-1 hover:bg-muted rounded text-blue-600" title="Edit">
+                <button
+                  onClick={() => handleEditTerm(term)}
+                  disabled={savingTerm}
+                  className="p-1 hover:bg-muted rounded text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Edit"
+                >
                   <Edit2 className="w-3 h-3" />
                 </button>
-                <button className="p-1 hover:bg-muted rounded text-red-600" title="Delete">
+                <button
+                  onClick={() => handleDeleteTerm(term.id)}
+                  disabled={savingTerm}
+                  className="p-1 hover:bg-muted rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Delete"
+                >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -542,8 +624,11 @@ function TermsSection({
         </div>
       )}
 
-      {isAddingTerm && (
+      {(isAddingTerm || editingTermId) && (
         <div className="bg-white border border-border rounded p-3 space-y-3">
+          <h4 className="font-medium text-foreground text-sm">
+            {editingTermId ? 'Edit Term' : 'Add New Term'}
+          </h4>
           {termError && <p className="text-sm text-red-600">{termError}</p>}
           <input
             type="text"
@@ -573,17 +658,44 @@ function TermsSection({
           />
           <div className="flex gap-2">
             <button
-              onClick={() => setIsAddingTerm(false)}
+              onClick={() => {
+                setIsAddingTerm(false);
+                setEditingTermId(null);
+                setTermError(null);
+              }}
               className="flex-1 px-3 py-2 border border-border rounded text-sm hover:bg-muted transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={handleAddTerm}
+              onClick={handleSaveTerm}
               disabled={savingTerm}
               className="flex-1 px-3 py-2 bg-primary text-white rounded text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               {savingTerm ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteTermId && (
+        <div className="bg-red-50 border border-red-200 rounded p-3 space-y-3">
+          <p className="text-sm text-red-900">
+            Are you sure you want to delete this term? This action cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmDeleteTermId(null)}
+              className="flex-1 px-3 py-2 border border-red-300 rounded text-sm hover:bg-red-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDeleteTerm}
+              disabled={savingTerm}
+              className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {savingTerm ? 'Deleting...' : 'Delete'}
             </button>
           </div>
         </div>
