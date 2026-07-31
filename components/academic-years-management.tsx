@@ -34,6 +34,7 @@ export function AcademicYearsManagement({ onYearCreated }: Props) {
   const [expandedYearId, setExpandedYearId] = useState<string | null>(null);
   const [terms, setTerms] = useState<Record<string, Term[]>>({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AcademicYear | null>(null);
@@ -296,10 +297,15 @@ export function AcademicYearsManagement({ onYearCreated }: Props) {
                         {!year.is_active && (
                           <button
                             onClick={() => handleSetActive(year)}
-                            className="p-2 hover:bg-muted rounded transition-colors text-green-600"
+                            disabled={saving}
+                            className="p-2 hover:bg-muted rounded transition-colors text-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Set active"
                           >
-                            <Archive className="w-4 h-4" />
+                            {saving ? (
+                              <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Archive className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                         <button
