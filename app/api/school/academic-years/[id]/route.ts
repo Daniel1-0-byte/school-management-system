@@ -78,6 +78,8 @@ export async function DELETE(
 ) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
+    
+    console.log('[v0] DELETE academic year - schoolId:', schoolId);
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
@@ -89,13 +91,39 @@ export async function DELETE(
     }
 
     const { id } = params;
+    console.log('[v0] DELETE academic year - id from params:', id);
+    
+    if (!id || typeof id !== 'string') {
+      console.error('[v0] Invalid or missing id:', id);
+      return NextResponse.json({ error: 'Invalid academic year ID' }, { status: 400 });
+    }
+
     const client = getServerSupabaseClient();
 
+    // Verify the academic year exists and belongs to this school
+    const { data: academicYear, error: checkError } = await client
+      .from('academic_years')
+      .select('id')
+      .eq('id', id)
+      .eq('school_id', schoolId)
+      .single();
+
+    if (checkError || !academicYear) {
+      console.log('[v0] Academic year not found or does not belong to school:', id);
+      return NextResponse.json({ error: 'Academic year not found' }, { status: 404 });
+    }
+
     // Check for dependent data (assessments, etc.)
-    const { count: assessmentCount } = await client
+    const { count: assessmentCount, error: countError } = await client
       .from('assessments')
       .select('*', { count: 'exact', head: true })
       .eq('academic_year_id', id);
+
+    if (countError) {
+      console.error('[v0] Error checking assessment count:', countError);
+    }
+    
+    console.log('[v0] Assessment count for year:', assessmentCount);
 
     if (assessmentCount && assessmentCount > 0) {
       return NextResponse.json(
@@ -105,9 +133,16 @@ export async function DELETE(
     }
 
     // Delete associated terms first
-    await client.from('terms').delete().eq('academic_year_id', id);
+    console.log('[v0] Deleting terms for academic_year_id:', id);
+    const { error: termsError } = await client.from('terms').delete().eq('academic_year_id', id);
+    
+    if (termsError) {
+      console.error('[v0] Error deleting terms:', termsError);
+      return NextResponse.json({ error: 'Failed to delete associated terms' }, { status: 400 });
+    }
 
     // Delete academic year
+    console.log('[v0] Deleting academic year - id:', id, 'school_id:', schoolId);
     const { error } = await client
       .from('academic_years')
       .delete()
