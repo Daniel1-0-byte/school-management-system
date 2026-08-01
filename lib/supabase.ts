@@ -279,11 +279,9 @@ export function queryGradeEntriesWithAssessment() {
       ),
       students:student_id (
         id,
-        admission_number,
-        profiles!students_user_id_fkey (
-          first_name,
-          last_name
-        )
+        first_name,
+        last_name,
+        admission_number
       )
     `);
 }
