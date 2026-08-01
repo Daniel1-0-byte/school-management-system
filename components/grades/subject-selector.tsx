@@ -172,7 +172,7 @@ export function SubjectSelector({
       try {
         setSubjectsLoading(true);
         onError(null);
-        const response = await fetch(`/api/school/subjects?class_id=${selectedStream}`);
+        const response = await fetch(`/api/school/subjects?stream_id=${selectedStream}`);
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
         setSubjects(data.data || []);
