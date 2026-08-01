@@ -160,7 +160,7 @@ export function SubjectSelector({
     fetchStreams();
   }, [selectedAcademicYear, selectedTerm, onError, setSelectedStream, setSelectedSubject]);
 
-  // Fetch subjects for the selected stream (subjects are stream-specific, loaded via school_class_stream_subjects)
+  // Fetch subjects for the selected class (filtered via class_subjects junction table)
   useEffect(() => {
     if (!selectedStream) {
       setSubjects([]);
@@ -172,7 +172,7 @@ export function SubjectSelector({
       try {
         setSubjectsLoading(true);
         onError(null);
-        const response = await fetch(`/api/school/subjects?stream_id=${selectedStream}`);
+        const response = await fetch(`/api/school/subjects?class_id=${selectedStream}`);
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
         setSubjects(data.data || []);
