@@ -40,8 +40,6 @@ interface Subject {
   id: string;
   name: string;
   code: string;
-  short_name?: string;
-  is_core?: boolean;
 }
 
 interface SubjectSelectorPropsExtended extends SubjectSelectorProps {
@@ -286,7 +284,7 @@ export function SubjectSelector({
             </option>
             {subjects.map((subject) => (
               <option key={subject.id} value={subject.id}>
-                {subject.name} {subject.is_core ? '(Core)' : '(Elective)'}
+                {subject.name}
               </option>
             ))}
           </select>

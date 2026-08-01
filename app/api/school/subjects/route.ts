@@ -4,8 +4,8 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 
 /**
  * GET /api/school/subjects
- * Fetch subjects for a specific stream (class)
- * Subjects are linked to streams via school_class_stream_subjects table
+ * Fetch subjects available for a specific stream (class)
+ * Returns subjects that have been assigned to the stream through assessments
  * Query parameter: stream_id (required)
  */
 export async function GET(request: NextRequest) {
@@ -35,38 +35,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch subjects assigned to this stream via school_class_stream_subjects
-    const { data: streamSubjects, error: streamSubjectsError } = await getServerSupabaseClient()
-      .from('school_class_stream_subjects')
-      .select(`
-        id,
-        is_core,
-        system_subjects:system_subject_id (
-          id,
-          name,
-          code,
-          short_name
-        )
-      `)
+    // Fetch unique subjects that exist in assessments for this stream
+    const { data: subjectIds, error: subjectIdsError } = await getServerSupabaseClient()
+      .from('assessments')
+      .select('subject_id')
+      .eq('school_id', schoolId)
       .eq('stream_id', streamId)
-      .order('is_core', { ascending: false })
-      .order('system_subjects(name)', { foreignTable: 'system_subjects' });
+      .not('subject_id', 'is', null);
 
-    if (streamSubjectsError) {
-      console.error('[v0] Stream subjects GET error:', streamSubjectsError);
-      return NextResponse.json({ error: formatSupabaseError(streamSubjectsError) }, { status: 400 });
+    if (subjectIdsError) {
+      console.error('[v0] Assessment subjects GET error:', subjectIdsError);
+      return NextResponse.json({ error: formatSupabaseError(subjectIdsError) }, { status: 400 });
     }
 
-    // Transform response to flatten subject data
-    const subjects = (streamSubjects || [])
-      .filter((item: any) => item.system_subjects)
-      .map((item: any) => ({
-        id: item.system_subjects.id,
-        name: item.system_subjects.name,
-        code: item.system_subjects.code,
-        short_name: item.system_subjects.short_name,
-        is_core: item.is_core,
-      }));
+    // Get unique subject IDs
+    const uniqueSubjectIds = Array.from(
+      new Set((subjectIds || []).map((a: any) => a.subject_id).filter(Boolean))
+    );
+
+    if (uniqueSubjectIds.length === 0) {
+      // No assessments yet, return all school subjects
+      const { data: subjects, error: subjectsError } = await getServerSupabaseClient()
+        .from('subjects')
+        .select('id, name, code')
+        .eq('school_id', schoolId)
+        .order('name');
+
+      if (subjectsError) {
+        console.error('[v0] Subjects GET error:', subjectsError);
+        return NextResponse.json({ error: formatSupabaseError(subjectsError) }, { status: 400 });
+      }
+
+      return NextResponse.json({ data: subjects || [] });
+    }
+
+    // Fetch the full subject details for these IDs
+    const { data: subjects, error: subjectsError } = await getServerSupabaseClient()
+      .from('subjects')
+      .select('id, name, code')
+      .in('id', uniqueSubjectIds)
+      .order('name');
+
+    if (subjectsError) {
+      console.error('[v0] Subjects GET error:', subjectsError);
+      return NextResponse.json({ error: formatSupabaseError(subjectsError) }, { status: 400 });
+    }
 
     return NextResponse.json({ data: subjects || [] });
   } catch (error) {
