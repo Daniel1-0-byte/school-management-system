@@ -40,6 +40,8 @@ interface Subject {
   id: string;
   name: string;
   code: string;
+  short_name?: string;
+  is_core?: boolean;
 }
 
 interface SubjectSelectorPropsExtended extends SubjectSelectorProps {
@@ -160,7 +162,7 @@ export function SubjectSelector({
     fetchStreams();
   }, [selectedAcademicYear, selectedTerm, onError, setSelectedStream, setSelectedSubject]);
 
-  // Fetch subjects when stream is selected (subjects are school-specific, loaded after stream selection)
+  // Fetch subjects for the selected stream (subjects are stream-specific, loaded via school_class_stream_subjects)
   useEffect(() => {
     if (!selectedStream) {
       setSubjects([]);
@@ -172,14 +174,14 @@ export function SubjectSelector({
       try {
         setSubjectsLoading(true);
         onError(null);
-        const response = await fetch('/api/school/subjects');
+        const response = await fetch(`/api/school/subjects?stream_id=${selectedStream}`);
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
         setSubjects(data.data || []);
         setSelectedSubject('');
       } catch (error) {
         console.error('[v0] Failed to fetch subjects:', error);
-        onError('Failed to load subjects');
+        onError('Failed to load subjects for this class');
       } finally {
         setSubjectsLoading(false);
       }
@@ -284,7 +286,7 @@ export function SubjectSelector({
             </option>
             {subjects.map((subject) => (
               <option key={subject.id} value={subject.id}>
-                {subject.name}
+                {subject.name} {subject.is_core ? '(Core)' : '(Elective)'}
               </option>
             ))}
           </select>
