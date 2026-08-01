@@ -96,24 +96,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    // Fetch stream to get total students
+    // Resolve school_class_id from stream
     const { data: stream, error: streamError } = await getServerSupabaseClient()
       .from('school_class_streams')
-      .select('id, school_id, (count(*))')
+      .select('school_class_id')
       .eq('id', validatedData.stream_id)
       .eq('school_id', schoolId)
       .single();
 
-    if (streamError || !stream) {
-      return NextResponse.json({ error: 'Invalid stream' }, { status: 404 });
+    if (streamError || !stream?.school_class_id) {
+      return NextResponse.json({ error: 'Stream does not have a class assigned' }, { status: 400 });
     }
 
-    // Get enrolled student count for this stream
+    // Get enrolled student count for this class
     const { count: studentCount } = await getServerSupabaseClient()
       .from('student_enrollments')
       .select('*', { count: 'exact', head: true })
-      .eq('stream_id', validatedData.stream_id)
-      .eq('school_id', schoolId);
+      .eq('class_id', stream.school_class_id)
+      .eq('school_id', schoolId)
+      .eq('status', 'active');
 
     const { data, error } = await getServerSupabaseClient()
       .from('assessments')
