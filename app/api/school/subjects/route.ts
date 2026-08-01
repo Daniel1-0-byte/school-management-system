@@ -4,14 +4,13 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
 
 /**
  * GET /api/school/subjects
- * Fetch subjects available for a specific stream (class)
- * Returns subjects that have been assigned to the stream through assessments
- * Query parameter: stream_id (required)
+ * Fetch subjects for a specific class using the class_subjects junction table
+ * Query parameters: class_id (required)
  */
 export async function GET(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
-    const streamId = request.nextUrl.searchParams.get('stream_id');
+    const classId = request.nextUrl.searchParams.get('class_id');
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json(
@@ -20,9 +19,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!streamId) {
+    if (!classId) {
       return NextResponse.json(
-        { error: 'stream_id parameter is required' },
+        { error: 'class_id parameter is required' },
         { status: 400 }
       );
     }
@@ -35,51 +34,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch unique subjects that exist in assessments for this stream
-    const { data: subjectIds, error: subjectIdsError } = await getServerSupabaseClient()
-      .from('assessments')
-      .select('subject_id')
-      .eq('school_id', schoolId)
-      .eq('stream_id', streamId)
-      .not('subject_id', 'is', null);
+    // Fetch subjects for this class via class_subjects junction table
+    const { data, error } = await getServerSupabaseClient()
+      .from('class_subjects')
+      .select('subject:subjects(id, name, code)')
+      .eq('class_id', classId)
+      .eq('school_id', schoolId);
 
-    if (subjectIdsError) {
-      console.error('[v0] Assessment subjects GET error:', subjectIdsError);
-      return NextResponse.json({ error: formatSupabaseError(subjectIdsError) }, { status: 400 });
+    if (error) {
+      console.error('[v0] Class subjects GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    // Get unique subject IDs
-    const uniqueSubjectIds = Array.from(
-      new Set((subjectIds || []).map((a: any) => a.subject_id).filter(Boolean))
-    );
-
-    if (uniqueSubjectIds.length === 0) {
-      // No assessments yet, return all school subjects
-      const { data: subjects, error: subjectsError } = await getServerSupabaseClient()
-        .from('subjects')
-        .select('id, name, code')
-        .eq('school_id', schoolId)
-        .order('name');
-
-      if (subjectsError) {
-        console.error('[v0] Subjects GET error:', subjectsError);
-        return NextResponse.json({ error: formatSupabaseError(subjectsError) }, { status: 400 });
-      }
-
-      return NextResponse.json({ data: subjects || [] });
-    }
-
-    // Fetch the full subject details for these IDs
-    const { data: subjects, error: subjectsError } = await getServerSupabaseClient()
-      .from('subjects')
-      .select('id, name, code')
-      .in('id', uniqueSubjectIds)
-      .order('name');
-
-    if (subjectsError) {
-      console.error('[v0] Subjects GET error:', subjectsError);
-      return NextResponse.json({ error: formatSupabaseError(subjectsError) }, { status: 400 });
-    }
+    // Extract subjects from the junction table results
+    const subjects = (data || [])
+      .map((item: any) => item.subject)
+      .filter((subject: any) => subject !== null);
 
     return NextResponse.json({ data: subjects || [] });
   } catch (error) {
