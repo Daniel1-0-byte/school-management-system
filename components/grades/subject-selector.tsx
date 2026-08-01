@@ -87,17 +87,24 @@ export function SubjectSelector({
     fetchAcademicYears();
   }, [onError]);
 
-  // Fetch terms when academic year changes
+  // Fetch terms when academic year changes - cascade reset to downstream
   useEffect(() => {
     if (!selectedAcademicYear) {
       setTerms([]);
       setSelectedTerm('');
+      if (propSetSelectedTerm) propSetSelectedTerm('');
+      setStreams([]);
+      setSelectedStream('');
+      setSubjects([]);
+      setSelectedSubject('');
+      onError(null);
       return;
     }
 
     const fetchTerms = async () => {
       try {
         setTermsLoading(true);
+        onError(null);
         const response = await fetch(
           `/api/school/terms?academic_year_id=${selectedAcademicYear}`
         );
@@ -105,6 +112,11 @@ export function SubjectSelector({
         const data = await response.json();
         setTerms(data.data || []);
         setSelectedTerm('');
+        if (propSetSelectedTerm) propSetSelectedTerm('');
+        setStreams([]);
+        setSelectedStream('');
+        setSubjects([]);
+        setSelectedSubject('');
       } catch (error) {
         console.error('[v0] Failed to fetch terms:', error);
         onError('Failed to load terms');
@@ -113,19 +125,22 @@ export function SubjectSelector({
       }
     };
     fetchTerms();
-  }, [selectedAcademicYear, onError]);
+  }, [selectedAcademicYear, onError, propSetSelectedTerm, setSelectedStream, setSelectedSubject]);
 
-  // Fetch streams when term changes
+  // Fetch streams when term changes - cascade reset to subject
   useEffect(() => {
-    if (!selectedTerm) {
+    if (!selectedAcademicYear || !selectedTerm) {
       setStreams([]);
       setSelectedStream('');
+      setSubjects([]);
+      setSelectedSubject('');
       return;
     }
 
     const fetchStreams = async () => {
       try {
         setStreamsLoading(true);
+        onError(null);
         const response = await fetch(
           `/api/school/streams?academic_year_id=${selectedAcademicYear}`
         );
@@ -133,6 +148,8 @@ export function SubjectSelector({
         const data = await response.json();
         setStreams(data.data || []);
         setSelectedStream('');
+        setSubjects([]);
+        setSelectedSubject('');
       } catch (error) {
         console.error('[v0] Failed to fetch streams:', error);
         onError('Failed to load class streams');
@@ -141,11 +158,11 @@ export function SubjectSelector({
       }
     };
     fetchStreams();
-  }, [selectedTerm, setSelectedStream, onError]);
+  }, [selectedAcademicYear, selectedTerm, onError, setSelectedStream, setSelectedSubject]);
 
-  // Fetch subjects when academic year is selected (subjects are school-specific, not stream-specific)
+  // Fetch subjects when stream is selected (subjects are school-specific, loaded after stream selection)
   useEffect(() => {
-    if (!selectedAcademicYear) {
+    if (!selectedStream) {
       setSubjects([]);
       setSelectedSubject('');
       return;
@@ -154,6 +171,7 @@ export function SubjectSelector({
     const fetchSubjects = async () => {
       try {
         setSubjectsLoading(true);
+        onError(null);
         const response = await fetch('/api/school/subjects');
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
@@ -167,7 +185,7 @@ export function SubjectSelector({
       }
     };
     fetchSubjects();
-  }, [selectedAcademicYear, setSelectedSubject, onError]);
+  }, [selectedStream, onError, setSelectedSubject]);
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 space-y-4">
@@ -234,7 +252,7 @@ export function SubjectSelector({
           <select
             value={selectedStream}
             onChange={(e) => setSelectedStream(e.target.value)}
-            disabled={!selectedTerm || streamsLoading}
+            disabled={!propSelectedTerm || streamsLoading}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="">
