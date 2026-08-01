@@ -64,12 +64,19 @@ export async function GET(request: NextRequest) {
       resolvedClassId = stream.school_class_id;
     }
 
+    console.log('[debug] stream_id received:', streamId);
+    console.log('[debug] resolved class_id:', resolvedClassId);
+
     // Fetch subjects for this class via class_subjects junction table
     const { data, error } = await getServerSupabaseClient()
       .from('class_subjects')
       .select('subject:subjects(id, name, code)')
       .eq('class_id', resolvedClassId)
       .eq('school_id', schoolId);
+
+    console.log('[debug] schoolId used:', schoolId);
+    console.log('[debug] class_subjects data:', JSON.stringify(data));
+    console.log('[debug] class_subjects error:', error);
 
     if (error) {
       console.error('[v0] Class subjects GET error:', error);
