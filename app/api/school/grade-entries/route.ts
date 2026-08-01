@@ -54,9 +54,8 @@ export async function GET(request: NextRequest) {
 
     // Transform response to include student_name and admission_number
     const transformedData = (data || []).map((entry: any) => {
-      const studentProfile = entry.students?.profiles;
-      const studentName = studentProfile
-        ? `${studentProfile.first_name || ''} ${studentProfile.last_name || ''}`.trim()
+      const studentName = entry.students
+        ? `${entry.students.first_name || ''} ${entry.students.last_name || ''}`.trim()
         : 'Unknown Student';
       
       return {
