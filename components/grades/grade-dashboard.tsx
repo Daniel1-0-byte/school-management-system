@@ -221,13 +221,26 @@ export function GradeDashboard({
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to save grades');
+      const data = await response.json();
 
-      setHasChanges(false);
-      onError(null);
-      alert('Grades saved successfully!');
+      if (!response.ok) {
+        const errorMsg = data.error || 'Failed to save grades';
+        const details = data.details ? ` (${JSON.stringify(data.details)})` : '';
+        throw new Error(errorMsg + details);
+      }
+
+      // Only mark as saved if we have successful entries
+      if (data.data && data.data.length > 0) {
+        setHasChanges(false);
+        onError(null);
+        alert(`Grades saved successfully! (${data.message})`);
+      } else {
+        throw new Error('No grades were saved');
+      }
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Failed to save grades');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to save grades';
+      console.error('[v0] Grade save error:', errorMsg);
+      onError(errorMsg);
     } finally {
       setSaving(false);
     }

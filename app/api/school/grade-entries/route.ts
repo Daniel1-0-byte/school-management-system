@@ -236,19 +236,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    // Verify assessment exists
-    const { data: assessment } = await queryAssessments()
-      .select('id, school_id, status')
+    // Fetch assessment with subject_id and term_id (required fields in schema)
+    const { data: assessment, error: assessmentError } = await queryAssessments()
+      .select('id, school_id, status, subject_id, term_id, academic_year_id')
       .eq('id', validatedData.assessment_id)
       .eq('school_id', schoolId)
       .single();
 
-    if (!assessment) {
+    if (assessmentError || !assessment) {
+      console.error('[v0] Assessment lookup failed:', assessmentError);
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
     }
 
+    if (!assessment.subject_id || !assessment.term_id) {
+      console.error('[v0] Assessment missing subject_id or term_id:', assessment);
+      return NextResponse.json({ error: 'Assessment configuration incomplete' }, { status: 400 });
+    }
+
+    console.log('[v0] Processing bulk grade update for assessment:', assessmentId, 'subject:', assessment.subject_id, 'term:', assessment.term_id);
+
     // Process all entries (upsert pattern)
     const upsertedEntries = [];
+    const errors = [];
 
     for (const entry of validatedData.entries) {
       // Calculate total_score
@@ -261,70 +270,118 @@ export async function PUT(request: NextRequest) {
         totalScore = entry.exam_score;
       }
 
-      // Check if exists
-      const { data: existing } = await getServerSupabaseClient()
-        .from('grade_entries')
-        .select('id')
-        .eq('student_id', entry.student_id)
-        .eq('assessment_id', validatedData.assessment_id)
-        .eq('school_id', schoolId)
-        .single();
-
-      if (existing) {
-        // Update
-        const { data: updated } = await getServerSupabaseClient()
+      try {
+        // Check if exists
+        const { data: existing, error: existingError } = await getServerSupabaseClient()
           .from('grade_entries')
-          .update({
-            class_score: entry.class_score,
-            exam_score: entry.exam_score,
-            total_score: totalScore,
-            recorded_by: entry.recorded_by,
-            submission_status: 'draft',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id)
-          .select('*')
+          .select('id')
+          .eq('student_id', entry.student_id)
+          .eq('assessment_id', validatedData.assessment_id)
+          .eq('school_id', schoolId)
           .single();
 
-        if (updated) upsertedEntries.push(updated);
-      } else {
-        // Create
-        const { data: created } = await getServerSupabaseClient()
-          .from('grade_entries')
-          .insert({
-            school_id: schoolId,
-            student_id: entry.student_id,
-            assessment_id: validatedData.assessment_id,
-            class_score: entry.class_score,
-            exam_score: entry.exam_score,
-            total_score: totalScore,
-            recorded_by: entry.recorded_by,
-            submission_status: 'draft',
-          })
-          .select('*')
-          .single();
+        if (existingError && existingError.code !== 'PGRST116') {
+          // PGRST116 is "no rows returned" which is expected
+          throw existingError;
+        }
 
-        if (created) upsertedEntries.push(created);
+        if (existing) {
+          // Update existing entry
+          const { data: updated, error: updateError } = await getServerSupabaseClient()
+            .from('grade_entries')
+            .update({
+              class_score: entry.class_score,
+              exam_score: entry.exam_score,
+              total_score: totalScore,
+              recorded_by: entry.recorded_by || null,
+              submission_status: 'draft',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id)
+            .eq('school_id', schoolId)
+            .select('*')
+            .single();
+
+          if (updateError) {
+            console.error('[v0] Grade update error for student', entry.student_id, ':', updateError);
+            errors.push({ student_id: entry.student_id, error: formatSupabaseError(updateError) });
+          } else if (updated) {
+            console.log('[v0] Updated grade for student:', entry.student_id);
+            upsertedEntries.push(updated);
+          }
+        } else {
+          // Create new entry with all required fields
+          const { data: created, error: createError } = await getServerSupabaseClient()
+            .from('grade_entries')
+            .insert({
+              school_id: schoolId,
+              student_id: entry.student_id,
+              assessment_id: validatedData.assessment_id,
+              subject_id: assessment.subject_id,
+              term_id: assessment.term_id,
+              class_score: entry.class_score,
+              exam_score: entry.exam_score,
+              total_score: totalScore,
+              recorded_by: entry.recorded_by || null,
+              submission_status: 'draft',
+            })
+            .select('*')
+            .single();
+
+          if (createError) {
+            console.error('[v0] Grade create error for student', entry.student_id, ':', createError);
+            errors.push({ student_id: entry.student_id, error: formatSupabaseError(createError) });
+          } else if (created) {
+            console.log('[v0] Created grade entry for student:', entry.student_id);
+            upsertedEntries.push(created);
+          }
+        }
+      } catch (entryError) {
+        console.error('[v0] Error processing entry for student', entry.student_id, ':', entryError);
+        errors.push({ student_id: entry.student_id, error: 'Failed to process grade' });
       }
     }
 
+    // If all entries failed, return error
+    if (upsertedEntries.length === 0 && errors.length > 0) {
+      console.error('[v0] All grade entries failed:', errors);
+      return NextResponse.json({ 
+        error: 'Failed to save grades',
+        details: errors 
+      }, { status: 400 });
+    }
+
     // Update assessment progress
-    const { count: progressCount } = await getServerSupabaseClient()
+    const { count: progressCount, error: countError } = await getServerSupabaseClient()
       .from('grade_entries')
       .select('*', { count: 'exact', head: true })
       .eq('assessment_id', validatedData.assessment_id)
       .eq('school_id', schoolId)
       .not('total_score', 'is', null);
 
-    await getServerSupabaseClient()
-      .from('assessments')
-      .update({ progress_count: progressCount || 0, last_modified: new Date().toISOString() })
-      .eq('id', validatedData.assessment_id)
-      .eq('school_id', schoolId);
+    if (!countError) {
+      const { error: updateError } = await getServerSupabaseClient()
+        .from('assessments')
+        .update({ progress_count: progressCount || 0, last_modified: new Date().toISOString() })
+        .eq('id', validatedData.assessment_id)
+        .eq('school_id', schoolId);
 
-    return NextResponse.json({ data: upsertedEntries });
+      if (updateError) {
+        console.error('[v0] Failed to update assessment progress:', updateError);
+      }
+    }
+
+    console.log('[v0] Grade bulk update complete. Saved:', upsertedEntries.length, 'entries. Errors:', errors.length);
+    
+    return NextResponse.json({ 
+      data: upsertedEntries,
+      success: true,
+      message: `Saved ${upsertedEntries.length} grade entries`,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (error) {
     console.error('[v0] Grade entries PUT error:', error);
-    return NextResponse.json({ error: 'Failed to bulk update grade entries' }, { status: 500 });
+    const errorMsg = error instanceof Error ? error.message : 'Failed to bulk update grade entries';
+    return NextResponse.json({ error: errorMsg, details: String(error) }, { status: 500 });
   }
 }
