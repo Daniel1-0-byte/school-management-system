@@ -171,7 +171,7 @@ export const gradeEntrySchema = z.object({
   assessment_id: z.string().uuid('Invalid assessment ID'),
   class_score: z.number().min(0).max(100).nullable().optional(),
   exam_score: z.number().min(0).max(100).nullable().optional(),
-  recorded_by: z.string().uuid('Invalid teacher ID').optional(),
+  teacher_id: z.string().uuid('Invalid teacher ID').nullable().optional(),
 }).refine(data => {
   // At least one score must be provided
   return data.class_score !== null || data.exam_score !== null;

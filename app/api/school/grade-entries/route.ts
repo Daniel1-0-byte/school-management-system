@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryGradeEntriesWithAssessment, formatSupabaseError, getServerSupabaseClient, queryAssessments } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest } from '@/lib/auth-utils';
 import { validateGradeEntry, validateBulkGradeEntry } from '@/lib/schemas';
 
 /**
@@ -204,9 +204,14 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
+    const authenticatedUserId = getUserIdFromRequest(request);
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+    }
+
+    if (!authenticatedUserId) {
+      return NextResponse.json({ error: 'User authentication required' }, { status: 401 });
     }
 
     const validation = await validateSchoolIdAccess(schoolId);
@@ -287,13 +292,16 @@ export async function PUT(request: NextRequest) {
 
         if (existing) {
           // Update existing entry
+          // recorded_by is always the authenticated user (security: cannot be overridden by frontend)
+          // teacher_id can be provided from frontend, or null if no teacher is assigned
           const { data: updated, error: updateError } = await getServerSupabaseClient()
             .from('grade_entries')
             .update({
               class_score: entry.class_score,
               exam_score: entry.exam_score,
               total_score: totalScore,
-              recorded_by: entry.recorded_by || null,
+              teacher_id: entry.teacher_id ?? null,
+              recorded_by: authenticatedUserId,
               submission_status: 'draft',
               updated_at: new Date().toISOString(),
             })
@@ -306,11 +314,13 @@ export async function PUT(request: NextRequest) {
             console.error('[v0] Grade update error for student', entry.student_id, ':', updateError);
             errors.push({ student_id: entry.student_id, error: formatSupabaseError(updateError) });
           } else if (updated) {
-            console.log('[v0] Updated grade for student:', entry.student_id);
+            console.log('[v0] Updated grade for student:', entry.student_id, 'teacher_id:', entry.teacher_id ?? 'none', 'recorded_by:', authenticatedUserId);
             upsertedEntries.push(updated);
           }
         } else {
           // Create new entry with all required fields
+          // recorded_by is always the authenticated user (security: cannot be overridden by frontend)
+          // teacher_id is optional and derived from frontend or set to null
           const { data: created, error: createError } = await getServerSupabaseClient()
             .from('grade_entries')
             .insert({
@@ -322,7 +332,8 @@ export async function PUT(request: NextRequest) {
               class_score: entry.class_score,
               exam_score: entry.exam_score,
               total_score: totalScore,
-              recorded_by: entry.recorded_by || null,
+              teacher_id: entry.teacher_id ?? null,
+              recorded_by: authenticatedUserId,
               submission_status: 'draft',
             })
             .select('*')
@@ -332,7 +343,7 @@ export async function PUT(request: NextRequest) {
             console.error('[v0] Grade create error for student', entry.student_id, ':', createError);
             errors.push({ student_id: entry.student_id, error: formatSupabaseError(createError) });
           } else if (created) {
-            console.log('[v0] Created grade entry for student:', entry.student_id);
+            console.log('[v0] Created grade entry for student:', entry.student_id, 'teacher_id:', entry.teacher_id ?? 'none', 'recorded_by:', authenticatedUserId);
             upsertedEntries.push(created);
           }
         }

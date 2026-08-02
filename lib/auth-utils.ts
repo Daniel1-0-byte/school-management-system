@@ -218,3 +218,40 @@ export function getInviteExpirationTime(): Date {
 export function isInviteTokenExpired(expiresAt: string): boolean {
   return new Date(expiresAt) < new Date();
 }
+
+/**
+ * Extract authenticated user ID from request
+ * Returns the UUID of the authenticated user from Supabase JWT auth token
+ * Returns null if user is not authenticated or token is invalid
+ */
+export function getUserIdFromRequest(request: NextRequest): string | null {
+  try {
+    // Get auth token from cookies (set during login)
+    const authToken = request.cookies.get('sb-auth-token')?.value;
+    
+    if (!authToken) {
+      console.warn('[v0] No auth token found in request cookies');
+      return null;
+    }
+    
+    // Parse JWT to get user ID (without verifying, just extracting payload)
+    const parts = authToken.split('.');
+    if (parts.length !== 3) {
+      console.warn('[v0] Invalid JWT format in auth token');
+      return null;
+    }
+    
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    const userId = payload.sub;
+    
+    if (!userId) {
+      console.warn('[v0] No user ID found in auth token');
+      return null;
+    }
+    
+    return userId;
+  } catch (err) {
+    console.error('[v0] Error extracting user ID from request:', err);
+    return null;
+  }
+}
