@@ -97,7 +97,44 @@ export function GradeDashboard({
           );
           if (!gradesResponse.ok) throw new Error('Failed to fetch grades');
           const gradesData = await gradesResponse.json();
-          setGrades(gradesData.data || []);
+          const existingGrades = gradesData.data || [];
+
+          // Fetch enrolled students for this stream
+          const studentsResponse = await fetch(
+            `/api/school/students?class_id=${streamId}`
+          );
+          
+          if (studentsResponse.ok) {
+            const studentsData = await studentsResponse.json();
+            const enrolledStudents = studentsData.data || [];
+
+            // Create grade entries for all enrolled students
+            const gradesByStudentId = new Map(
+              existingGrades.map((g: any) => [g.student_id, g])
+            );
+
+            const allGrades = enrolledStudents.map((student: any) => {
+              const existingGrade = gradesByStudentId.get(student.id);
+              return (
+                existingGrade || {
+                  id: null,
+                  student_id: student.id,
+                  student_name: `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Unknown',
+                  admission_number: student.admission_number || 'N/A',
+                  class_score: null,
+                  exam_score: null,
+                  total_score: null,
+                  grade: null,
+                  remarks: null,
+                }
+              );
+            });
+
+            setGrades(allGrades);
+          } else {
+            // If students fetch fails, just use existing grades
+            setGrades(existingGrades);
+          }
         }
 
         // Fetch grading policy
