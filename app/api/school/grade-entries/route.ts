@@ -115,14 +115,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
     }
 
-    // Calculate total_score from class_score and exam_score
+    // Fetch school's grading policy
+    const { data: policy } = await getServerSupabaseClient()
+      .from('school_grading_policies')
+      .select('class_score_weight, exam_score_weight, grade_scale')
+      .eq('school_id', schoolId)
+      .single();
+
+    const classWeight = (policy?.class_score_weight ?? 30) / 100;
+    const examWeight = (policy?.exam_score_weight ?? 70) / 100;
+    const gradeScale = policy?.grade_scale ?? { A: 80, B: 70, C: 60, D: 50, F: 0 };
+
+    // Calculate total_score using weights
     let totalScore = null;
+    let letterGrade = null;
+
     if (validatedData.class_score !== null && validatedData.exam_score !== null) {
-      totalScore = validatedData.class_score + validatedData.exam_score;
+      totalScore = (validatedData.class_score * classWeight) + (validatedData.exam_score * examWeight);
+      letterGrade =
+        totalScore >= gradeScale.A ? 'A' :
+        totalScore >= gradeScale.B ? 'B' :
+        totalScore >= gradeScale.C ? 'C' :
+        totalScore >= gradeScale.D ? 'D' : 'F';
     } else if (validatedData.class_score !== null) {
       totalScore = validatedData.class_score;
+      letterGrade =
+        totalScore >= gradeScale.A ? 'A' :
+        totalScore >= gradeScale.B ? 'B' :
+        totalScore >= gradeScale.C ? 'C' :
+        totalScore >= gradeScale.D ? 'D' : 'F';
     } else if (validatedData.exam_score !== null) {
       totalScore = validatedData.exam_score;
+      letterGrade =
+        totalScore >= gradeScale.A ? 'A' :
+        totalScore >= gradeScale.B ? 'B' :
+        totalScore >= gradeScale.C ? 'C' :
+        totalScore >= gradeScale.D ? 'D' : 'F';
     }
 
     // Check if grade entry already exists for this student+assessment
@@ -143,6 +171,7 @@ export async function POST(request: NextRequest) {
           class_score: validatedData.class_score,
           exam_score: validatedData.exam_score,
           total_score: totalScore,
+          letter_grade: letterGrade,
           recorded_by: validatedData.recorded_by,
           submission_status: 'draft',
           updated_at: new Date().toISOString(),
@@ -162,6 +191,7 @@ export async function POST(request: NextRequest) {
           class_score: validatedData.class_score,
           exam_score: validatedData.exam_score,
           total_score: totalScore,
+          letter_grade: letterGrade,
           recorded_by: validatedData.recorded_by,
           submission_status: 'draft',
         })
@@ -260,19 +290,47 @@ export async function PUT(request: NextRequest) {
 
     console.log('[v0] Processing bulk grade update for assessment:', validatedData.assessment_id, 'subject:', assessment.subject_id, 'term:', assessment.term_id);
 
+    // Fetch school's grading policy once before processing entries
+    const { data: policy } = await getServerSupabaseClient()
+      .from('school_grading_policies')
+      .select('class_score_weight, exam_score_weight, grade_scale')
+      .eq('school_id', schoolId)
+      .single();
+
+    const classWeight = (policy?.class_score_weight ?? 30) / 100;
+    const examWeight = (policy?.exam_score_weight ?? 70) / 100;
+    const gradeScale = policy?.grade_scale ?? { A: 80, B: 70, C: 60, D: 50, F: 0 };
+
     // Process all entries (upsert pattern)
     const upsertedEntries = [];
     const errors = [];
 
     for (const entry of validatedData.entries) {
-      // Calculate total_score
+      // Calculate total_score using weights and letter_grade
       let totalScore = null;
+      let letterGrade = null;
+
       if (entry.class_score !== null && entry.exam_score !== null) {
-        totalScore = entry.class_score + entry.exam_score;
+        totalScore = (entry.class_score * classWeight) + (entry.exam_score * examWeight);
+        letterGrade =
+          totalScore >= gradeScale.A ? 'A' :
+          totalScore >= gradeScale.B ? 'B' :
+          totalScore >= gradeScale.C ? 'C' :
+          totalScore >= gradeScale.D ? 'D' : 'F';
       } else if (entry.class_score !== null) {
         totalScore = entry.class_score;
+        letterGrade =
+          totalScore >= gradeScale.A ? 'A' :
+          totalScore >= gradeScale.B ? 'B' :
+          totalScore >= gradeScale.C ? 'C' :
+          totalScore >= gradeScale.D ? 'D' : 'F';
       } else if (entry.exam_score !== null) {
         totalScore = entry.exam_score;
+        letterGrade =
+          totalScore >= gradeScale.A ? 'A' :
+          totalScore >= gradeScale.B ? 'B' :
+          totalScore >= gradeScale.C ? 'C' :
+          totalScore >= gradeScale.D ? 'D' : 'F';
       }
 
       try {
@@ -300,6 +358,7 @@ export async function PUT(request: NextRequest) {
               class_score: entry.class_score,
               exam_score: entry.exam_score,
               total_score: totalScore,
+              letter_grade: letterGrade,
               teacher_id: entry.teacher_id ?? null,
               recorded_by: authenticatedUserId,
               submission_status: 'draft',
@@ -332,6 +391,7 @@ export async function PUT(request: NextRequest) {
               class_score: entry.class_score,
               exam_score: entry.exam_score,
               total_score: totalScore,
+              letter_grade: letterGrade,
               teacher_id: entry.teacher_id ?? null,
               recorded_by: authenticatedUserId,
               submission_status: 'draft',
