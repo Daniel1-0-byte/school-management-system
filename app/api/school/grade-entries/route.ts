@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
         class_score: entry.class_score,
         exam_score: entry.exam_score,
         total_score: entry.total_score,
-        grade: entry.grade,
+        letter_grade: entry.letter_grade,
         remarks: entry.remarks,
         submission_status: entry.submission_status,
       };
