@@ -253,7 +253,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Assessment configuration incomplete' }, { status: 400 });
     }
 
-    console.log('[v0] Processing bulk grade update for assessment:', assessmentId, 'subject:', assessment.subject_id, 'term:', assessment.term_id);
+    console.log('[v0] Processing bulk grade update for assessment:', validatedData.assessment_id, 'subject:', assessment.subject_id, 'term:', assessment.term_id);
 
     // Process all entries (upsert pattern)
     const upsertedEntries = [];
