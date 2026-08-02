@@ -215,7 +215,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = validateBulkGradeEntry(body);
+    
+    // Filter out entries with both scores null before validation
+    // This allows partial saves where some students have no grades yet
+    const filteredBody = {
+      assessment_id: body.assessment_id,
+      entries: (body.entries || []).filter((entry: any) => 
+        entry.class_score !== null || entry.exam_score !== null
+      ),
+    };
+
+    // If no entries have scores, return empty result
+    if (filteredBody.entries.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    const validatedData = validateBulkGradeEntry(filteredBody);
 
     if (!validatedData) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
