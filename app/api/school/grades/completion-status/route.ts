@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       .from('class_subjects')
       .select('subject_id, subjects(id, name, code)')
       .eq('school_id', schoolId)
-      .eq('school_class_id', schoolClassId);
+      .eq('class_id', schoolClassId);
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
