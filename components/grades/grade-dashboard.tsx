@@ -9,6 +9,7 @@ interface GradeDashboardProps {
   streamId: string;
   termId: string;
   onError: (error: string | null) => void;
+  onGradesSaved?: () => void;
 }
 
 interface GradeEntry {
@@ -33,6 +34,7 @@ export function GradeDashboard({
   streamId,
   termId,
   onError,
+  onGradesSaved,
 }: GradeDashboardProps) {
   const [grades, setGrades] = useState<GradeEntry[]>([]);
   const [gradingPolicy, setGradingPolicy] = useState<GradingPolicy | null>(null);
@@ -234,6 +236,8 @@ export function GradeDashboard({
         setHasChanges(false);
         onError(null);
         alert(`Grades saved successfully! (${data.message})`);
+        // Trigger refresh of completion status
+        onGradesSaved?.();
       } else {
         throw new Error('No grades were saved');
       }

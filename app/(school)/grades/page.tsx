@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, Book } from 'lucide-react';
 import { SubjectSelector } from '@/components/grades/subject-selector';
 import { GradeDashboard } from '@/components/grades/grade-dashboard';
+import { ProceedToReportsButton } from '@/components/grades/proceed-to-reports-button';
 
 export default function GradesPage() {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('');
@@ -11,11 +12,17 @@ export default function GradesPage() {
   const [selectedStream, setSelectedStream] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [refreshCompletionKey, setRefreshCompletionKey] = useState(0);
 
   // Reset error when selection changes
   useEffect(() => {
     setError(null);
   }, [selectedAcademicYear, selectedTerm, selectedStream, selectedSubject]);
+
+  // Refresh completion status when grades are saved
+  const handleGradesSaved = () => {
+    setRefreshCompletionKey(prev => prev + 1);
+  };
 
   return (
     <div className="space-y-6 pb-8">
@@ -60,6 +67,17 @@ export default function GradesPage() {
           streamId={selectedStream}
           termId={selectedTerm}
           onError={setError}
+          onGradesSaved={handleGradesSaved}
+        />
+      )}
+
+      {/* Proceed to Reports Button - Show if context is selected */}
+      {selectedAcademicYear && selectedTerm && selectedStream && (
+        <ProceedToReportsButton
+          key={refreshCompletionKey}
+          academicYearId={selectedAcademicYear}
+          termId={selectedTerm}
+          streamId={selectedStream}
         />
       )}
 

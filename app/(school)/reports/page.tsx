@@ -2,13 +2,31 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
-import { BarChart3, Clock, DollarSign, TrendingUp, Download, Filter } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { BarChart3, Clock, DollarSign, TrendingUp, Download, Filter, AlertCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ReportsPage() {
+function ReportsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [dateRange, setDateRange] = useState('month');
+  const [contextInfo, setContextInfo] = useState<string>('');
+  const [completionError, setCompletionError] = useState<string | null>(null);
+
+  // Get context from URL params
+  useEffect(() => {
+    const academicYearId = searchParams.get('academic_year_id');
+    const termId = searchParams.get('term_id');
+    const streamId = searchParams.get('stream_id');
+
+    if (academicYearId && termId && streamId) {
+      // TODO: In future phases, validate completion server-side
+      const info = `Academic Year: ${academicYearId.substring(0, 8)}... | Term: ${termId.substring(0, 8)}... | Class: ${streamId.substring(0, 8)}...`;
+      setContextInfo(info);
+    } else {
+      setCompletionError('Missing required parameters. Please proceed from the Grades module.');
+    }
+  }, [searchParams]);
 
   const reports = [
     {
@@ -65,6 +83,29 @@ export default function ReportsPage() {
     },
   ];
 
+  if (completionError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-foreground">Reports</h1>
+        </div>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 flex gap-4">
+          <AlertCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-1" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-destructive mb-2">Unable to Access Reports</h3>
+            <p className="text-sm text-destructive/80 mb-4">{completionError}</p>
+            <button
+              onClick={() => router.push('/grades')}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+            >
+              Return to Grades
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -72,6 +113,11 @@ export default function ReportsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Reports</h1>
           <p className="text-muted-foreground mt-1">View school analytics and performance reports</p>
+          {contextInfo && (
+            <p className="text-xs text-muted-foreground mt-2 font-mono bg-muted px-2 py-1 rounded w-fit">
+              {contextInfo}
+            </p>
+          )}
         </div>
         <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
           <Filter className="w-5 h-5" />
@@ -158,5 +204,13 @@ export default function ReportsPage() {
         </ul>
       </div>
     </div>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading reports...</div>}>
+      <ReportsContent />
+    </Suspense>
   );
 }
