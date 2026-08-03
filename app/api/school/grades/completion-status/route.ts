@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolClassId = streamData.school_class_id;
-    console.log('[v0-completion-status] Step 1: streamId resolved to schoolClassId:', { streamId, schoolClassId, schoolId });
 
     // Step 2: Get all subjects assigned to this class
     const { data: classSubjects, error: classSubjectsError } = await supabase
@@ -72,8 +71,6 @@ export async function GET(request: NextRequest) {
       .select('subject_id, subjects(id, name, code)')
       .eq('school_id', schoolId)
       .eq('class_id', schoolClassId);
-
-    console.log('[v0-completion-status] Step 2: class_subjects query:', { schoolId, schoolClassId, classSubjectsCount: classSubjects?.length, hasError: !!classSubjectsError });
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
@@ -105,8 +102,6 @@ export async function GET(request: NextRequest) {
     // Step 3: Get enrolled students for this class
     // Note: student_enrollments links students to school_class_id, NOT stream_id or term_id
     // Filtering by academic_year_id is not needed here; we'll filter by term_id in grade_entries
-    console.log('[v0-completion-status] Step 3: Querying student_enrollments with:', { schoolId, schoolClassId });
-    
     const { data: enrolledStudents, error: enrollError } = await supabase
       .from('student_enrollments')
       .select('student_id')
@@ -114,20 +109,12 @@ export async function GET(request: NextRequest) {
       .eq('school_class_id', schoolClassId);
 
     if (enrollError) {
-      console.error('[v0-completion-status] ERROR fetching enrolled students:', {
-        code: enrollError.code,
-        message: enrollError.message,
-        details: enrollError.details,
-        schoolId,
-        schoolClassId,
-      });
+      console.error('[v0] Error fetching enrolled students:', enrollError);
       return NextResponse.json(
-        { error: 'Failed to fetch enrolled students', debug: enrollError.message },
+        { error: 'Failed to fetch enrolled students' },
         { status: 500 }
       );
     }
-    
-    console.log('[v0-completion-status] Step 3: Enrolled students fetched:', { enrolledStudentsCount: enrolledStudents?.length });
 
     const studentIds = (enrolledStudents || []).map(e => e.student_id);
 
