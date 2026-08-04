@@ -64,13 +64,20 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolClassId = streamData.school_class_id;
+    console.log('[debug] stream_id received:', streamId);
+    console.log('[debug] resolved class_id:', schoolClassId);
+    console.log('[debug] schoolId used:', schoolId);
 
-    // Step 2: Get all subjects assigned to this class
+    // Step 2: Get all subjects assigned to this class (without nested join)
     const { data: classSubjects, error: classSubjectsError } = await supabase
       .from('class_subjects')
-      .select('subject_id, subjects(id, name, code)')
+      .select('id, subject_id, class_id, school_id')
       .eq('school_id', schoolId)
-      .eq('class_id', schoolClassId);
+      .eq('class_id', schoolClassId)
+      .order('subject_id');
+
+    console.log('[debug] class_subjects data:', classSubjects);
+    console.log('[debug] class_subjects error:', classSubjectsError);
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
@@ -92,11 +99,20 @@ export async function GET(request: NextRequest) {
     }
 
     const subjectIds = (classSubjects as any[]).map(cs => cs.subject_id);
+
+    // Step 2b: Get subject names for display
+    const { data: subjectsData, error: subjectsError } = await supabase
+      .from('subjects')
+      .select('id, name, code')
+      .in('id', subjectIds);
+
+    if (subjectsError) {
+      console.error('[v0] Error fetching subjects:', subjectsError);
+    }
+
     const subjectMap = new Map();
-    (classSubjects as any[]).forEach(cs => {
-      if (cs.subjects) {
-        subjectMap.set(cs.subject_id, cs.subjects);
-      }
+    (subjectsData || []).forEach(s => {
+      subjectMap.set(s.id, s);
     });
 
     // Step 3: Get enrolled students for this class
