@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader, FileText, Edit2 } from 'lucide-react';
+import { AlertCircle, Loader, FileText, Edit2, Printer } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Student {
@@ -208,6 +208,23 @@ interface ReportCardEditorProps {
   onBack: () => void;
 }
 
+interface StudentDetailData {
+  attendance: {
+    workingDays: number;
+    presentDays: number;
+    absentDays: number;
+  };
+  subjectGrades: Array<{
+    subject_id: string;
+    subject_name: string;
+    class_score: number;
+    exam_score: number;
+    total_score: number;
+    remarks: string;
+  }>;
+  overallAverage: number;
+}
+
 function ReportCardEditor({
   student,
   classSize,
@@ -219,10 +236,12 @@ function ReportCardEditor({
   streamId,
   onBack,
 }: ReportCardEditorProps) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [studentDetail, setStudentDetail] = useState<StudentDetailData | null>(null);
 
   // Form state
   const [totalMarks, setTotalMarks] = useState(student.report_card?.total_score || 0);
@@ -231,6 +250,43 @@ function ReportCardEditor({
   const [ranking, setRanking] = useState(student.report_card?.ranking || '');
   const [teacherComment, setTeacherComment] = useState(student.report_card?.teacher_comment || '');
   const [principalSignature, setPrincipalSignature] = useState(student.report_card?.principal_signature || false);
+  const [subjectRemarks, setSubjectRemarks] = useState<Record<string, string>>({});
+
+  // Fetch student detail data on mount
+  useEffect(() => {
+    const fetchStudentDetail = async () => {
+      try {
+        const response = await fetch(
+          `/api/school/reports/report-cards/student-detail?student_id=${student.student_id}&term_id=${termId}&academic_year_id=${academicYearId}&stream_id=${streamId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch student details');
+        }
+
+        const data: StudentDetailData = await response.json();
+        setStudentDetail(data);
+
+        // Auto-populate average from grades if not already set
+        if (!student.report_card?.average_score && data.overallAverage) {
+          setAverageScore(parseFloat(data.overallAverage as any));
+        }
+
+        // Auto-populate total from grades
+        const subjectTotal = data.subjectGrades.reduce((sum, s) => sum + s.total_score, 0);
+        if (!student.report_card?.total_score && subjectTotal > 0) {
+          setTotalMarks(subjectTotal);
+        }
+      } catch (err) {
+        console.error('[v0] Fetch student detail error:', err);
+        setError('Failed to load student performance data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudentDetail();
+  }, [student.student_id, termId, academicYearId, streamId]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -268,6 +324,25 @@ function ReportCardEditor({
     }
   };
 
+  const handlePrint = () => {
+    setPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setPrinting(false);
+    }, 100);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <Loader className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading student report card...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Back Button */}
@@ -280,8 +355,24 @@ function ReportCardEditor({
 
       {/* Student Header */}
       <div className="bg-card border border-border rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-foreground mb-4">Report Card</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Report Card</h2>
+            <p className="text-sm text-muted-foreground">
+              {new Date(termStartDate).toLocaleDateString()} - {new Date(termEndDate).toLocaleDateString()}
+            </p>
+          </div>
+          <button
+            onClick={handlePrint}
+            disabled={printing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm font-medium"
+          >
+            <Printer className="w-4 h-4" />
+            {printing ? 'Printing...' : 'Print'}
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Student Name</p>
             <p className="text-lg font-semibold text-foreground">{student.name}</p>
@@ -291,7 +382,7 @@ function ReportCardEditor({
             <p className="text-lg font-semibold text-foreground">{student.admission_number}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Class</p>
+            <p className="text-sm text-muted-foreground mb-1">Class / Stream</p>
             <p className="text-lg font-semibold text-foreground">{streamName}</p>
           </div>
           <div>
@@ -311,6 +402,70 @@ function ReportCardEditor({
       {successMessage && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
           <p className="text-sm text-green-600">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Attendance Section */}
+      {studentDetail && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h3 className="text-lg font-bold text-foreground mb-4">Attendance</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground mb-2">Total School Days</p>
+              <p className="text-2xl font-bold text-foreground">{studentDetail.attendance.workingDays}</p>
+            </div>
+            <div className="bg-green-500/10 rounded-lg p-4">
+              <p className="text-sm text-green-600 mb-2">Days Present</p>
+              <p className="text-2xl font-bold text-green-600">{studentDetail.attendance.presentDays}</p>
+            </div>
+            <div className="bg-red-500/10 rounded-lg p-4">
+              <p className="text-sm text-red-600 mb-2">Days Absent</p>
+              <p className="text-2xl font-bold text-red-600">{studentDetail.attendance.absentDays}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Academic Performance Section */}
+      {studentDetail && studentDetail.subjectGrades.length > 0 && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h3 className="text-lg font-bold text-foreground mb-4">Academic Performance</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Subject</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Class Score</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam Score</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Total</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentDetail.subjectGrades.map((subject) => (
+                  <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
+                    <td className="px-4 py-3 text-center text-foreground">{subject.class_score.toFixed(1)}</td>
+                    <td className="px-4 py-3 text-center text-foreground">{subject.exam_score.toFixed(1)}</td>
+                    <td className="px-4 py-3 text-center font-semibold text-foreground">{subject.total_score.toFixed(1)}</td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={subjectRemarks[subject.subject_id] || ''}
+                        onChange={(e) => setSubjectRemarks(prev => ({ ...prev, [subject.subject_id]: e.target.value }))}
+                        className="w-full px-2 py-1 bg-background border border-border rounded text-sm focus:outline-none focus:border-primary"
+                      >
+                        <option value="">Select</option>
+                        <option value="Excellent">Excellent</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Needs Improvement">Needs Improvement</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -394,7 +549,7 @@ function ReportCardEditor({
       </div>
 
       {/* Save Button */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 no-print">
         <button
           onClick={onBack}
           className="px-6 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-foreground font-medium"
@@ -419,6 +574,64 @@ function ReportCardEditor({
           )}
         </button>
       </div>
+
+      <style jsx>{`
+        @media print {
+          .no-print {
+            display: none;
+          }
+
+          body {
+            background: white;
+            color: black;
+          }
+
+          .bg-card {
+            background: white;
+            border: 1px solid #ccc;
+            page-break-inside: avoid;
+          }
+
+          .text-foreground {
+            color: black;
+          }
+
+          .text-muted-foreground {
+            color: #666;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: avoid;
+          }
+
+          th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+          }
+
+          th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+          }
+
+          select {
+            border: none;
+            background: transparent;
+            padding: 0;
+          }
+
+          h2, h3 {
+            page-break-after: avoid;
+          }
+
+          .space-y-6 > * + * {
+            margin-top: 1.5rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }
