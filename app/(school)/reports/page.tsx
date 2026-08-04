@@ -3,13 +3,15 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { BarChart3, Clock, DollarSign, TrendingUp, Download, Filter, AlertCircle } from 'lucide-react';
+import { BarChart3, Clock, DollarSign, TrendingUp, Download, Filter, AlertCircle, FileText } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { AcademicPerformanceTab } from '@/components/reports/academic-performance-tab';
+import { ReportCardsTab } from '@/components/reports/report-cards-tab';
 
 function ReportsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [dateRange, setDateRange] = useState('month');
+  const [activeTab, setActiveTab] = useState<'academic' | 'report-cards'>('academic');
   const [contextInfo, setContextInfo] = useState<string>('');
   const [completionError, setCompletionError] = useState<string | null>(null);
 
@@ -106,103 +108,69 @@ function ReportsContent() {
     );
   }
 
+  const academicYearId = searchParams.get('academic_year_id');
+  const termId = searchParams.get('term_id');
+  const streamId = searchParams.get('stream_id');
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Reports</h1>
-          <p className="text-muted-foreground mt-1">View school analytics and performance reports</p>
-          {contextInfo && (
-            <p className="text-xs text-muted-foreground mt-2 font-mono bg-muted px-2 py-1 rounded w-fit">
-              {contextInfo}
-            </p>
-          )}
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
-          <Filter className="w-5 h-5" />
-          <span>Filter</span>
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Reports</h1>
+        <p className="text-muted-foreground mt-1">View school analytics and performance reports</p>
+        {contextInfo && (
+          <p className="text-xs text-muted-foreground mt-2 font-mono bg-muted px-2 py-1 rounded w-fit">
+            {contextInfo}
+          </p>
+        )}
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-border">
+        <button
+          onClick={() => setActiveTab('academic')}
+          className={`px-6 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'academic'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Academic Performance
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('report-cards')}
+          className={`px-6 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'report-cards'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Report Cards
+          </div>
         </button>
       </div>
 
-      {/* Date Range Filter */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <label className="block text-sm font-medium text-foreground mb-3">Date Range</label>
-        <div className="flex gap-2">
-          {[
-            { value: 'week', label: 'This Week' },
-            { value: 'month', label: 'This Month' },
-            { value: 'quarter', label: 'This Quarter' },
-            { value: 'year', label: 'This Year' },
-          ].map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setDateRange(option.value)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                dateRange === option.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground hover:bg-muted/80'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Tab Content */}
+      {activeTab === 'academic' && academicYearId && termId && streamId && (
+        <AcademicPerformanceTab
+          academicYearId={academicYearId}
+          termId={termId}
+          streamId={streamId}
+        />
+      )}
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {reports.map((report) => {
-          const Icon = report.icon;
-          return (
-            <div
-              key={report.id}
-              onClick={() => router.push(report.href)}
-              className="bg-card border border-border rounded-lg p-6 hover:shadow-lg cursor-pointer transition-all hover:border-primary"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${report.color}/20`}>
-                  <Icon className={`w-6 h-6 ${report.color.replace('bg-', 'text-')}`} />
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Handle download
-                  }}
-                  className="p-2 hover:bg-muted rounded-lg transition-colors"
-                >
-                  <Download className="w-5 h-5 text-muted-foreground" />
-                </button>
-              </div>
-
-              {/* Title and Description */}
-              <h3 className="text-lg font-bold text-foreground mb-2">{report.title}</h3>
-              <p className="text-sm text-muted-foreground mb-6">{report.description}</p>
-
-              {/* Stats */}
-              <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                <p className="text-xs text-muted-foreground mb-1">{report.stats.label}</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-foreground">{report.stats.value}</p>
-                  <span className="text-xs text-green-600 font-semibold">{report.stats.trend}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-        <h3 className="font-semibold text-blue-600 mb-3">Pro Tips</h3>
-        <ul className="text-sm text-blue-600/80 space-y-2">
-          <li>✓ Generate automated reports on schedule</li>
-          <li>✓ Export reports in PDF and Excel formats</li>
-          <li>✓ Set up email notifications for alerts</li>
-          <li>✓ Track year-over-year performance trends</li>
-        </ul>
-      </div>
+      {activeTab === 'report-cards' && academicYearId && termId && streamId && (
+        <ReportCardsTab
+          academicYearId={academicYearId}
+          termId={termId}
+          streamId={streamId}
+        />
+      )}
     </div>
   );
 }
