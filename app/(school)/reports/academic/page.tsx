@@ -231,7 +231,7 @@ function AcademicReportContent() {
                   <td className="px-4 py-3 font-medium text-foreground">{student.name}</td>
                   <td className="px-4 py-3 text-center text-muted-foreground">{student.admissionNumber}</td>
                   {reportData.subjects.map((subject) => (
-                    <td key={subject.id} className="px-4 py-3 text-center">
+                    <td key={subject.id} className="px-4 py-3 text-center text-foreground">
                       {student.subjectScores[subject.id] ? student.subjectScores[subject.id].toFixed(1) : '-'}
                     </td>
                   ))}
