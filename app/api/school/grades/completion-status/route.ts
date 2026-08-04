@@ -100,13 +100,16 @@ export async function GET(request: NextRequest) {
     });
 
     // Step 3: Get enrolled students for this class
-    // Note: student_enrollments links students to school_class_id, NOT stream_id or term_id
-    // Filtering by academic_year_id is not needed here; we'll filter by term_id in grade_entries
+    // student_enrollments.class_id links students to classes (NOT school_class_id or stream_id)
+    // Must filter by academic_year_id to get students enrolled for the selected academic year
+    // Must filter by status='active' to only get currently enrolled students
     const { data: enrolledStudents, error: enrollError } = await supabase
       .from('student_enrollments')
       .select('student_id')
       .eq('school_id', schoolId)
-      .eq('school_class_id', schoolClassId);
+      .eq('class_id', schoolClassId)
+      .eq('academic_year_id', academicYearId)
+      .eq('status', 'active');
 
     if (enrollError) {
       console.error('[v0] Error fetching enrolled students:', enrollError);
