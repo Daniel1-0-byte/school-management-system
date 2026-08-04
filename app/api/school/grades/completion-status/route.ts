@@ -68,15 +68,15 @@ export async function GET(request: NextRequest) {
     console.log('[debug] resolved class_id:', schoolClassId);
     console.log('[debug] schoolId used:', schoolId);
 
-    // Step 2: Get all subjects assigned to this class (without nested join)
-    const { data: classSubjects, error: classSubjectsError } = await supabase
+    // Step 2: Get all subjects assigned to this class using the EXACT pattern that works
+    // Use nested join with alias: subject:subjects(id, name, code)
+    const { data: classSubjectsResponse, error: classSubjectsError } = await supabase
       .from('class_subjects')
-      .select('id, subject_id, class_id, school_id')
+      .select('subject:subjects(id, name, code)')
       .eq('school_id', schoolId)
-      .eq('class_id', schoolClassId)
-      .order('subject_id');
+      .eq('class_id', schoolClassId);
 
-    console.log('[debug] class_subjects data:', classSubjects);
+    console.log('[debug] class_subjects response:', classSubjectsResponse);
     console.log('[debug] class_subjects error:', classSubjectsError);
 
     if (classSubjectsError) {
@@ -86,6 +86,11 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Extract subjects from the response (nested join result)
+    const classSubjects = (classSubjectsResponse || [])
+      .map((item: any) => item.subject)
+      .filter((subject: any) => subject !== null);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -98,20 +103,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const subjectIds = (classSubjects as any[]).map(cs => cs.subject_id);
-
-    // Step 2b: Get subject names for display
-    const { data: subjectsData, error: subjectsError } = await supabase
-      .from('subjects')
-      .select('id, name, code')
-      .in('id', subjectIds);
-
-    if (subjectsError) {
-      console.error('[v0] Error fetching subjects:', subjectsError);
-    }
-
+    // Build subject map for later use
     const subjectMap = new Map();
-    (subjectsData || []).forEach(s => {
+    classSubjects.forEach((s: any) => {
       subjectMap.set(s.id, s);
     });
 
