@@ -2,32 +2,133 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
-import { Download, Filter, TrendingUp, Award } from 'lucide-react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Download, Filter, TrendingUp, Award, AlertCircle, Loader } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function AcademicReportPage() {
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
+interface ReportData {
+  students: Array<{
+    id: string;
+    name: string;
+    admissionNumber: string;
+    subjectScores: Record<string, number>;
+    average: number;
+    grade: string;
+  }>;
+  subjects: Array<{ id: string; name: string }>;
+  summary: {
+    classAverage: number;
+    highestScore: number;
+    topPerformers: number;
+    improvement: number | null;
+  };
+  gradeDistribution: Record<string, number>;
+  subjectPerformance: Array<{ id: string; name: string; average: number }>;
+}
 
-  const classes = [
-    { id: 'class-1', name: 'Class 1-A' },
-    { id: 'class-2', name: 'Class 2-B' },
-    { id: 'class-3', name: 'Class 3-A' },
-  ];
+function AcademicReportContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
-  const subjects = [
-    { id: 'math', name: 'Mathematics' },
-    { id: 'english', name: 'English' },
-    { id: 'science', name: 'Science' },
-  ];
+  const academicYearId = searchParams.get('academic_year_id');
+  const termId = searchParams.get('term_id');
+  const streamId = searchParams.get('stream_id');
 
-  const reportData = [
-    { name: 'Aarjav Patel', rollNo: '001', math: 85, english: 78, science: 88, average: 83.67, grade: 'A' },
-    { name: 'Bhavna Sharma', rollNo: '002', math: 92, english: 89, science: 94, average: 91.67, grade: 'A+' },
-    { name: 'Chirag Desai', rollNo: '003', math: 76, english: 72, science: 79, average: 75.67, grade: 'B' },
-    { name: 'Divya Nair', rollNo: '004', math: 88, english: 85, science: 90, average: 87.67, grade: 'A' },
-    { name: 'Esha Gupta', rollNo: '005', math: 95, english: 92, science: 96, average: 94.33, grade: 'A+' },
-  ];
+  useEffect(() => {
+    const fetchReportData = async () => {
+      if (!academicYearId || !termId || !streamId) {
+        setError('Missing required parameters. Please proceed from the Grades module.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/school/reports/academic?academic_year_id=${academicYearId}&term_id=${termId}&stream_id=${streamId}`
+        );
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch report data');
+        }
+        
+        const data = await response.json();
+        setReportData(data);
+      } catch (err) {
+        console.error('[v0] Report fetch error:', err);
+        setError('Failed to load academic report. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReportData();
+  }, [academicYearId, termId, streamId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-4">
+          <Loader className="w-12 h-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Loading academic report...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-foreground">Academic Performance Report</h1>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6 flex gap-4">
+          <AlertCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-1" />
+          <div className="flex-1">
+            <h3 className="font-semibold text-destructive mb-2">Unable to Load Report</h3>
+            <p className="text-sm text-destructive/80 mb-4">{error}</p>
+            <button
+              onClick={() => router.push('/grades')}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+            >
+              Return to Grades
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!reportData || reportData.students.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-foreground">Academic Performance Report</h1>
+        <div className="bg-muted border border-border rounded-lg p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+          <p className="text-muted-foreground mb-4">No grade data is available for this class and term yet.</p>
+          <button
+            onClick={() => router.push('/grades')}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+          >
+            Return to Grades
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const gradeColors: Record<string, string> = {
+    'A+': 'bg-green-500/20 text-green-600',
+    'A': 'bg-blue-500/20 text-blue-600',
+    'B': 'bg-yellow-500/20 text-yellow-600',
+    'C': 'bg-orange-500/20 text-orange-600',
+    'D': 'bg-red-500/20 text-red-600',
+    'F': 'bg-red-500/20 text-red-600',
+  };
+
+  const totalStudents = reportData.students.length;
+  const gradeDistributionEntries = Object.entries(reportData.gradeDistribution);
+  const maxGradeCount = Math.max(...gradeDistributionEntries.map(([, count]) => count));
 
   return (
     <div className="space-y-6">
@@ -43,95 +144,45 @@ export default function AcademicReportPage() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Filters</h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Class Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Class</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            >
-              <option value="">All Classes</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Subject Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Subject</label>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            >
-              <option value="">All Subjects</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-muted-foreground text-sm mb-2">Class Average</p>
-          <p className="text-3xl font-bold text-foreground">84.2%</p>
-          <p className="text-xs text-green-600 mt-1">+2.5% from last month</p>
+          <p className="text-3xl font-bold text-foreground">{reportData.summary.classAverage.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground mt-1">From {reportData.students.length} students</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-muted-foreground text-sm mb-2">Highest Score</p>
-          <p className="text-3xl font-bold text-foreground">96</p>
-          <p className="text-xs text-muted-foreground mt-1">By Esha Gupta</p>
+          <p className="text-3xl font-bold text-foreground">{reportData.summary.highestScore}</p>
+          <p className="text-xs text-muted-foreground mt-1">In this term</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-muted-foreground text-sm mb-2">A+ Students</p>
-          <p className="text-3xl font-bold text-foreground">8</p>
-          <p className="text-xs text-muted-foreground mt-1">16% of class</p>
+          <p className="text-muted-foreground text-sm mb-2">Top Performers</p>
+          <p className="text-3xl font-bold text-foreground">{reportData.summary.topPerformers}</p>
+          <p className="text-xs text-muted-foreground mt-1">A+ and A grades</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-muted-foreground text-sm mb-2">Improvement</p>
-          <p className="text-3xl font-bold text-foreground">12%</p>
-          <p className="text-xs text-green-600 mt-1">Average improvement</p>
+          <p className="text-3xl font-bold text-foreground">{reportData.summary.improvement ? reportData.summary.improvement.toFixed(1) + '%' : 'N/A'}</p>
+          <p className="text-xs text-muted-foreground mt-1">vs previous term</p>
         </div>
       </div>
 
-      {/* Grade Distribution */}
+      {/* Grade Distribution & Subject Performance */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="text-lg font-bold text-foreground mb-4">Grade Distribution</h3>
           <div className="space-y-3">
-            {[
-              { grade: 'A+', count: 8, color: 'bg-green-500' },
-              { grade: 'A', count: 15, color: 'bg-blue-500' },
-              { grade: 'B+', count: 12, color: 'bg-yellow-500' },
-              { grade: 'B', count: 10, color: 'bg-orange-500' },
-              { grade: 'C', count: 3, color: 'bg-red-500' },
-            ].map((item) => (
-              <div key={item.grade} className="flex items-center gap-4">
-                <span className="font-bold text-foreground w-8">{item.grade}</span>
+            {gradeDistributionEntries.map(([grade, count]) => (
+              <div key={grade} className="flex items-center gap-4">
+                <span className="font-bold text-foreground w-8">{grade}</span>
                 <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
                   <div
-                    className={`h-full ${item.color} transition-all`}
-                    style={{ width: `${(item.count / 50) * 100}%` }}
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${maxGradeCount > 0 ? (count / maxGradeCount) * 100 : 0}%` }}
                   />
                 </div>
-                <span className="text-sm text-muted-foreground w-12 text-right">{item.count}</span>
+                <span className="text-sm text-muted-foreground w-12 text-right">{count}</span>
               </div>
             ))}
           </div>
@@ -140,21 +191,18 @@ export default function AcademicReportPage() {
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="text-lg font-bold text-foreground mb-4">Subject Performance</h3>
           <div className="space-y-3">
-            {subjects.map((subject) => {
-              const avg = Math.floor(Math.random() * 30) + 70;
-              return (
-                <div key={subject.id} className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-foreground w-20">{subject.name}</span>
-                  <div className="flex-1 h-6 bg-muted rounded-lg overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${avg}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-bold text-foreground w-12 text-right">{avg}%</span>
+            {reportData.subjectPerformance.map((subject) => (
+              <div key={subject.id} className="flex items-center gap-4">
+                <span className="text-sm font-medium text-foreground w-20 truncate">{subject.name}</span>
+                <div className="flex-1 h-6 bg-muted rounded-lg overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${Math.min(subject.average, 100)}%` }}
+                  />
                 </div>
-              );
-            })}
+                <span className="text-sm font-bold text-foreground w-12 text-right">{subject.average.toFixed(1)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -167,31 +215,31 @@ export default function AcademicReportPage() {
             <thead className="bg-muted/50 border-b border-border">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-foreground">Student Name</th>
-                <th className="px-4 py-3 text-center font-semibold text-foreground">Roll No</th>
-                <th className="px-4 py-3 text-center font-semibold text-foreground">Math</th>
-                <th className="px-4 py-3 text-center font-semibold text-foreground">English</th>
-                <th className="px-4 py-3 text-center font-semibold text-foreground">Science</th>
+                <th className="px-4 py-3 text-center font-semibold text-foreground">Admission No</th>
+                {reportData.subjects.map((subject) => (
+                  <th key={subject.id} className="px-4 py-3 text-center font-semibold text-foreground text-xs">
+                    {subject.name.split(' ')[0]}
+                  </th>
+                ))}
                 <th className="px-4 py-3 text-center font-semibold text-foreground">Average</th>
                 <th className="px-4 py-3 text-center font-semibold text-foreground">Grade</th>
               </tr>
             </thead>
             <tbody>
-              {reportData.map((student) => (
-                <tr key={student.rollNo} className="border-b border-border hover:bg-muted/30 transition-colors">
+              {reportData.students.map((student) => (
+                <tr key={student.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{student.name}</td>
-                  <td className="px-4 py-3 text-center text-muted-foreground">{student.rollNo}</td>
-                  <td className="px-4 py-3 text-center">{student.math}</td>
-                  <td className="px-4 py-3 text-center">{student.english}</td>
-                  <td className="px-4 py-3 text-center">{student.science}</td>
+                  <td className="px-4 py-3 text-center text-muted-foreground">{student.admissionNumber}</td>
+                  {reportData.subjects.map((subject) => (
+                    <td key={subject.id} className="px-4 py-3 text-center">
+                      {student.subjectScores[subject.id] ? student.subjectScores[subject.id].toFixed(1) : '-'}
+                    </td>
+                  ))}
                   <td className="px-4 py-3 text-center font-semibold text-foreground">
                     {student.average.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
-                      student.grade === 'A+' ? 'bg-green-500/20 text-green-600' :
-                      student.grade === 'A' ? 'bg-blue-500/20 text-blue-600' :
-                      'bg-yellow-500/20 text-yellow-600'
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${gradeColors[student.grade] || gradeColors['F']}`}>
                       <Award className="w-3 h-3" />
                       {student.grade}
                     </span>
@@ -203,5 +251,13 @@ export default function AcademicReportPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AcademicReportPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-12">Loading academic report...</div>}>
+      <AcademicReportContent />
+    </Suspense>
   );
 }
