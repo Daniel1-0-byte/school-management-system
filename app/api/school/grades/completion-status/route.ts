@@ -64,20 +64,27 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolClassId = streamData.school_class_id;
-    console.log('[debug] stream_id received:', streamId);
-    console.log('[debug] resolved class_id:', schoolClassId);
-    console.log('[debug] schoolId used:', schoolId);
+    console.log('[DEBUG-COMPLETION] stream_id received:', streamId);
+    console.log('[DEBUG-COMPLETION] resolved class_id:', schoolClassId);
+    console.log('[DEBUG-COMPLETION] schoolId used:', schoolId);
 
     // Step 2: Get all subjects assigned to this class using the EXACT pattern that works
     // Use nested join with alias: subject:subjects(id, name, code)
-    const { data: classSubjectsResponse, error: classSubjectsError } = await supabase
+    const supabaseQuery = supabase
       .from('class_subjects')
       .select('subject:subjects(id, name, code)')
       .eq('school_id', schoolId)
       .eq('class_id', schoolClassId);
 
-    console.log('[debug] class_subjects response:', classSubjectsResponse);
-    console.log('[debug] class_subjects error:', classSubjectsError);
+    console.log('[DEBUG-COMPLETION] Query: class_subjects with subject nested join, eq(school_id), eq(class_id)');
+
+    const { data: classSubjectsResponse, error: classSubjectsError } = await supabaseQuery;
+
+    console.log('[DEBUG-COMPLETION] Query returned rows:', classSubjectsResponse?.length || 0);
+    if (classSubjectsResponse) {
+      console.log('[DEBUG-COMPLETION] Row subject IDs:', (classSubjectsResponse as any[]).map((row: any) => row.subject?.id || 'null').join(', '));
+    }
+    console.log('[DEBUG-COMPLETION] Error:', classSubjectsError);
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
@@ -91,6 +98,8 @@ export async function GET(request: NextRequest) {
     const classSubjects = (classSubjectsResponse || [])
       .map((item: any) => item.subject)
       .filter((subject: any) => subject !== null);
+
+    console.log('[DEBUG-COMPLETION] After extraction, subjects:', classSubjects.length);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -108,7 +117,7 @@ export async function GET(request: NextRequest) {
       .map((item: any) => item.subject?.id)
       .filter((id: any): id is string => Boolean(id));
 
-    console.log('[debug] subjectIds:', subjectIds);
+    console.log('[DEBUG-COMPLETION] subjectIds:', subjectIds);
 
     // Build subject map for later use
     const subjectMap = new Map();
