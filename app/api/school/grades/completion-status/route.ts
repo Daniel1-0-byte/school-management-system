@@ -103,6 +103,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Extract subject IDs from the nested structure
+    const subjectIds = (classSubjectsResponse || [])
+      .map((item: any) => item.subject?.id)
+      .filter((id: any): id is string => Boolean(id));
+
+    console.log('[debug] subjectIds:', subjectIds);
+
     // Build subject map for later use
     const subjectMap = new Map();
     classSubjects.forEach((s: any) => {
@@ -138,8 +145,8 @@ export async function GET(request: NextRequest) {
         total_subjects: subjectIds.length,
         completed_subjects: 0,
         missing_subjects: (classSubjects as any[]).map(cs => ({
-          id: cs.subject_id,
-          name: cs.subjects?.name || 'Unknown',
+          id: cs.id,
+          name: cs.name || 'Unknown',
         })),
         message: 'No students enrolled in this class for the selected term.',
       });
