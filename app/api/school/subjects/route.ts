@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchClassSubjects } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/subjects
@@ -66,29 +67,25 @@ export async function GET(request: NextRequest) {
 
     console.log('[debug] stream_id received:', streamId);
     console.log('[debug] resolved class_id:', resolvedClassId);
-
-    // Fetch subjects for this class via class_subjects junction table
-    const { data, error } = await getServerSupabaseClient()
-      .from('class_subjects')
-      .select('subject:subjects(id, name, code)')
-      .eq('class_id', resolvedClassId)
-      .eq('school_id', schoolId);
-
     console.log('[debug] schoolId used:', schoolId);
-    console.log('[debug] class_subjects data:', JSON.stringify(data));
-    console.log('[debug] class_subjects error:', error);
 
-    if (error) {
+    try {
+      // Use shared utility to fetch subjects
+      const subjects = await fetchClassSubjects(
+        getServerSupabaseClient(),
+        resolvedClassId!,
+        schoolId
+      );
+
+      console.log('[debug] class_subjects data:', subjects);
+      return NextResponse.json({ data: subjects || [] });
+    } catch (error) {
       console.error('[v0] Class subjects GET error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      return NextResponse.json(
+        { error: formatSupabaseError(error as any) || 'Failed to fetch subjects' },
+        { status: 400 }
+      );
     }
-
-    // Extract subjects from the junction table results
-    const subjects = (data || [])
-      .map((item: any) => item.subject)
-      .filter((subject: any) => subject !== null);
-
-    return NextResponse.json({ data: subjects || [] });
   } catch (error) {
     console.error('[v0] Subjects GET error:', error);
     return NextResponse.json(

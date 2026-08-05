@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchClassSubjects, extractSubjectIds } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/grades/completion-status
@@ -68,29 +69,19 @@ export async function GET(request: NextRequest) {
     console.log('[debug] resolved class_id:', schoolClassId);
     console.log('[debug] schoolId used:', schoolId);
 
-    // Step 2: Get all subjects assigned to this class using the EXACT pattern that works
-    // Use nested join with alias: subject:subjects(id, name, code)
-    const { data: classSubjectsResponse, error: classSubjectsError } = await supabase
-      .from('class_subjects')
-      .select('subject:subjects(id, name, code)')
-      .eq('school_id', schoolId)
-      .eq('class_id', schoolClassId);
-
-    console.log('[debug] class_subjects response:', classSubjectsResponse);
-    console.log('[debug] class_subjects error:', classSubjectsError);
-
-    if (classSubjectsError) {
-      console.error('[v0] Error fetching class subjects:', classSubjectsError);
+    // Step 2: Get all subjects assigned to this class using shared utility
+    // This ensures identical query logic as /api/school/subjects (used in Grade Entry)
+    let classSubjects: any[] = [];
+    try {
+      classSubjects = await fetchClassSubjects(supabase, schoolClassId, schoolId);
+      console.log('[debug] class_subjects response:', classSubjects);
+    } catch (error) {
+      console.error('[v0] Error fetching class subjects:', error);
       return NextResponse.json(
         { error: 'Failed to fetch class subjects' },
         { status: 500 }
       );
     }
-
-    // Extract subjects from the response (nested join result)
-    const classSubjects = (classSubjectsResponse || [])
-      .map((item: any) => item.subject)
-      .filter((subject: any) => subject !== null);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -103,11 +94,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Extract subject IDs from the nested structure
-    const subjectIds = (classSubjectsResponse || [])
-      .map((item: any) => item.subject?.id)
-      .filter((id: any): id is string => Boolean(id));
-
+    // Extract subject IDs from subjects
+    const subjectIds = extractSubjectIds(classSubjects);
     console.log('[debug] subjectIds:', subjectIds);
 
     // Build subject map for later use
