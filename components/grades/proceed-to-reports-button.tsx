@@ -80,7 +80,7 @@ export function ProceedToReportsButton({
       stream_id: streamId,
     });
 
-    router.push(`/reports/academic?${params.toString()}`);
+    router.push(`/reports?${params.toString()}`);
   };
 
   if (loading) {
