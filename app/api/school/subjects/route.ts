@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
-import { fetchClassSubjects } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/subjects
@@ -65,27 +64,40 @@ export async function GET(request: NextRequest) {
       resolvedClassId = stream.school_class_id;
     }
 
-    console.log('[debug] stream_id received:', streamId);
-    console.log('[debug] resolved class_id:', resolvedClassId);
-    console.log('[debug] schoolId used:', schoolId);
+    console.log('[DEBUG-SUBJECTS] stream_id received:', streamId);
+    console.log('[DEBUG-SUBJECTS] resolved class_id:', resolvedClassId);
+    console.log('[DEBUG-SUBJECTS] schoolId used:', schoolId);
 
-    try {
-      // Use shared utility to fetch subjects
-      const subjects = await fetchClassSubjects(
-        getServerSupabaseClient(),
-        resolvedClassId!,
-        schoolId
-      );
+    // Fetch subjects for this class via class_subjects junction table
+    const supabaseQuery = getServerSupabaseClient()
+      .from('class_subjects')
+      .select('subject:subjects(id, name, code)')
+      .eq('class_id', resolvedClassId)
+      .eq('school_id', schoolId);
 
-      console.log('[debug] class_subjects data:', subjects);
-      return NextResponse.json({ data: subjects || [] });
-    } catch (error) {
-      console.error('[v0] Class subjects GET error:', error);
-      return NextResponse.json(
-        { error: formatSupabaseError(error as any) || 'Failed to fetch subjects' },
-        { status: 400 }
-      );
+    console.log('[DEBUG-SUBJECTS] Query: class_subjects with subject nested join, eq(class_id), eq(school_id)');
+
+    const { data, error } = await supabaseQuery;
+
+    console.log('[DEBUG-SUBJECTS] Query returned rows:', data?.length || 0);
+    if (data) {
+      console.log('[DEBUG-SUBJECTS] Row subject IDs:', (data as any[]).map((row: any) => row.subject?.id || 'null').join(', '));
     }
+    console.log('[DEBUG-SUBJECTS] Error:', error);
+
+    if (error) {
+      console.error('[v0] Class subjects GET error:', error);
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    // Extract subjects from the junction table results
+    const subjects = (data || [])
+      .map((item: any) => item.subject)
+      .filter((subject: any) => subject !== null);
+
+    console.log('[DEBUG-SUBJECTS] After extraction, subjects:', subjects.length);
+
+    return NextResponse.json({ data: subjects || [] });
   } catch (error) {
     console.error('[v0] Subjects GET error:', error);
     return NextResponse.json(
