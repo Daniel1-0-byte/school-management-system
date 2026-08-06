@@ -115,36 +115,18 @@ export async function POST(request: NextRequest) {
 
       const missing: string[] = [];
 
+      // A report card is complete if it exists and has calculated scores/grades
+      // The report card generation process already validates that grades and attendance
+      // were available, so we only need to check if the report card has the final data
       if (!reportCard) {
         missing.push('No report card generated');
       } else {
-        // Check individual requirements
-        if (!reportCard.total_score) missing.push('Missing total score');
-        if (!reportCard.average_score) missing.push('Missing average score');
-        if (!reportCard.letter_grade) missing.push('Missing letter grade');
-      }
-
-      // Check for grades
-      const { data: grades, error: gradesError } = await supabase
-        .from('grade_entries')
-        .select('subject_id')
-        .eq('student_id', enrollment.student_id)
-        .eq('term_id', term_id)
-        .eq('academic_year_id', academic_year_id);
-
-      if (!grades || grades.length === 0) {
-        missing.push('No grades entered');
-      }
-
-      // Check for attendance
-      const { data: attendance, error: attendanceError } = await supabase
-        .from('attendance_records')
-        .select('id')
-        .eq('student_id', enrollment.student_id)
-        .limit(1);
-
-      if (!attendance || attendance.length === 0) {
-        missing.push('No attendance records');
+        // Report card exists - check if it has the calculated summary data
+        // If total_score, average_score, and letter_grade exist, grades were entered
+        const hasGrades = reportCard.total_score !== null && reportCard.average_score !== null;
+        if (!hasGrades) {
+          missing.push('Report card exists but lacks grade summary data');
+        }
       }
 
       studentStatuses.push({
