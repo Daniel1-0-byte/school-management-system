@@ -40,34 +40,41 @@ export function ReportCard({
   const attendancePercentage = ((attendance.present / attendance.total) * 100).toFixed(1);
 
   const handlePrint = () => {
+    // Hide buttons for print
+    const toolbar = document.getElementById('report-card-toolbar');
+    if (toolbar) {
+      toolbar.classList.add('hidden');
+    }
+    
     window.print();
+    
+    // Restore buttons after print dialog closes
+    setTimeout(() => {
+      if (toolbar) {
+        toolbar.classList.remove('hidden');
+      }
+    }, 500);
   };
 
-  const handleDownload = () => {
-    const element = document.getElementById('report-card-content');
-    if (element) {
-      const html = element.innerHTML;
-      const printWindow = window.open('', '', 'height=600,width=800');
-      if (printWindow) {
-        printWindow.document.write('<html><head><title>Report Card</title>');
-        printWindow.document.write('<style>');
-        printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
-        printWindow.document.write('table { width: 100%; border-collapse: collapse; margin: 20px 0; }');
-        printWindow.document.write('th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }');
-        printWindow.document.write('th { background-color: #f5f5f5; }');
-        printWindow.document.write('.header { text-align: center; margin-bottom: 20px; }');
-        printWindow.document.write('</style></head><body>');
-        printWindow.document.write(html);
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        printWindow.print();
-      }
+  const handleDownloadPDF = () => {
+    // Use browser's print-to-PDF feature
+    const toolbar = document.getElementById('report-card-toolbar');
+    if (toolbar) {
+      toolbar.classList.add('hidden');
     }
+    
+    window.print();
+    
+    setTimeout(() => {
+      if (toolbar) {
+        toolbar.classList.remove('hidden');
+      }
+    }, 500);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-2">
+      <div id="report-card-toolbar" className="flex justify-end gap-2 print:hidden">
         <button
           onClick={handlePrint}
           className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
@@ -76,11 +83,11 @@ export function ReportCard({
           Print
         </button>
         <button
-          onClick={handleDownload}
+          onClick={handleDownloadPDF}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
         >
           <Download className="w-4 h-4" />
-          Download
+          Download PDF
         </button>
       </div>
 
@@ -186,18 +193,44 @@ export function ReportCard({
           </div>
         )}
 
-        {/* Footer */}
-        <div className="border-t border-border pt-4 flex justify-between">
-          <div>
-            <p className="text-xs text-muted-foreground">Principal Signature</p>
-            <div className="w-32 h-12 border-b border-foreground mt-4" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Parent/Guardian Signature</p>
-            <div className="w-32 h-12 border-b border-foreground mt-4" />
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        @media print {
+          body {
+            background: white;
+            margin: 0;
+            padding: 0;
+          }
+          
+          #report-card-toolbar {
+            display: none !important;
+          }
+          
+          #report-card-content {
+            background: white;
+            border: none;
+            box-shadow: none;
+            margin: 0;
+            padding: 20mm;
+            page-break-after: always;
+            break-after: page;
+          }
+          
+          @page {
+            size: A4;
+            margin: 20mm;
+          }
+          
+          table {
+            page-break-inside: avoid;
+          }
+          
+          tr {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }
