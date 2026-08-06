@@ -275,41 +275,56 @@ export function BulkGenerateDialog({
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <div>
                   <p className="font-medium text-green-600">Successfully Generated</p>
-                  <p className="text-sm text-green-600/80">{reportUrls.length} report cards ready</p>
+                  <p className="text-sm text-green-600/80">{reportUrls.length} report cards ready to print</p>
                 </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-2">
+                <p className="text-sm text-foreground font-medium">How to Print:</p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li>• Click "Print All" to open all report cards in separate windows</li>
+                  <li>• Each window will show the professional report card layout</li>
+                  <li>• Use your browser's Print button (Ctrl+P or Cmd+P) to print or save as PDF</li>
+                  <li>• Or click "View" on individual reports to print one at a time</li>
+                </ul>
               </div>
 
               {/* Report List */}
               <div className="space-y-2 max-h-40 overflow-y-auto">
+                <h4 className="text-sm font-medium text-foreground">Report Cards ({reportUrls.length})</h4>
                 {reportUrls.map(report => (
-                  <div key={report.student_id} className="flex items-center justify-between bg-muted/50 rounded p-3">
-                    <span className="text-sm text-foreground">{report.student_name}</span>
+                  <div
+                    key={report.student_id}
+                    className="flex items-center justify-between bg-muted/50 rounded p-3 hover:bg-muted/70 transition-colors"
+                  >
+                    <span className="text-sm text-foreground font-medium">{report.student_name}</span>
                     <a
                       href={report.preview_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline"
+                      className="text-xs px-3 py-1 bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
                     >
-                      View
+                      Open
                     </a>
                   </div>
                 ))}
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-border">
+              <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <button
                   onClick={handlePrintAll}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-sm font-medium"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium w-full"
                 >
                   <Printer className="w-4 h-4" />
-                  Print All
+                  Print All Report Cards
                 </button>
                 <button
                   onClick={handleClose}
-                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                  className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                 >
-                  Done
+                  Close
                 </button>
               </div>
             </>

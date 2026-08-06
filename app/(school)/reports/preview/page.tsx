@@ -55,16 +55,46 @@ export default function ReportCardPreviewPage() {
   };
 
   const handlePrint = () => {
+    // Hide toolbar before printing
+    const toolbar = document.getElementById('report-toolbar');
+    if (toolbar) {
+      toolbar.style.display = 'none';
+    }
+    
     setIsPrinting(true);
-    window.print();
-    setTimeout(() => setIsPrinting(false), 1000);
+    
+    // Trigger print dialog
+    setTimeout(() => {
+      window.print();
+      
+      // Restore toolbar after print dialog closes
+      setTimeout(() => {
+        if (toolbar) {
+          toolbar.style.display = 'flex';
+        }
+        setIsPrinting(false);
+      }, 500);
+    }, 100);
   };
 
   const handleDownloadPDF = async () => {
     try {
-      // Note: In a production system, you would use a library like jsPDF or html2pdf
-      // For now, we'll trigger the browser's print-to-PDF functionality
-      window.print();
+      // Hide toolbar before printing
+      const toolbar = document.getElementById('report-toolbar');
+      if (toolbar) {
+        toolbar.style.display = 'none';
+      }
+      
+      // Trigger browser print dialog (can save as PDF)
+      setTimeout(() => {
+        window.print();
+        
+        setTimeout(() => {
+          if (toolbar) {
+            toolbar.style.display = 'flex';
+          }
+        }, 500);
+      }, 100);
     } catch (err) {
       console.error('[v0] PDF download error:', err);
     }
@@ -104,9 +134,9 @@ export default function ReportCardPreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/50 no-print">
+    <div className="min-h-screen bg-muted/50">
       {/* Toolbar - Hidden in print */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border no-print">
+      <div id="report-toolbar" className="sticky top-0 z-10 bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button
@@ -140,7 +170,7 @@ export default function ReportCardPreviewPage() {
       </div>
 
       {/* Report Card Preview */}
-      <div className="p-4 no-print">
+      <div className="p-4">
         <div className="max-w-4xl mx-auto">
           {reportCard && <ProfessionalReportCard data={reportCard} />}
         </div>
@@ -149,13 +179,27 @@ export default function ReportCardPreviewPage() {
       {/* Print Version */}
       <style>{`
         @media print {
-          body {
-            background: white;
-            margin: 0;
-            padding: 0;
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          .no-print {
+          
+          html, body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+          }
+          
+          #report-toolbar {
             display: none !important;
+          }
+          
+          @page {
+            size: A4;
+            margin: 0;
           }
         }
       `}</style>
