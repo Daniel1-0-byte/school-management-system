@@ -40,11 +40,34 @@ export interface Database {
           status: string;
           invite_token: string | null;
           invite_expires_at: string | null;
+          signature_url: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: Omit<Database['public']['Tables']['profiles']['Row'], 'created_at' | 'updated_at'>;
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+      };
+      report_cards: {
+        Row: {
+          id: string;
+          school_id: string;
+          student_id: string;
+          term_id: string;
+          academic_year_id: string;
+          total_score: number | null;
+          average_score: number | null;
+          letter_grade: string | null;
+          ranking: number | null;
+          class_size: number | null;
+          teacher_comment: string | null;
+          principal_signature: boolean | null;
+          generated_at: string | null;
+          pdf_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['report_cards']['Row'], 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['report_cards']['Insert']>;
       };
       platform_admins: {
         Row: {
