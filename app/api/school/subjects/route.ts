@@ -36,66 +36,66 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let resolvedClassId = classIdParam;
+    let resolvedSystemClassId = classIdParam;
 
-    // If stream_id is provided, resolve to class_id
+    // If stream_id is provided, resolve to system_class_id
     if (streamId) {
       const { data: stream, error: streamError } = await getServerSupabaseClient()
         .from('school_class_streams')
-        .select('school_class_id')
+        .select('system_class_id')
         .eq('id', streamId)
+        .eq('school_id', schoolId)
         .single();
 
       if (streamError) {
         console.error('[v0] Stream lookup error:', streamError);
         return NextResponse.json(
-          { error: 'Stream not found' },
+          { error: 'Stream not found or does not belong to this school' },
           { status: 404 }
         );
       }
 
-      if (!stream?.school_class_id) {
+      if (!stream?.system_class_id) {
         return NextResponse.json(
-          { error: 'Stream does not have a class assigned' },
+          { error: 'Stream does not have a system class assigned' },
           { status: 400 }
         );
       }
 
-      resolvedClassId = stream.school_class_id;
+      resolvedSystemClassId = stream.system_class_id;
     }
 
-    console.log('[DEBUG-SUBJECTS] stream_id received:', streamId);
-    console.log('[DEBUG-SUBJECTS] resolved class_id:', resolvedClassId);
-    console.log('[DEBUG-SUBJECTS] schoolId used:', schoolId);
+    console.log('[v0] Fetching subjects - stream_id:', streamId, 'system_class_id:', resolvedSystemClassId, 'school_id:', schoolId);
 
-    // Fetch subjects for this class via class_subjects junction table
+    // Fetch subjects for this class via system_class_subjects junction table
     const supabaseQuery = getServerSupabaseClient()
-      .from('class_subjects')
-      .select('subject:subjects(id, name, code)')
-      .eq('class_id', resolvedClassId)
-      .eq('school_id', schoolId);
+      .from('system_class_subjects')
+      .select('id, display_order, system_subjects(id, name, code)')
+      .eq('class_id', resolvedSystemClassId)
+      .order('display_order');
 
-    console.log('[DEBUG-SUBJECTS] Query: class_subjects with subject nested join, eq(class_id), eq(school_id)');
+    console.log('[v0] Querying system_class_subjects for class_id:', resolvedSystemClassId);
 
     const { data, error } = await supabaseQuery;
 
-    console.log('[DEBUG-SUBJECTS] Query returned rows:', data?.length || 0);
-    if (data) {
-      console.log('[DEBUG-SUBJECTS] Row subject IDs:', (data as any[]).map((row: any) => row.subject?.id || 'null').join(', '));
-    }
-    console.log('[DEBUG-SUBJECTS] Error:', error);
+    console.log('[v0] Query returned rows:', data?.length || 0, 'error:', error);
 
     if (error) {
       console.error('[v0] Class subjects GET error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    // Extract subjects from the junction table results
+    // Extract subjects from the system_class_subjects junction table
     const subjects = (data || [])
-      .map((item: any) => item.subject)
-      .filter((subject: any) => subject !== null);
-
-    console.log('[DEBUG-SUBJECTS] After extraction, subjects:', subjects.length);
+      .map((item: any) => {
+        const subject = item.system_subjects;
+        return {
+          id: subject?.id,
+          name: subject?.name,
+          code: subject?.code,
+        };
+      })
+      .filter((subject: any) => subject.id !== null && subject.id !== undefined);
 
     return NextResponse.json({ data: subjects || [] });
   } catch (error) {
