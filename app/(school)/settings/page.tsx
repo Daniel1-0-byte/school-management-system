@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Save, AlertCircle, Building2, Calendar, DollarSign, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { LogoUpload } from '@/components/settings/logo-upload';
+import { SignatureUpload } from '@/components/settings/signature-upload';
 
 interface SettingsSection {
   id: string;
@@ -24,6 +26,50 @@ export default function SettingsPage() {
     principalName: 'Dr. Sharma',
     affiliation: 'CBSE',
   });
+  const [schoolId, setSchoolId] = useState<string>('');
+  const [userId, setUserId] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load school info and user data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Get school settings
+        const response = await fetch('/api/school/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setSchoolInfo({
+            name: data.name || '',
+            address: data.address || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            principalName: data.principal_name || '',
+            affiliation: data.affiliation || 'CBSE',
+          });
+          setSchoolId(data.id);
+          setLogoUrl(data.logo_url);
+        }
+
+        // Get user profile for signature
+        const profileResponse = await fetch('/api/auth/session');
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.user) {
+            setUserId(profileData.user.id);
+            setSignatureUrl(profileData.user.signature_url || null);
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Failed to load settings:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const sections: SettingsSection[] = [
     { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings/school-info', enabled: false },
@@ -37,13 +83,28 @@ export default function SettingsPage() {
       setSaving(true);
       setError(null);
 
+      const updateData = {
+        name: schoolInfo.name,
+        address: schoolInfo.address,
+        phone_number: schoolInfo.phone,
+        email: schoolInfo.email,
+        principal_name: schoolInfo.principalName,
+        affiliation: schoolInfo.affiliation,
+        logo_url: logoUrl,
+      };
+
       const response = await fetch('/api/school/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schoolInfo),
+        body: JSON.stringify(updateData),
       });
 
       if (!response.ok) throw new Error('Failed to save settings');
+      
+      // Show success message
+      setTimeout(() => {
+        setError(null);
+      }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -205,6 +266,42 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          {/* School Logo */}
+          {!isLoading && schoolId && (
+            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Building2 className="w-6 h-6 text-primary" />
+                  School Logo
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">Upload your school logo for report cards</p>
+              </div>
+
+              <LogoUpload
+                currentLogoUrl={logoUrl}
+                schoolId={schoolId}
+                onUploadSuccess={(url) => setLogoUrl(url)}
+              />
+            </div>
+          )}
+
+          {/* Headteacher Signature */}
+          {!isLoading && userId && (
+            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Headteacher Signature</h2>
+                <p className="text-sm text-muted-foreground mt-1">Upload your signature to display on report cards</p>
+              </div>
+
+              <SignatureUpload
+                currentSignatureUrl={signatureUrl}
+                userId={userId}
+                onUploadSuccess={(url) => setSignatureUrl(url)}
+                onDeleteSuccess={() => setSignatureUrl(null)}
+              />
+            </div>
+          )}
 
           {/* Quick Links */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">

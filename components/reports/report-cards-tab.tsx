@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Loader, FileText, Edit2, Printer } from 'lucide-react';
+import { AlertCircle, Loader, FileText, Edit2, Printer, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { BulkGenerateDialog } from './bulk-generate-dialog';
 
 interface Student {
   student_id: string;
@@ -36,6 +37,8 @@ export function ReportCardsTab({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ReportCardsResponse | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [showBulkDialog, setShowBulkDialog] = useState(false);
+  const [streamName, setStreamName] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,6 +53,7 @@ export function ReportCardsTab({
 
         const result = await response.json();
         setData(result);
+        setStreamName(result.streamName || '');
       } catch (err) {
         console.error('[v0] Report cards fetch error:', err);
         setError('Failed to load report cards. Please try again.');
@@ -135,6 +139,19 @@ export function ReportCardsTab({
         </div>
       </div>
 
+      {/* Bulk Generation Button */}
+      {completedCount > 0 && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowBulkDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Generate All Report Cards
+          </button>
+        </div>
+      )}
+
       {/* Students Table */}
       <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-xl font-bold text-foreground mb-4">Report Cards</h2>
@@ -191,6 +208,21 @@ export function ReportCardsTab({
           </table>
         </div>
       </div>
+
+      {/* Bulk Generate Dialog */}
+      <BulkGenerateDialog
+        isOpen={showBulkDialog}
+        streamId={streamId}
+        streamName={streamName}
+        termId={termId}
+        termName={data?.termStartDate ? 'Term' : 'Unknown'}
+        academicYearId={academicYearId}
+        academicYearName={academicYearId}
+        onClose={() => setShowBulkDialog(false)}
+        onGenerated={() => {
+          setShowBulkDialog(false);
+        }}
+      />
     </div>
   );
 }
