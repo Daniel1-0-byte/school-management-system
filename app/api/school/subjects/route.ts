@@ -65,33 +65,46 @@ export async function GET(request: NextRequest) {
       resolvedClassId = stream.school_class_id;
     }
 
-    // Fetch subjects for this class via system_class_subjects junction table
-    const supabaseQuery = getServerSupabaseClient()
-      .from('system_class_subjects')
-      .select('id, subject_id, subject_order, system_subjects(id, name, code)')
-      .eq('class_id', resolvedClassId)
-      .order('subject_order');
+    // Resolve subjects from the stream's persisted subject assignments. This uses
+    // the same mapping as the grades workflow and avoids mixing school class IDs
+    // with system curriculum class IDs.
+    const supabase = getServerSupabaseClient();
+    const subjectQuery = streamId
+      ? supabase
+          .from('school_class_stream_subjects')
+          .select('id, is_core, system_subjects:system_subject_id(id, name, code)')
+          .eq('stream_id', streamId)
+      : supabase
+          .from('system_class_subjects')
+          .select('id, subject_id, system_subjects(id, name, code)')
+          .eq('class_id', resolvedClassId);
 
-    const { data, error } = await supabaseQuery;
+    const { data, error } = await subjectQuery;
+
+    console.log('[v0] Subjects lookup:', {
+      streamId,
+      schoolId,
+      resolvedClassId,
+      subjectCount: data?.length ?? 0,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+    });
 
     if (error) {
       console.error('[v0] Class subjects GET error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    // Extract subjects from the system_class_subjects junction table
     const subjects = (data || [])
-      .map((item: any) => {
-        const subject = item.system_subjects;
-        return {
-          id: subject?.id,
-          name: subject?.name,
-          code: subject?.code,
-        };
-      })
-      .filter((subject: any) => subject.id !== null && subject.id !== undefined);
+      .map((item: any) => item.system_subjects)
+      .filter((subject: any) => subject?.id)
+      .map((subject: any) => ({
+        id: subject.id,
+        name: subject.name,
+        code: subject.code,
+      }));
 
-    return NextResponse.json({ data: subjects || [] });
+    return NextResponse.json({ data: subjects });
   } catch (error) {
     console.error('[v0] Subjects GET error:', error);
     return NextResponse.json(

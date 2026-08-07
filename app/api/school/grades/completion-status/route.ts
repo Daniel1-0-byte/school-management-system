@@ -64,14 +64,21 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolClassId = streamData.school_class_id;
-    // Step 2: Get all subjects assigned to this class from system_class_subjects
-    const supabaseQuery = supabase
-      .from('system_class_subjects')
-      .select('id, subject_id, subject_order, system_subjects(id, name, code)')
-      .eq('class_id', schoolClassId)
-      .order('subject_order');
+    // Step 2: Resolve subjects from the same stream assignment mapping used by
+    // /api/school/subjects. The stream lookup above is school-scoped.
+    const { data: classSubjectsResponse, error: classSubjectsError } = await supabase
+      .from('school_class_stream_subjects')
+      .select('id, is_core, system_subjects:system_subject_id(id, name, code)')
+      .eq('stream_id', streamId);
 
-    const { data: classSubjectsResponse, error: classSubjectsError } = await supabaseQuery;
+    console.log('[v0] Completion subjects lookup:', {
+      streamId,
+      schoolId,
+      resolvedClassId: schoolClassId,
+      subjectCount: classSubjectsResponse?.length ?? 0,
+      errorCode: classSubjectsError?.code,
+      errorMessage: classSubjectsError?.message,
+    });
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
@@ -81,10 +88,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Extract subjects from system_class_subjects
     const classSubjects = (classSubjectsResponse || [])
       .map((item: any) => item.system_subjects)
-      .filter((subject: any) => subject !== null);
+      .filter((subject: any) => subject?.id);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class

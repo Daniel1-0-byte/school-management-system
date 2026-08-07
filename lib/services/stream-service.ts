@@ -49,8 +49,8 @@ export class StreamService {
       const { data, error } = await querySchoolClassStreams().insert({
         school_id: input.schoolId,
         academic_year_id: input.academicYearId,
-        system_class_id: input.systemClassId,
-        stream_name: input.streamName,
+        school_class_id: input.systemClassId,
+        name: input.streamName,
         capacity: input.capacity || null,
         class_teacher_id: input.classTeacherId || null,
         status: 'active',
@@ -85,14 +85,14 @@ export class StreamService {
           id,
           school_id,
           academic_year_id,
-          system_class_id,
-          stream_name,
+          school_class_id,
+          name,
           capacity,
           class_teacher_id,
           status,
           created_at,
           updated_at,
-          system_classes:system_class_id(id, name, order)
+          school_classes:school_class_id(id, name, level)
         `)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: true });
@@ -131,14 +131,14 @@ export class StreamService {
           id,
           school_id,
           academic_year_id,
-          system_class_id,
-          stream_name,
+          school_class_id,
+          name,
           capacity,
           class_teacher_id,
           status,
           created_at,
           updated_at,
-          system_classes:system_class_id(id, name, order)
+          school_classes:school_class_id(id, name, level)
         `)
         .eq('id', streamId)
         .single();
@@ -168,7 +168,7 @@ export class StreamService {
     try {
       const { data, error } = await querySchoolClassStreams()
         .update({
-          ...(updates.streamName && { stream_name: updates.streamName }),
+          ...(updates.streamName && { name: updates.streamName }),
           ...(updates.capacity !== undefined && { capacity: updates.capacity }),
           ...(updates.classTeacherId !== undefined && { class_teacher_id: updates.classTeacherId }),
           updated_at: new Date().toISOString(),
@@ -277,14 +277,14 @@ export class StreamService {
       id: stream.id,
       schoolId: stream.school_id,
       academicYearId: stream.academic_year_id,
-      systemClassId: stream.system_class_id,
-      streamName: stream.stream_name,
+      systemClassId: stream.school_class_id,
+      streamName: stream.name,
       capacity: stream.capacity,
       classTeacherId: stream.class_teacher_id,
       status: stream.status,
       createdAt: stream.created_at,
       updatedAt: stream.updated_at,
-      systemClass: stream.system_classes,
+      systemClass: stream.school_classes,
       subjects: subjects || [],
     };
   }
