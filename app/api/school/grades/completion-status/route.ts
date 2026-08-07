@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchSubjectsForStream } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/grades/completion-status
@@ -47,44 +48,23 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServerSupabaseClient();
 
-    // Step 1: Get the system_class_id from stream
-    const { data: streamData, error: streamError } = await supabase
-      .from('school_class_streams')
-      .select('system_class_id')
-      .eq('id', streamId)
-      .eq('school_id', schoolId)
-      .single();
+    // Resolve the stream to its school class and use class_subjects as the
+    // single authoritative subject-assignment source.
+    let classSubjects: any[];
 
-    if (streamError || !streamData) {
-      console.error('[v0] Stream not found:', streamError);
-      return NextResponse.json(
-        { error: 'Stream not found or does not belong to this school' },
-        { status: 404 }
-      );
-    }
-
-    const systemClassId = streamData.system_class_id;
-    // Step 2: Get all subjects assigned to this class from system_class_subjects
-    const supabaseQuery = supabase
-      .from('system_class_subjects')
-      .select('id, subject_id, subject_order, system_subjects(id, name, code)')
-      .eq('class_id', systemClassId)
-      .order('subject_order');
-
-    const { data: classSubjectsResponse, error: classSubjectsError } = await supabaseQuery;
-
-    if (classSubjectsError) {
-      console.error('[v0] Error fetching class subjects:', classSubjectsError);
+    try {
+      ({ subjects: classSubjects } = await fetchSubjectsForStream(
+        supabase,
+        streamId,
+        schoolId
+      ));
+    } catch (error) {
+      console.error('[v0] Error fetching class subjects:', error);
       return NextResponse.json(
         { error: 'Failed to fetch class subjects' },
         { status: 500 }
       );
     }
-
-    // Extract subjects from system_class_subjects
-    const classSubjects = (classSubjectsResponse || [])
-      .map((item: any) => item.system_subjects)
-      .filter((subject: any) => subject !== null);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -125,7 +105,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const studentIds = (enrolledStudents || []).map(e => e.student_id);
+    const studentIds = (enrolledStudents || []).map((e: { student_id: string }) => e.student_id);
 
     // If no students enrolled, consider incomplete
     if (studentIds.length === 0) {
@@ -167,7 +147,9 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const completedStudentIds = new Set((gradeEntries || []).map(g => g.student_id));
+      const completedStudentIds = new Set(
+        (gradeEntries || []).map((g: { student_id: string }) => g.student_id)
+      );
       const completedCount = completedStudentIds.size;
       const totalStudents = studentIds.length;
 

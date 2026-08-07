@@ -1,4 +1,5 @@
-import { getServerSupabaseClient, querySchoolClassStreams, querySchoolClassStreamSubjects, querySystemClassSubjects, querySystemClasses } from '@/lib/supabase';
+import { getServerSupabaseClient, querySchoolClassStreams } from '@/lib/supabase';
+import { fetchSubjectsForStream } from '@/lib/class-subjects-utils';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CreateStreamInput {
@@ -49,8 +50,8 @@ export class StreamService {
       const { data, error } = await querySchoolClassStreams().insert({
         school_id: input.schoolId,
         academic_year_id: input.academicYearId,
-        system_class_id: input.systemClassId,
-        stream_name: input.streamName,
+        school_class_id: input.systemClassId,
+        name: input.streamName,
         capacity: input.capacity || null,
         class_teacher_id: input.classTeacherId || null,
         status: 'active',
@@ -58,12 +59,6 @@ export class StreamService {
 
       if (error) {
         return { error: error.message };
-      }
-
-      // Auto-generate subjects from system curriculum
-      if (data && data[0]) {
-        const streamId = data[0].id;
-        await this.populateStreamSubjects(streamId, input.systemClassId);
       }
 
       return { data };
@@ -85,14 +80,14 @@ export class StreamService {
           id,
           school_id,
           academic_year_id,
-          system_class_id,
-          stream_name,
+          school_class_id,
+          name,
           capacity,
           class_teacher_id,
           status,
           created_at,
           updated_at,
-          system_classes:system_class_id(id, name, order)
+          school_classes:school_class_id(id, name, level)
         `)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: true });
@@ -110,7 +105,7 @@ export class StreamService {
       // For each stream, fetch subjects
       if (data) {
         const streamsWithSubjects = await Promise.all(
-          data.map(async (stream) => this.enrichStreamWithSubjects(stream))
+          data.map(async (stream: any) => this.enrichStreamWithSubjects(stream))
         );
         return { data: streamsWithSubjects };
       }
@@ -131,14 +126,14 @@ export class StreamService {
           id,
           school_id,
           academic_year_id,
-          system_class_id,
-          stream_name,
+          school_class_id,
+          name,
           capacity,
           class_teacher_id,
           status,
           created_at,
           updated_at,
-          system_classes:system_class_id(id, name, order)
+          school_classes:school_class_id(id, name, level)
         `)
         .eq('id', streamId)
         .single();
@@ -168,7 +163,7 @@ export class StreamService {
     try {
       const { data, error } = await querySchoolClassStreams()
         .update({
-          ...(updates.streamName && { stream_name: updates.streamName }),
+          ...(updates.streamName && { name: updates.streamName }),
           ...(updates.capacity !== undefined && { capacity: updates.capacity }),
           ...(updates.classTeacherId !== undefined && { class_teacher_id: updates.classTeacherId }),
           updated_at: new Date().toISOString(),
@@ -209,61 +204,21 @@ export class StreamService {
    */
   static async getStreamSubjects(streamId: string): Promise<{ data?: any[]; error?: string }> {
     try {
-      const { data, error } = await querySchoolClassStreamSubjects()
-        .select(`
-          id,
-          stream_id,
-          system_subject_id,
-          is_core,
-          system_subjects:system_subject_id(id, code, name, description)
-        `)
-        .eq('stream_id', streamId)
-        .order('is_core', { ascending: false });
+      const supabase = getServerSupabaseClient();
+      const { data: stream, error: streamError } = await supabase
+        .from('school_class_streams')
+        .select('school_id')
+        .eq('id', streamId)
+        .single();
 
-      if (error) {
-        return { error: error.message };
+      if (streamError || !stream) {
+        return { error: streamError?.message || 'Stream not found' };
       }
 
-      return { data: data || [] };
+      const { subjects } = await fetchSubjectsForStream(supabase, streamId, stream.school_id);
+      return { data: subjects };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Failed to fetch stream subjects' };
-    }
-  }
-
-  /**
-   * Populate stream subjects from system curriculum
-   * Called automatically when a stream is created
-   */
-  private static async populateStreamSubjects(streamId: string, systemClassId: string): Promise<void> {
-    try {
-      const supabase = getServerSupabaseClient();
-
-      // Get all subjects for this system class
-      const { data: classSubjects, error: classSubjectsError } = await querySystemClassSubjects()
-        .select('system_subject_id, is_core')
-        .eq('system_class_id', systemClassId);
-
-      if (classSubjectsError || !classSubjects) {
-        console.error('[v0] Failed to fetch class subjects:', classSubjectsError);
-        return;
-      }
-
-      // Insert all subjects for this stream
-      const subjectsToInsert = classSubjects.map((cs) => ({
-        stream_id: streamId,
-        system_subject_id: cs.system_subject_id,
-        is_core: cs.is_core,
-      }));
-
-      if (subjectsToInsert.length > 0) {
-        const { error: insertError } = await querySchoolClassStreamSubjects().insert(subjectsToInsert);
-
-        if (insertError) {
-          console.error('[v0] Failed to populate stream subjects:', insertError);
-        }
-      }
-    } catch (err) {
-      console.error('[v0] Error populating stream subjects:', err);
     }
   }
 
@@ -277,14 +232,14 @@ export class StreamService {
       id: stream.id,
       schoolId: stream.school_id,
       academicYearId: stream.academic_year_id,
-      systemClassId: stream.system_class_id,
-      streamName: stream.stream_name,
+      systemClassId: stream.school_class_id,
+      streamName: stream.name,
       capacity: stream.capacity,
       classTeacherId: stream.class_teacher_id,
       status: stream.status,
       createdAt: stream.created_at,
       updatedAt: stream.updated_at,
-      systemClass: stream.system_classes,
+      systemClass: stream.school_classes,
       subjects: subjects || [],
     };
   }

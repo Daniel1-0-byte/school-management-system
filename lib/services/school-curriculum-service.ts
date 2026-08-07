@@ -113,8 +113,8 @@ export class SchoolCurriculumService {
       const streamsToCreate = systemClasses.map((sc) => ({
         school_id: schoolId,
         academic_year_id: activeAcademicYearId,
-        system_class_id: sc.id,
-        stream_name: sc.name, // Default stream name is the class name
+        school_class_id: sc.id,
+        name: sc.name, // Default stream name is the class name
         capacity: null,
         class_teacher_id: null,
         status: 'active',
@@ -132,7 +132,7 @@ export class SchoolCurriculumService {
           // Get subjects for this system class
           const { data: classSubjects } = await querySystemClassSubjects()
             .select('system_subject_id, is_core')
-            .eq('system_class_id', stream.system_class_id);
+            .eq('system_class_id', systemClasses.find((sc) => sc.name === stream.name)?.id);
 
           if (classSubjects && classSubjects.length > 0) {
             const subjectsToInsert = classSubjects.map((cs) => ({
