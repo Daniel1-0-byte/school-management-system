@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let resolvedSystemClassId = classIdParam;
+    let resolvedClassId = classIdParam;
 
-    // If stream_id is provided, resolve to system_class_id
+    // If stream_id is provided, resolve to school_class_id
     if (streamId) {
       const { data: stream, error: streamError } = await getServerSupabaseClient()
         .from('school_class_streams')
-        .select('system_class_id')
+        .select('school_class_id')
         .eq('id', streamId)
         .eq('school_id', schoolId)
         .single();
@@ -55,21 +55,21 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      if (!stream?.system_class_id) {
+      if (!stream?.school_class_id) {
         return NextResponse.json(
-          { error: 'Stream does not have a system class assigned' },
+          { error: 'Stream does not have a class assigned' },
           { status: 400 }
         );
       }
 
-      resolvedSystemClassId = stream.system_class_id;
+      resolvedClassId = stream.school_class_id;
     }
 
     // Fetch subjects for this class via system_class_subjects junction table
     const supabaseQuery = getServerSupabaseClient()
       .from('system_class_subjects')
       .select('id, subject_id, subject_order, system_subjects(id, name, code)')
-      .eq('class_id', resolvedSystemClassId)
+      .eq('class_id', resolvedClassId)
       .order('subject_order');
 
     const { data, error } = await supabaseQuery;

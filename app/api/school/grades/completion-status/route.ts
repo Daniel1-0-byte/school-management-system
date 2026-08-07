@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServerSupabaseClient();
 
-    // Step 1: Get the system_class_id from stream
+    // Step 1: Get the school_class_id from stream
     const { data: streamData, error: streamError } = await supabase
       .from('school_class_streams')
-      .select('system_class_id')
+      .select('school_class_id')
       .eq('id', streamId)
       .eq('school_id', schoolId)
       .single();
@@ -63,12 +63,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const systemClassId = streamData.system_class_id;
+    const schoolClassId = streamData.school_class_id;
     // Step 2: Get all subjects assigned to this class from system_class_subjects
     const supabaseQuery = supabase
       .from('system_class_subjects')
       .select('id, subject_id, subject_order, system_subjects(id, name, code)')
-      .eq('class_id', systemClassId)
+      .eq('class_id', schoolClassId)
       .order('subject_order');
 
     const { data: classSubjectsResponse, error: classSubjectsError } = await supabaseQuery;
