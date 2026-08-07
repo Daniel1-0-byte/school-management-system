@@ -42,3 +42,36 @@ export async function fetchClassSubjects(
 export function extractSubjectIds(subjects: any[]) {
   return subjects.map(s => s.id).filter(Boolean);
 }
+
+/**
+ * Resolve a school stream to its class and fetch the class's subjects.
+ * Streams do not have their own subject assignments; class_subjects is the
+ * authoritative relationship for both the grades and subject-selector flows.
+ */
+export async function fetchSubjectsForStream(
+  supabase: SupabaseClient,
+  streamId: string,
+  schoolId: string
+) {
+  const { data: stream, error: streamError } = await supabase
+    .from('school_class_streams')
+    .select('school_class_id')
+    .eq('id', streamId)
+    .eq('school_id', schoolId)
+    .single();
+
+  if (streamError || !stream?.school_class_id) {
+    throw streamError || new Error('Stream does not have a class assigned');
+  }
+
+  const subjects = await fetchClassSubjects(
+    supabase,
+    stream.school_class_id,
+    schoolId
+  );
+
+  return {
+    schoolClassId: stream.school_class_id,
+    subjects,
+  };
+}

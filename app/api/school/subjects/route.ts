@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchClassSubjects, fetchSubjectsForStream } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/subjects
@@ -36,73 +37,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let resolvedClassId = classIdParam;
-
-    // If stream_id is provided, resolve to school_class_id
-    if (streamId) {
-      const { data: stream, error: streamError } = await getServerSupabaseClient()
-        .from('school_class_streams')
-        .select('school_class_id')
-        .eq('id', streamId)
-        .eq('school_id', schoolId)
-        .single();
-
-      if (streamError) {
-        console.error('[v0] Stream lookup error:', streamError);
-        return NextResponse.json(
-          { error: 'Stream not found or does not belong to this school' },
-          { status: 404 }
-        );
-      }
-
-      if (!stream?.school_class_id) {
-        return NextResponse.json(
-          { error: 'Stream does not have a class assigned' },
-          { status: 400 }
-        );
-      }
-
-      resolvedClassId = stream.school_class_id;
-    }
-
-    // Resolve subjects from the stream's persisted subject assignments. This uses
-    // the same mapping as the grades workflow and avoids mixing school class IDs
-    // with system curriculum class IDs.
     const supabase = getServerSupabaseClient();
-    const subjectQuery = streamId
-      ? supabase
-          .from('school_class_stream_subjects')
-          .select('id, is_core, system_subjects:system_subject_id(id, name, code)')
-          .eq('stream_id', streamId)
-      : supabase
-          .from('system_class_subjects')
-          .select('id, subject_id, system_subjects(id, name, code)')
-          .eq('class_id', resolvedClassId);
+    let subjects;
 
-    const { data, error } = await subjectQuery;
-
-    console.log('[v0] Subjects lookup:', {
-      streamId,
-      schoolId,
-      resolvedClassId,
-      subjectCount: data?.length ?? 0,
-      errorCode: error?.code,
-      errorMessage: error?.message,
-    });
-
-    if (error) {
+    try {
+      if (streamId) {
+        ({ subjects } = await fetchSubjectsForStream(supabase, streamId, schoolId));
+      } else {
+        subjects = await fetchClassSubjects(supabase, classIdParam as string, schoolId);
+      }
+    } catch (error) {
       console.error('[v0] Class subjects GET error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+      return NextResponse.json(
+        { error: formatSupabaseError(error) },
+        { status: 400 }
+      );
     }
-
-    const subjects = (data || [])
-      .map((item: any) => item.system_subjects)
-      .filter((subject: any) => subject?.id)
-      .map((subject: any) => ({
-        id: subject.id,
-        name: subject.name,
-        code: subject.code,
-      }));
 
     return NextResponse.json({ data: subjects });
   } catch (error) {

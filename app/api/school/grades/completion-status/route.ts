@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchSubjectsForStream } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/grades/completion-status
@@ -47,50 +48,23 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServerSupabaseClient();
 
-    // Step 1: Get the school_class_id from stream
-    const { data: streamData, error: streamError } = await supabase
-      .from('school_class_streams')
-      .select('school_class_id')
-      .eq('id', streamId)
-      .eq('school_id', schoolId)
-      .single();
+    // Resolve the stream to its school class and use class_subjects as the
+    // single authoritative subject-assignment source.
+    let classSubjects: any[];
 
-    if (streamError || !streamData) {
-      console.error('[v0] Stream not found:', streamError);
-      return NextResponse.json(
-        { error: 'Stream not found or does not belong to this school' },
-        { status: 404 }
-      );
-    }
-
-    const schoolClassId = streamData.school_class_id;
-    // Step 2: Resolve subjects from the same stream assignment mapping used by
-    // /api/school/subjects. The stream lookup above is school-scoped.
-    const { data: classSubjectsResponse, error: classSubjectsError } = await supabase
-      .from('school_class_stream_subjects')
-      .select('id, is_core, system_subjects:system_subject_id(id, name, code)')
-      .eq('stream_id', streamId);
-
-    console.log('[v0] Completion subjects lookup:', {
-      streamId,
-      schoolId,
-      resolvedClassId: schoolClassId,
-      subjectCount: classSubjectsResponse?.length ?? 0,
-      errorCode: classSubjectsError?.code,
-      errorMessage: classSubjectsError?.message,
-    });
-
-    if (classSubjectsError) {
-      console.error('[v0] Error fetching class subjects:', classSubjectsError);
+    try {
+      ({ subjects: classSubjects } = await fetchSubjectsForStream(
+        supabase,
+        streamId,
+        schoolId
+      ));
+    } catch (error) {
+      console.error('[v0] Error fetching class subjects:', error);
       return NextResponse.json(
         { error: 'Failed to fetch class subjects' },
         { status: 500 }
       );
     }
-
-    const classSubjects = (classSubjectsResponse || [])
-      .map((item: any) => item.system_subjects)
-      .filter((subject: any) => subject?.id);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -131,7 +105,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const studentIds = (enrolledStudents || []).map(e => e.student_id);
+    const studentIds = (enrolledStudents || []).map((e: { student_id: string }) => e.student_id);
 
     // If no students enrolled, consider incomplete
     if (studentIds.length === 0) {
@@ -173,7 +147,9 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const completedStudentIds = new Set((gradeEntries || []).map(g => g.student_id));
+      const completedStudentIds = new Set(
+        (gradeEntries || []).map((g: { student_id: string }) => g.student_id)
+      );
       const completedCount = completedStudentIds.size;
       const totalStudents = studentIds.length;
 

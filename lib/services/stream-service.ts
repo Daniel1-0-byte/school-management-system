@@ -1,4 +1,5 @@
-import { getServerSupabaseClient, querySchoolClassStreams, querySchoolClassStreamSubjects, querySystemClassSubjects, querySystemClasses } from '@/lib/supabase';
+import { getServerSupabaseClient, querySchoolClassStreams } from '@/lib/supabase';
+import { fetchSubjectsForStream } from '@/lib/class-subjects-utils';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CreateStreamInput {
@@ -60,12 +61,6 @@ export class StreamService {
         return { error: error.message };
       }
 
-      // Auto-generate subjects from system curriculum
-      if (data && data[0]) {
-        const streamId = data[0].id;
-        await this.populateStreamSubjects(streamId, input.systemClassId);
-      }
-
       return { data };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Failed to create stream' };
@@ -110,7 +105,7 @@ export class StreamService {
       // For each stream, fetch subjects
       if (data) {
         const streamsWithSubjects = await Promise.all(
-          data.map(async (stream) => this.enrichStreamWithSubjects(stream))
+          data.map(async (stream: any) => this.enrichStreamWithSubjects(stream))
         );
         return { data: streamsWithSubjects };
       }
@@ -209,61 +204,21 @@ export class StreamService {
    */
   static async getStreamSubjects(streamId: string): Promise<{ data?: any[]; error?: string }> {
     try {
-      const { data, error } = await querySchoolClassStreamSubjects()
-        .select(`
-          id,
-          stream_id,
-          system_subject_id,
-          is_core,
-          system_subjects:system_subject_id(id, code, name, description)
-        `)
-        .eq('stream_id', streamId)
-        .order('is_core', { ascending: false });
+      const supabase = getServerSupabaseClient();
+      const { data: stream, error: streamError } = await supabase
+        .from('school_class_streams')
+        .select('school_id')
+        .eq('id', streamId)
+        .single();
 
-      if (error) {
-        return { error: error.message };
+      if (streamError || !stream) {
+        return { error: streamError?.message || 'Stream not found' };
       }
 
-      return { data: data || [] };
+      const { subjects } = await fetchSubjectsForStream(supabase, streamId, stream.school_id);
+      return { data: subjects };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Failed to fetch stream subjects' };
-    }
-  }
-
-  /**
-   * Populate stream subjects from system curriculum
-   * Called automatically when a stream is created
-   */
-  private static async populateStreamSubjects(streamId: string, systemClassId: string): Promise<void> {
-    try {
-      const supabase = getServerSupabaseClient();
-
-      // Get all subjects for this system class
-      const { data: classSubjects, error: classSubjectsError } = await querySystemClassSubjects()
-        .select('system_subject_id, is_core')
-        .eq('system_class_id', systemClassId);
-
-      if (classSubjectsError || !classSubjects) {
-        console.error('[v0] Failed to fetch class subjects:', classSubjectsError);
-        return;
-      }
-
-      // Insert all subjects for this stream
-      const subjectsToInsert = classSubjects.map((cs) => ({
-        stream_id: streamId,
-        system_subject_id: cs.system_subject_id,
-        is_core: cs.is_core,
-      }));
-
-      if (subjectsToInsert.length > 0) {
-        const { error: insertError } = await querySchoolClassStreamSubjects().insert(subjectsToInsert);
-
-        if (insertError) {
-          console.error('[v0] Failed to populate stream subjects:', insertError);
-        }
-      }
-    } catch (err) {
-      console.error('[v0] Error populating stream subjects:', err);
     }
   }
 
