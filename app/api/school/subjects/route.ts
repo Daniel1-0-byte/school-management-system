@@ -65,20 +65,14 @@ export async function GET(request: NextRequest) {
       resolvedSystemClassId = stream.system_class_id;
     }
 
-    console.log('[v0] Fetching subjects - stream_id:', streamId, 'system_class_id:', resolvedSystemClassId, 'school_id:', schoolId);
-
     // Fetch subjects for this class via system_class_subjects junction table
     const supabaseQuery = getServerSupabaseClient()
       .from('system_class_subjects')
-      .select('id, display_order, system_subjects(id, name, code)')
+      .select('id, subject_id, subject_order, system_subjects(id, name, code)')
       .eq('class_id', resolvedSystemClassId)
-      .order('display_order');
-
-    console.log('[v0] Querying system_class_subjects for class_id:', resolvedSystemClassId);
+      .order('subject_order');
 
     const { data, error } = await supabaseQuery;
-
-    console.log('[v0] Query returned rows:', data?.length || 0, 'error:', error);
 
     if (error) {
       console.error('[v0] Class subjects GET error:', error);

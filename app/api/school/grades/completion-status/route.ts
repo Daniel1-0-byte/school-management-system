@@ -64,20 +64,14 @@ export async function GET(request: NextRequest) {
     }
 
     const systemClassId = streamData.system_class_id;
-    console.log('[v0] Completion check - stream_id:', streamId, 'system_class_id:', systemClassId, 'school_id:', schoolId);
-
     // Step 2: Get all subjects assigned to this class from system_class_subjects
     const supabaseQuery = supabase
       .from('system_class_subjects')
-      .select('id, system_subjects(id, name, code)')
+      .select('id, subject_id, subject_order, system_subjects(id, name, code)')
       .eq('class_id', systemClassId)
-      .order('display_order');
-
-    console.log('[v0] Querying system_class_subjects for system_class_id:', systemClassId);
+      .order('subject_order');
 
     const { data: classSubjectsResponse, error: classSubjectsError } = await supabaseQuery;
-
-    console.log('[v0] Query returned rows:', classSubjectsResponse?.length || 0, 'error:', classSubjectsError);
 
     if (classSubjectsError) {
       console.error('[v0] Error fetching class subjects:', classSubjectsError);
@@ -91,8 +85,6 @@ export async function GET(request: NextRequest) {
     const classSubjects = (classSubjectsResponse || [])
       .map((item: any) => item.system_subjects)
       .filter((subject: any) => subject !== null);
-
-    console.log('[v0] After extraction, subjects count:', classSubjects.length);
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
@@ -110,23 +102,18 @@ export async function GET(request: NextRequest) {
       .map((subject: any) => subject?.id)
       .filter((id: any): id is string => Boolean(id));
 
-    console.log('[v0] Subject IDs:', subjectIds);
-
     // Build subject map for later use
     const subjectMap = new Map();
     classSubjects.forEach((s: any) => {
       subjectMap.set(s.id, s);
     });
 
-    // Step 3: Get enrolled students for this class
-    // student_enrollments.class_id links students to classes (NOT school_class_id or stream_id)
-    // Must filter by academic_year_id to get students enrolled for the selected academic year
-    // Must filter by status='active' to only get currently enrolled students
+    // Step 3: Get active students enrolled in the selected stream and academic year
     const { data: enrolledStudents, error: enrollError } = await supabase
       .from('student_enrollments')
       .select('student_id')
       .eq('school_id', schoolId)
-      .eq('class_id', schoolClassId)
+      .eq('stream_id', streamId)
       .eq('academic_year_id', academicYearId)
       .eq('status', 'active');
 
