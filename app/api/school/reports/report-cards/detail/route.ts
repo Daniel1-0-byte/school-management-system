@@ -152,8 +152,7 @@ export async function GET(request: NextRequest) {
       .from('grade_entries')
       .select('subject_id, total_score, letter_grade, class_score, exam_score, assessment_id')
       .eq('student_id', studentId)
-      .eq('term_id', termId)
-      .eq('academic_year_id', academicYearId);
+      .eq('term_id', termId);
 
     if (gradesError) {
       console.error('[v0] Error fetching grades:', gradesError);
