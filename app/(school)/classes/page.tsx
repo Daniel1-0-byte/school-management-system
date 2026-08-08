@@ -23,6 +23,7 @@ export default function ClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [academicYearId, setAcademicYearId] = useState<string | null>(null);
+  const [seedingDefaults, setSeedingDefaults] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
     status: 'all' | 'active' | 'inactive';
   }>({
@@ -57,7 +58,7 @@ export default function ClassesPage() {
       // Use API endpoint instead of calling service directly (avoid server env var access from client)
       const url = new URL('/api/school/streams', window.location.origin);
       if (academicYearId) {
-        url.searchParams.append('academicYearId', academicYearId);
+        url.searchParams.append('academic_year_id', academicYearId);
       }
       if (activeFilters.status !== 'all') {
         url.searchParams.append('status', activeFilters.status);
@@ -90,6 +91,36 @@ export default function ClassesPage() {
   useEffect(() => {
     fetchStreams();
   }, [schoolId, academicYearId, activeFilters]);
+
+  const handleLoadDefaultClasses = async () => {
+    if (!schoolId || streams.length > 0 || seedingDefaults) return;
+
+    try {
+      setSeedingDefaults(true);
+      setError(null);
+      const response = await fetch('/api/school/classes/seed-defaults', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-School-Id': schoolId },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(
+          Array.isArray(data.errors) && data.errors.length > 0
+            ? `${data.error || 'Failed to load default classes'}: ${data.errors.join('; ')}`
+            : data.error || 'Failed to load default classes'
+        );
+        return;
+      }
+
+      await fetchStreams();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load default classes');
+    } finally {
+      setSeedingDefaults(false);
+    }
+  };
 
   const handleDeleteStream = async (streamId: string) => {
     if (!confirm('Are you sure you want to deactivate this stream? This action cannot be undone.')) return;
@@ -125,13 +156,26 @@ export default function ClassesPage() {
             Manage streams for the {activeFilters.status === 'active' ? 'current' : ''} academic year
           </p>
         </div>
-        <a
-          href="/classes/add"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Stream</span>
-        </a>
+        <div className="flex items-center gap-3">
+          {streams.length === 0 && !loading && (
+            <button
+              type="button"
+              onClick={handleLoadDefaultClasses}
+              disabled={seedingDefaults}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {seedingDefaults ? <Loader2 className="w-5 h-5 animate-spin" /> : <BookOpen className="w-5 h-5" />}
+              <span>{seedingDefaults ? 'Loading Classes...' : 'Load Default Classes'}</span>
+            </button>
+          )}
+          <a
+            href="/classes/add"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Stream</span>
+          </a>
+        </div>
       </div>
 
       {/* Error Message */}
