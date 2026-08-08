@@ -62,6 +62,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch enrollment information to get class
+    console.log('[v0] Report card enrollment lookup:', {
+      studentId,
+      schoolId,
+      academicYearId,
+    });
+
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('student_enrollments')
       .select('class_id')
