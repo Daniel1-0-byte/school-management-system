@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const search = request.nextUrl.searchParams.get('search') || '';
     const schoolId = await getSchoolIdFromRequest(request);
     const status = request.nextUrl.searchParams.get('status') || '';
+    const streamId = request.nextUrl.searchParams.get('stream_id') || '';
 
     // Type guard to ensure schoolId is a string
     if (typeof schoolId !== 'string') {
@@ -55,6 +56,10 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (streamId) {
+      query = query.eq('current_stream_id', streamId);
     }
 
     query = query.order('created_at', { ascending: false });
