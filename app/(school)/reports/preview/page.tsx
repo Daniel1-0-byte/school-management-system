@@ -170,8 +170,8 @@ export default function ReportCardPreviewPage() {
       </div>
 
       {/* Report Card Preview */}
-      <div className="p-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="px-3 py-4 sm:p-6">
+        <div className="mx-auto w-full max-w-4xl">
           {reportCard && <ProfessionalReportCard data={reportCard} />}
         </div>
       </div>
