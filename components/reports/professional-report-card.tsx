@@ -55,6 +55,14 @@ interface ProfessionalReportCardProps {
 }
 
 export function ProfessionalReportCard({ data, isPrinting = false }: ProfessionalReportCardProps) {
+  const getGradeColor = (grade: string) => {
+    const normalizedGrade = grade.toUpperCase();
+    if (normalizedGrade.startsWith('A')) return '#15803d';
+    if (normalizedGrade.startsWith('B')) return '#2563eb';
+    if (normalizedGrade.startsWith('C')) return '#b45309';
+    return '#dc2626';
+  };
+
   const attendancePercentage = data.attendance && data.attendance.total > 0
     ? ((data.attendance.present / data.attendance.total) * 100).toFixed(1)
     : null;
@@ -96,6 +104,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
+            font-family: Arial, sans-serif !important;
             page-break-after: auto !important;
             break-after: auto !important;
           }
@@ -112,56 +121,34 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           h3 { font-size: 10px !important; }
           .report-card-container { line-height: 1.15; }
           .report-card-container > div { margin-bottom: 6px; }
+          .report-card-summary p:first-child { color: #dbe7f3 !important; }
+          .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
+          .report-card-header, .report-card-summary { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
-      <div className="report-card-container space-y-6" style={{ minHeight: '297mm', width: '210mm' }}>
+      <div className="report-card-container" style={{ minHeight: '0', width: '100%' }}>
         {/* Header Section */}
-        <div className="border-b-2 border-gray-300 pb-6">
-          <div className="flex items-start gap-6 mb-4">
-            {/* Logo */}
-            {data.schoolLogo && (
-              <div className="flex-shrink-0">
-                <img
-                  src={data.schoolLogo}
-                  alt="School Logo"
-                  style={{
-                    maxWidth: '80px',
-                    maxHeight: '80px',
-                    objectFit: 'contain',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* School Info */}
-            <div className="flex-1 text-center">
-              <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#000' }}>
-                {data.schoolName}
-              </h1>
-              {data.schoolAddress && (
-                <p style={{ fontSize: '12px', margin: '2px 0', color: '#333' }}>{data.schoolAddress}</p>
-              )}
-              <div style={{ fontSize: '11px', margin: '2px 0', color: '#333' }}>
-                {data.schoolPhone && <span>{data.schoolPhone}</span>}
-                {data.schoolPhone && data.schoolEmail && <span> | </span>}
-                {data.schoolEmail && <span>{data.schoolEmail}</span>}
-              </div>
-              {data.schoolWebsite && (
-                <p style={{ fontSize: '11px', margin: '2px 0', color: '#333' }}>{data.schoolWebsite}</p>
+        <div className="report-card-header" style={{ backgroundColor: '#1e3a5f', color: '#fff', padding: '18px 22px 16px', borderRadius: '3px', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '72px', height: '72px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {data.schoolLogo && (
+                <img src={data.schoolLogo} alt="School Logo" style={{ maxWidth: '72px', maxHeight: '72px', objectFit: 'contain' }} />
               )}
             </div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '27px', fontWeight: 'bold', margin: '0 0 5px', color: '#fff' }}>{data.schoolName}</h1>
+              {data.schoolAddress && <p style={{ fontSize: '11px', margin: '2px 0', color: '#dbe7f3' }}>{data.schoolAddress}</p>}
+              <p style={{ fontSize: '10px', margin: '2px 0', color: '#dbe7f3' }}>
+                {data.schoolPhone}{data.schoolPhone && data.schoolEmail ? '  |  ' : ''}{data.schoolEmail}
+              </p>
+            </div>
           </div>
+        </div>
 
-          {/* Report Title */}
-          <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0', color: '#000' }}>
-              STUDENT REPORT CARD
-            </h2>
-            <p style={{ fontSize: '12px', margin: '4px 0 0 0', color: '#666' }}>
-              Academic Year: {data.academicYear} | Term: {data.termName}
-            </p>
-          </div>
+        <div style={{ textAlign: 'center', padding: '10px 0 8px' }}>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '19px', letterSpacing: '3px', fontWeight: 'bold', margin: '0', color: '#1e3a5f' }}>STUDENT REPORT CARD</h2>
+          <p style={{ fontSize: '10px', margin: '4px 0 0', color: '#64748b' }}>Academic Year: {data.academicYear} | Term: {data.termName}</p>
         </div>
 
         {/* Student Information Section */}
@@ -170,37 +157,39 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             STUDENT INFORMATION
           </h3>
           <div
+            className="report-card-info"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
-              gap: '12px',
-              padding: '12px',
-              backgroundColor: '#f9f9f9',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
+              gap: '10px 18px',
+              padding: '13px 16px',
+              backgroundColor: '#f8f9fb',
+              border: '1px solid #dbe3ec',
+              borderLeft: '4px solid #1e3a5f',
+              borderRadius: '3px',
             }}
           >
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Student Name</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Student Name</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.studentName}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Student ID / Admission Number</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Student ID / Admission Number</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.studentId}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Class</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.className}
                 {data.streamName && ` - ${data.streamName}`}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Generated Date</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Generated Date</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.generatedDate}
               </p>
@@ -285,19 +274,18 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             style={{
               width: '100%',
               borderCollapse: 'collapse',
-              border: '1px solid #ddd',
             }}
           >
             <thead>
-              <tr style={{ backgroundColor: '#e8e8e8' }}>
+              <tr style={{ backgroundColor: '#1e3a5f', color: '#fff', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
                 <th
                   style={{
                     padding: '8px',
                     textAlign: 'left',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    border: '1px solid #ddd',
-                    color: '#000',
+                    borderBottom: '1px solid rgba(255,255,255,0.25)',
+                    color: '#fff',
                   }}
                 >
                   Subject
@@ -308,8 +296,8 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                     textAlign: 'center',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    border: '1px solid #ddd',
-                    color: '#000',
+                    borderBottom: '1px solid rgba(255,255,255,0.25)',
+                    color: '#fff',
                   }}
                 >
                   Score
@@ -320,8 +308,8 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                     textAlign: 'center',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    border: '1px solid #ddd',
-                    color: '#000',
+                    borderBottom: '1px solid rgba(255,255,255,0.25)',
+                    color: '#fff',
                   }}
                 >
                   Grade
@@ -344,9 +332,9 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                   <td
                     style={{
                       padding: '8px',
-                      textAlign: 'center',
+textAlign: 'right',
                       fontSize: '11px',
-                      border: '1px solid #ddd',
+                      borderBottom: '1px solid #e2e8f0',
                       color: '#000',
                       fontWeight: '500',
                     }}
@@ -361,7 +349,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                       fontSize: '11px',
                       border: '1px solid #ddd',
                       fontWeight: 'bold',
-                      color: '#000',
+                      color: getGradeColor(subject.grade),
                     }}
                   >
                     {subject.grade}
@@ -373,38 +361,42 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
 
           {/* Summary Stats */}
           <div
+            className="report-card-summary"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr 1fr' + (data.ranking ? ' 1fr' : '') + (data.classSize ? ' 1fr' : ''),
               gap: '12px',
               marginTop: '12px',
               padding: '12px',
-              backgroundColor: '#fff3cd',
-              border: '1px solid #ffc107',
-              borderRadius: '4px',
+              background: 'linear-gradient(135deg, #1e3a5f 0%, #28527f 100%)',
+              border: 'none',
+              borderRadius: '3px',
+              color: '#fff',
+              printColorAdjust: 'exact',
+              WebkitPrintColorAdjust: 'exact',
             }}
           >
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Total Score</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Total Score</p>
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.totalScore}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Average Score</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Average Score</p>
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.averageScore.toFixed(2)}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Overall Grade</p>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Overall Grade</p>
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.letterGrade}
               </p>
             </div>
             {data.ranking && (
               <div>
-                <p style={{ fontSize: '10px', color: '#666', margin: '0 0 2px 0' }}>Class Ranking</p>
+                <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class Ranking</p>
                 <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                   {data.ranking}
                   {data.classSize && ` / ${data.classSize}`}
@@ -421,15 +413,19 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
               TEACHER&apos;S COMMENT
             </h3>
             <div
+              className="report-card-comment"
               style={{
-                padding: '12px',
-                backgroundColor: '#f0f0f0',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
+                padding: '12px 16px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #dbe3ec',
+                borderLeft: '4px solid #1e3a5f',
+                borderRadius: '3px',
                 minHeight: '40px',
+                position: 'relative',
               }}
             >
-              <p style={{ fontSize: '11px', margin: '0', color: '#333', lineHeight: '1.4' }}>
+              <span aria-hidden="true" style={{ position: 'absolute', left: '8px', top: '5px', fontFamily: 'Georgia, serif', fontSize: '24px', color: '#1e3a5f', lineHeight: 1 }}>“</span>
+              <p style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic', margin: '0', paddingLeft: '12px', color: '#334155', lineHeight: '1.4' }}>
                 {data.teacherComment}
               </p>
             </div>
@@ -444,18 +440,18 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Class Teacher */}
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#000' }}>
+              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 28px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
                 CLASS TEACHER
               </p>
-              <p style={{ fontSize: '12px', margin: '0 0 30px 0', color: '#000' }}>
+              <div style={{ borderTop: '1px solid #334155', marginBottom: '5px' }} />
+              <p style={{ fontSize: '11px', margin: '0', color: '#000' }}>
                 {data.classTeacherName || 'Not Assigned'}
               </p>
-              <div style={{ borderTop: '1px solid #000', height: '0' }} />
             </div>
 
             {/* Headteacher */}
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#000' }}>
+              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
                 HEADTEACHER
               </p>
 
@@ -474,8 +470,8 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                 </div>
               )}
 
-              <p style={{ fontSize: '12px', margin: '0', color: '#000' }}>{data.headteacherName}</p>
-              <div style={{ borderTop: '1px solid #000', marginTop: '30px' }} />
+              <div style={{ borderTop: '1px solid #334155', marginTop: '26px', marginBottom: '5px' }} />
+              <p style={{ fontSize: '11px', margin: '0', color: '#000' }}>{data.headteacherName}</p>
             </div>
           </div>
         </div>
