@@ -124,8 +124,9 @@ export async function GET(request: NextRequest) {
 
     const { data: academicYear, error: yearError } = await supabase
       .from('academic_years')
-      .select('name')
+      .select('year, school_id, start_date')
       .eq('id', academicYearId)
+      .eq('school_id', schoolId)
       .single();
 
     if (yearError || !academicYear) {
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
       studentId: student.admission_number || student.id,
       className: schoolClass.name,
       streamName: stream.name,
-      academicYear: academicYear.name,
+      academicYear: academicYear.year,
       termName: term.type,
 
       // Academic Performance
