@@ -12,20 +12,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use service role client to get user info from token
+    // Use service role client to validate and refresh the session.
     const supabase = getServerSupabaseClient();
-    
-    // Verify token is valid by setting it in auth header
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const refreshToken = request.cookies.get('sb-refresh-token')?.value;
+    let {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+    let refreshedSession: { access_token: string; refresh_token: string } | null = null;
 
     if (userError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid session' },
-        { status: 401 }
-      );
+      if (!refreshToken) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid session' },
+          { status: 401 }
+        );
+      }
+
+      const { data: refreshData, error: refreshError } =
+        await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+      if (refreshError || !refreshData.session || !refreshData.user) {
+        console.error('[v0][SESSION] Token refresh failed:', {
+          error: refreshError?.message,
+        });
+        return NextResponse.json(
+          { success: false, error: 'Invalid session' },
+          { status: 401 }
+        );
+      }
+
+      refreshedSession = {
+        access_token: refreshData.session.access_token,
+        refresh_token: refreshData.session.refresh_token,
+      };
+      user = refreshData.user;
+      userError = null;
     }
 
     // Fetch profile using service role (bypasses RLS)
+
     const { data: profileData, error: profileError } = await queryProfiles()
       .select('id, school_id, system_role, first_name, last_name, status, setup_completed')
       .eq('id', user.id)
@@ -38,7 +64,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       session: {
         userId: user.id,
@@ -55,6 +81,30 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    if (refreshedSession) {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        path: '/',
+      };
+
+      response.cookies.set({
+        ...cookieOptions,
+        name: 'sb-auth-token',
+        value: refreshedSession.access_token,
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      response.cookies.set({
+        ...cookieOptions,
+        name: 'sb-refresh-token',
+        value: refreshedSession.refresh_token,
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('[v0][SESSION] Check failed:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(

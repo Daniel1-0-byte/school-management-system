@@ -6,6 +6,7 @@ export async function POST(request: NextRequest) {
 
     // Clear authentication cookies
     response.cookies.delete('sb-auth-token');
+    response.cookies.delete('sb-refresh-token');
     response.cookies.delete('platform-admin-token');
 
     return response;

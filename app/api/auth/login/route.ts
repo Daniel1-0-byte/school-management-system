@@ -152,13 +152,25 @@ export async function POST(request: NextRequest) {
     });
 
     // Set secure session cookie
-    response.cookies.set({
-      name: 'sb-auth-token',
-      value: authData.session.access_token,
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+
+    response.cookies.set({
+      ...cookieOptions,
+      name: 'sb-auth-token',
+      value: authData.session.access_token,
       maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
+
+    response.cookies.set({
+      ...cookieOptions,
+      name: 'sb-refresh-token',
+      value: authData.session.refresh_token,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
     });
 
     return response;
