@@ -55,16 +55,15 @@ interface ProfessionalReportCardProps {
 }
 
 export function ProfessionalReportCard({ data, isPrinting = false }: ProfessionalReportCardProps) {
-  const attendancePercentage = data.attendance
+  const attendancePercentage = data.attendance && data.attendance.total > 0
     ? ((data.attendance.present / data.attendance.total) * 100).toFixed(1)
     : null;
 
   return (
     <div
-      className={`${isPrinting ? 'print:bg-white' : 'bg-white'} w-full max-w-4xl mx-auto`}
+      className={`${isPrinting ? 'print:bg-white' : 'bg-white'} report-card-printable w-full max-w-4xl mx-auto`}
       style={{
         fontFamily: 'Arial, sans-serif',
-        pageBreakAfter: 'always',
         padding: isPrinting ? '40px' : '0',
       }}
     >
@@ -75,13 +74,44 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             print-color-adjust: exact;
             color-adjust: exact;
           }
-          body { margin: 0; padding: 0; }
-          .no-print { display: none !important; }
-          .report-card-container {
-            max-width: 100%;
-            margin: 0;
-            padding: 20px;
+          html, body {
+            width: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
           }
+          body { font-size: 10px; }
+          .no-print { display: none !important; }
+          .report-card-printable {
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+          .report-card-container {
+            width: auto !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+          .report-card-container > div,
+          .report-card-signatures,
+          table {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          table { font-size: 9px; }
+          th, td { padding: 4px !important; }
+          h1 { font-size: 18px !important; }
+          h2 { font-size: 14px !important; }
+          h3 { font-size: 10px !important; }
+          .report-card-container { line-height: 1.15; }
+          .report-card-container > div { margin-bottom: 6px; }
         }
       `}</style>
 
@@ -184,17 +214,32 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
               ATTENDANCE
             </h3>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '12px',
-                padding: '12px',
-                backgroundColor: '#f0f8ff',
-                border: '1px solid #b0d4ff',
-                borderRadius: '4px',
-              }}
-            >
+            {data.attendance.total === 0 ? (
+              <div
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#f0f8ff',
+                  border: '1px solid #b0d4ff',
+                  borderRadius: '4px',
+                  color: '#666',
+                  fontSize: '11px',
+                  textAlign: 'center',
+                }}
+              >
+                No attendance recorded
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '12px',
+                  padding: '12px',
+                  backgroundColor: '#f0f8ff',
+                  border: '1px solid #b0d4ff',
+                  borderRadius: '4px',
+                }}
+              >
               <div style={{ textAlign: 'center' }}>
                 <p style={{ fontSize: '10px', color: '#666', margin: '0 0 4px 0' }}>Present</p>
                 <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0', color: '#000' }}>
@@ -226,7 +271,8 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                   {attendancePercentage}%
                 </p>
               </div>
-            </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -391,7 +437,10 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
         )}
 
         {/* Footer Section */}
-        <div style={{ marginTop: '24px', borderTop: '2px solid #ddd', paddingTop: '16px' }}>
+        <div
+          className="report-card-signatures"
+          style={{ marginTop: '24px', borderTop: '2px solid #ddd', paddingTop: '16px' }}
+        >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Class Teacher */}
             <div>
