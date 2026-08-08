@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, Loader, FileText, Edit2, Printer, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { BulkGenerateDialog } from './bulk-generate-dialog';
@@ -40,30 +40,32 @@ export function ReportCardsTab({
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [streamName, setStreamName] = useState<string>('');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(
-          `/api/school/reports/report-cards?academic_year_id=${academicYearId}&term_id=${termId}&stream_id=${streamId}`
-        );
+  const fetchData = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const response = await fetch(
+        `/api/school/reports/report-cards?academic_year_id=${academicYearId}&term_id=${termId}&stream_id=${streamId}`
+      );
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch report cards data');
-        }
-
-        const result = await response.json();
-        setData(result);
-        setStreamName(result.streamName || '');
-      } catch (err) {
-        console.error('[v0] Report cards fetch error:', err);
-        setError('Failed to load report cards. Please try again.');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('Failed to fetch report cards data');
       }
-    };
 
-    fetchData();
+      const result = await response.json();
+      setData(result);
+      setStreamName(result.streamName || '');
+      setError(null);
+    } catch (err) {
+      console.error('[v0] Report cards fetch error:', err);
+      setError('Failed to load report cards. Please try again.');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, [academicYearId, termId, streamId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
@@ -236,7 +238,7 @@ export function ReportCardsTab({
         academicYearName={academicYearId}
         onClose={() => setShowBulkDialog(false)}
         onGenerated={() => {
-          setShowBulkDialog(false);
+          void fetchData(false);
         }}
       />
     </div>
