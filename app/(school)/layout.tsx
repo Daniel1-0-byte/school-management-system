@@ -153,7 +153,7 @@ export default function SchoolLayout({
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transition-transform duration-300 ${
+        className={`report-app-chrome fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 lg:static lg:inset-auto`}
       >
@@ -256,7 +256,7 @@ export default function SchoolLayout({
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
+        <header className="report-app-chrome h-16 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
@@ -283,7 +283,7 @@ export default function SchoolLayout({
       {isSidebarOpen && (
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="report-app-chrome fixed inset-0 bg-black/50 z-30 lg:hidden"
         />
       )}
     </div>

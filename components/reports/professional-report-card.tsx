@@ -424,7 +424,6 @@ textAlign: 'right',
                 position: 'relative',
               }}
             >
-              <span aria-hidden="true" style={{ position: 'absolute', left: '8px', top: '5px', fontFamily: 'Georgia, serif', fontSize: '24px', color: '#1e3a5f', lineHeight: 1 }}>“</span>
               <p style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic', margin: '0', paddingLeft: '12px', color: '#334155', lineHeight: '1.4' }}>
                 {data.teacherComment}
               </p>
