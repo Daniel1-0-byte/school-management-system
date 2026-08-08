@@ -198,13 +198,25 @@ export default function ReportCardPreviewPage() {
             height: auto !important;
           }
           
-          #report-toolbar {
+          #report-toolbar,
+          .report-app-chrome {
             display: none !important;
           }
-          
+
+          body > *,
+          body > * > *,
+          main {
+            visibility: visible !important;
+          }
+
+          .report-card-printable {
+            display: block !important;
+            visibility: visible !important;
+          }
+
           @page {
-            size: A4;
-            margin: 0;
+            size: A4 portrait;
+            margin: 8mm;
           }
         }
       `}</style>
