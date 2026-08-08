@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { seedDefaultCurriculum } from '@/lib/seed-curriculum';
+import { DEFAULT_CURRICULUM } from '@/lib/default-curriculum';
 
 export async function POST(_request: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function POST(_request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { academicYear, classCount: 11 },
+      data: { academicYear, classCount: DEFAULT_CURRICULUM.length },
       message: 'Default classes and subjects loaded successfully',
     });
   } catch (error) {
