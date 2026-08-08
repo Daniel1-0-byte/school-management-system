@@ -62,12 +62,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch enrollment information to get class
+    console.log('[v0] Report card enrollment lookup:', {
+      studentId,
+      schoolId,
+      academicYearId,
+    });
+
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('student_enrollments')
-      .select('school_class_id')
+      .select('class_id')
       .eq('student_id', studentId)
       .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
+      .eq('status', 'active')
       .single();
 
     if (enrollmentError || !enrollment) {
@@ -80,7 +87,7 @@ export async function GET(request: NextRequest) {
       .select('name, class_teacher_id, school_class_id')
       .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
-      .eq('school_class_id', enrollment.school_class_id)
+      .eq('school_class_id', enrollment.class_id)
       .single();
 
     if (streamError || !stream) {
@@ -91,7 +98,7 @@ export async function GET(request: NextRequest) {
     const { data: schoolClass, error: classError } = await supabase
       .from('school_classes')
       .select('name')
-      .eq('id', enrollment.school_class_id)
+      .eq('id', enrollment.class_id)
       .single();
 
     if (classError || !schoolClass) {
