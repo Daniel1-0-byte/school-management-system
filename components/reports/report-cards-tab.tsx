@@ -194,13 +194,29 @@ export function ReportCardsTab({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setSelectedStudent(student.student_id)}
-                      className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      {student.status === 'completed' ? 'Edit' : 'Create'}
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      {student.status === 'completed' && (
+                        <a
+                          href={
+                            student.report_card?.preview_url ||
+                            `/reports/preview?student_id=${encodeURIComponent(student.student_id)}&term_id=${encodeURIComponent(termId)}&academic_year_id=${encodeURIComponent(academicYearId)}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
+                        >
+                          <Printer className="w-4 h-4" />
+                          View / Print
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedStudent(student.student_id)}
+                        className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        {student.status === 'completed' ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
