@@ -63,6 +63,22 @@ export async function seedDefaultCurriculum(
         continue;
       }
 
+      const { error: streamError } = await supabase
+        .from('school_class_streams')
+        .insert({
+          school_id: schoolId,
+          academic_year_id: academicYearId,
+          school_class_id: classData.id,
+          name: 'A',
+          status: 'active',
+        });
+
+      if (streamError) {
+        const message = `Failed to create default stream for class ${className}: ${streamError.message}`;
+        console.error('[v0]', message);
+        errors.push(message);
+      }
+
       // Link subjects to this class
       const classSubjectLinks = subjects
         .map(subjectName => {
