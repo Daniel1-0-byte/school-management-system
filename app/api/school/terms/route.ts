@@ -105,13 +105,16 @@ export async function POST(request: NextRequest) {
     // Verify academic year belongs to this school
     const { data: academicYear, error: yearError } = await client
       .from('academic_years')
-      .select('start_date, end_date')
+      .select('school_id, start_date, end_date')
       .eq('id', academic_year_id)
       .eq('school_id', schoolId)
       .single();
 
-    if (yearError || !academicYear) {
-      return NextResponse.json({ error: 'Academic year not found' }, { status: 404 });
+    if (yearError || !academicYear?.school_id) {
+      return NextResponse.json(
+        { error: 'Invalid academic_year_id: academic year not found for this school' },
+        { status: 400 }
+      );
     }
 
     // Validate term dates fall within academic year
@@ -138,6 +141,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await client
       .from('terms')
       .insert({
+        school_id: academicYear.school_id,
         academic_year_id,
         type,
         start_date,
