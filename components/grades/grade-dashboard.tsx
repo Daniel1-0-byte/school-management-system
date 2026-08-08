@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, Save, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { GradeEntryTable } from './grade-entry-table';
 
@@ -42,9 +42,11 @@ export function GradeDashboard({
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [assessmentId, setAssessmentId] = useState<string>('');
+  const requestRef = useRef(0);
 
   // Fetch grades and grading policy on mount
   useEffect(() => {
+    const requestId = ++requestRef.current;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -60,6 +62,7 @@ export function GradeDashboard({
           throw new Error('Failed to find assessment for this subject/term');
         }
         const assessmentData = await assessmentResponse.json();
+        if (requestId !== requestRef.current) return;
         let assessments = assessmentData.data || [];
         
         if (assessments.length === 0) {
@@ -103,7 +106,7 @@ export function GradeDashboard({
 
           // Fetch enrolled students for this stream
           const studentsResponse = await fetch(
-            `/api/school/students?class_id=${streamId}`
+            `/api/school/students?stream_id=${streamId}&pageSize=1000`
           );
           
           if (studentsResponse.ok) {
@@ -154,6 +157,12 @@ export function GradeDashboard({
 
     if (subjectId && streamId && termId) {
       fetchData();
+    } else {
+      requestRef.current += 1;
+      setGrades([]);
+      setAssessmentId('');
+      setHasChanges(false);
+      setLoading(false);
     }
   }, [subjectId, streamId, termId, onError]);
 

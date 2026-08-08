@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, AlertCircle } from 'lucide-react';
 
 interface SubjectSelectorProps {
@@ -20,6 +20,7 @@ interface AcademicYear {
 
 interface Stream {
   id: string;
+  academic_year_id: string;
   name: string;
   school_classes?: {
     level: string;
@@ -67,6 +68,8 @@ export function SubjectSelector({
   const [termsLoading, setTermsLoading] = useState(false);
   const [streamsLoading, setStreamsLoading] = useState(false);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const streamsRequestRef = useRef(0);
+  const subjectsRequestRef = useRef(0);
 
   // Fetch academic years on mount
   useEffect(() => {
@@ -137,6 +140,7 @@ export function SubjectSelector({
       return;
     }
 
+    const requestId = ++streamsRequestRef.current;
     const fetchStreams = async () => {
       try {
         setStreamsLoading(true);
@@ -146,7 +150,11 @@ export function SubjectSelector({
         );
         if (!response.ok) throw new Error('Failed to fetch streams');
         const data = await response.json();
-        setStreams(data.data || []);
+        if (requestId !== streamsRequestRef.current) return;
+        const nextStreams = (data.data || []).filter(
+          (stream: Stream) => stream.academic_year_id === selectedAcademicYear
+        );
+        setStreams(nextStreams);
         setSelectedStream('');
         setSubjects([]);
         setSelectedSubject('');
@@ -168,6 +176,7 @@ export function SubjectSelector({
       return;
     }
 
+    const requestId = ++subjectsRequestRef.current;
     const fetchSubjects = async () => {
       try {
         setSubjectsLoading(true);
@@ -175,6 +184,7 @@ export function SubjectSelector({
         const response = await fetch(`/api/school/subjects?stream_id=${selectedStream}`);
         if (!response.ok) throw new Error('Failed to fetch subjects');
         const data = await response.json();
+        if (requestId !== subjectsRequestRef.current) return;
         setSubjects(data.data || []);
         setSelectedSubject('');
       } catch (error) {
@@ -252,7 +262,7 @@ export function SubjectSelector({
           <select
             value={selectedStream}
             onChange={(e) => setSelectedStream(e.target.value)}
-            disabled={!propSelectedTerm || streamsLoading}
+            disabled={!selectedAcademicYear || !selectedTerm || streamsLoading}
             className="w-full px-4 py-2 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="">

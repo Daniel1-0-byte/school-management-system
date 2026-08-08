@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
     const activeOnly = request.nextUrl.searchParams.get('activeOnly') === 'true';
+    const academicYearId = request.nextUrl.searchParams.get('academic_year_id');
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json(
@@ -29,8 +30,12 @@ export async function GET(request: NextRequest) {
 
     // Fetch streams
     let query = querySchoolClassStreams()
-      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at')
+      .select('id, school_id, school_class_id, academic_year_id, name, capacity, status, class_teacher_id, created_at, updated_at')
       .eq('school_id', schoolId);
+
+    if (academicYearId) {
+      query = query.eq('academic_year_id', academicYearId);
+    }
 
     if (activeOnly) {
       query = query.eq('status', 'active');
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
         capacity: capacity || null,
         status: 'active',
       })
-      .select('id, school_id, school_class_id, name, capacity, status, class_teacher_id, created_at, updated_at')
+      .select('id, school_id, school_class_id, academic_year_id, name, capacity, status, class_teacher_id, created_at, updated_at')
       .single();
 
     if (insertError) {
