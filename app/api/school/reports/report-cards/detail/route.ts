@@ -150,10 +150,9 @@ export async function GET(request: NextRequest) {
     // Fetch grade entries (subjects and scores)
     const { data: gradeEntries, error: gradesError } = await supabase
       .from('grade_entries')
-      .select('subject_id, score, grade')
+      .select('subject_id, total_score, letter_grade, class_score, exam_score, assessment_id')
       .eq('student_id', studentId)
-      .eq('term_id', termId)
-      .eq('academic_year_id', academicYearId);
+      .eq('term_id', termId);
 
     if (gradesError) {
       console.error('[v0] Error fetching grades:', gradesError);
@@ -221,8 +220,8 @@ export async function GET(request: NextRequest) {
       subjects:
         gradeEntries?.map(g => ({
           name: subjectMap.get(g.subject_id) || 'Unknown Subject',
-          score: g.score || 0,
-          grade: g.grade || 'N/A',
+          score: g.total_score ?? 0,
+          grade: g.letter_grade || 'N/A',
         })) || [],
       totalScore: reportCard.total_score || 0,
       averageScore: reportCard.average_score || 0,
