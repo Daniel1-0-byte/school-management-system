@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { seedDefaultCurriculum } from '@/lib/seed-curriculum';
 import { DEFAULT_CURRICULUM } from '@/lib/default-curriculum';
+import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/env';
 
 export async function POST(_request: NextRequest) {
   try {
@@ -65,7 +67,8 @@ export async function POST(_request: NextRequest) {
       );
     }
 
-    const result = await seedDefaultCurriculum(client, schoolId, academicYear.id);
+    const seedClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const result = await seedDefaultCurriculum(seedClient, schoolId, academicYear.id);
 
     if (!result.success) {
       return NextResponse.json(
