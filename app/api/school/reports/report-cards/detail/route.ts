@@ -117,6 +117,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch academic year information
+    console.log('[v0] Report card academic year lookup:', {
+      academicYearId,
+      schoolId,
+    });
+
     const { data: academicYear, error: yearError } = await supabase
       .from('academic_years')
       .select('name')
