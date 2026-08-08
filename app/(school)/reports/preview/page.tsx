@@ -185,12 +185,17 @@ export default function ReportCardPreviewPage() {
             color-adjust: exact !important;
           }
           
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+
           html, body {
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
-            width: 210mm !important;
-            height: 297mm !important;
+            width: auto !important;
+            height: auto !important;
           }
           
           #report-toolbar {
