@@ -59,10 +59,29 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        const { data: academicYear, error: academicYearError } = await supabase
+          .from('academic_years')
+          .select('id')
+          .eq('school_id', school.id)
+          .order('start_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (academicYearError || !academicYear) {
+          console.error(`[v0] No academic year found for ${school.name}:`, academicYearError);
+          skipped.push(school.id);
+          continue;
+        }
+
         // Seed curriculum
         console.log(`[v0] Seeding curriculum for school: ${school.name}`);
-        await seedDefaultCurriculum(supabase, school.id);
-        seeded.push(school.id);
+        const result = await seedDefaultCurriculum(supabase, school.id, academicYear?.id ?? '');
+        if (result.success) {
+          seeded.push(school.id);
+        } else {
+          console.error(`[v0] Curriculum seed errors for ${school.name}:`, result.errors);
+          skipped.push(school.id);
+        }
       } catch (err) {
         console.error(`[v0] Error seeding school ${school.name}:`, err);
         skipped.push(school.id);

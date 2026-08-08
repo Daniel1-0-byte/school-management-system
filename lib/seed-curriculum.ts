@@ -5,9 +5,15 @@ import { SupabaseClient } from '@supabase/supabase-js';
  * Seeds default classes and subjects for a new school
  * Called when a school is created during signup
  */
-export async function seedDefaultCurriculum(supabase: SupabaseClient, schoolId: string) {
+export async function seedDefaultCurriculum(
+  supabase: SupabaseClient,
+  schoolId: string,
+  academicYearId: string
+): Promise<{ success: boolean; errors: string[] }> {
+  const errors: string[] = [];
+
   try {
-    console.log('[v0] Seeding default curriculum for school:', schoolId);
+    console.log('[v0] Seeding default curriculum for school:', schoolId, 'academic year:', academicYearId);
 
     // Create all unique subjects first
     const allSubjects = new Set<string>();
@@ -27,8 +33,9 @@ export async function seedDefaultCurriculum(supabase: SupabaseClient, schoolId: 
       .select('id, name');
 
     if (subjectError) {
-      console.error('[v0] Failed to seed subjects:', subjectError);
-      return false;
+      const message = `Failed to seed subjects: ${subjectError.message}`;
+      console.error('[v0]', message);
+      errors.push(message);
     }
 
     // Create map of subject names to IDs for easy lookup
@@ -43,14 +50,16 @@ export async function seedDefaultCurriculum(supabase: SupabaseClient, schoolId: 
         .from('school_classes')
         .insert({
           name: className,
-          section: 'A', // Default section
           school_id: schoolId,
+          academic_year_id: academicYearId,
         })
         .select('id')
         .single();
 
       if (classError) {
-        console.error(`[v0] Failed to create class ${className}:`, classError);
+        const message = `Failed to create class ${className}: ${classError.message}`;
+        console.error('[v0]', message);
+        errors.push(message);
         continue;
       }
 
@@ -62,10 +71,11 @@ export async function seedDefaultCurriculum(supabase: SupabaseClient, schoolId: 
             console.warn(`[v0] Subject not found: ${subjectName}`);
             return null;
           }
-          return {
-            class_id: classData.id,
-            subject_id: subjectId,
-          };
+            return {
+              school_id: schoolId,
+              class_id: classData.id,
+              subject_id: subjectId,
+            };
         })
         .filter(link => link !== null);
 
@@ -75,15 +85,21 @@ export async function seedDefaultCurriculum(supabase: SupabaseClient, schoolId: 
           .insert(classSubjectLinks);
 
         if (linkError) {
-          console.error(`[v0] Failed to link subjects for class ${className}:`, linkError);
+          const message = `Failed to link subjects for class ${className}: ${linkError.message}`;
+          console.error('[v0]', message);
+          errors.push(message);
         }
       }
     }
 
-    console.log('[v0] Successfully seeded default curriculum for school:', schoolId);
-    return true;
+    console.log('[v0] Finished seeding default curriculum for school:', schoolId, {
+      errors: errors.length,
+    });
+    return { success: errors.length === 0, errors };
   } catch (error) {
-    console.error('[v0] Error seeding curriculum:', error);
-    return false;
+    const message = `Error seeding curriculum: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('[v0]', message);
+    errors.push(message);
+    return { success: false, errors };
   }
 }
