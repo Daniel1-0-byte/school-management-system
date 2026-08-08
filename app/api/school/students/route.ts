@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryStudents, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
+import {
+  queryAcademicYears,
+  querySchoolClassStreams,
+  queryStudentEnrollments,
+  queryStudents,
+  getPaginatedResults,
+  formatSupabaseError,
+} from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const studentSchema = z.object({
@@ -10,8 +17,8 @@ const studentSchema = z.object({
   admission_number: z.string().optional(),
   current_class_id: z.string().uuid().optional(),
   current_class_name: z.string().optional(),
-  current_stream_id: z.string().uuid().optional(), // Phase 3: Stream ID
-  current_stream_name: z.string().optional(), // Phase 3: Stream name
+  current_stream_id: z.string().uuid().optional(),
+  current_stream_name: z.string().optional(),
   status: z.enum(['active', 'inactive', 'graduated']).default('active'),
   parental_status: z.string().optional(),
   medical_notes: z.string().optional(),
@@ -27,15 +34,10 @@ export async function GET(request: NextRequest) {
     const status = request.nextUrl.searchParams.get('status') || '';
     const streamId = request.nextUrl.searchParams.get('stream_id') || '';
 
-    // Type guard to ensure schoolId is a string
     if (typeof schoolId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid school ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
     }
 
-    // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
     if (!validation.valid) {
       return NextResponse.json(
@@ -59,7 +61,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (streamId) {
-      query = query.eq('current_stream_id', streamId);
+      const { data: enrollments, error: enrollmentError } = await queryStudentEnrollments()
+        .select('student_id')
+        .eq('school_id', schoolId)
+        .eq('stream_id', streamId)
+        .eq('status', 'active');
+
+      if (enrollmentError) {
+        console.error('[v0] Students stream enrollment filter error:', enrollmentError);
+        return NextResponse.json(
+          { error: formatSupabaseError(enrollmentError) },
+          { status: 400 }
+        );
+      }
+
+      const studentIds = (enrollments || []).map(
+        (enrollment: { student_id: string }) => enrollment.student_id
+      );
+      if (studentIds.length === 0) {
+        return NextResponse.json({ data: [], total: 0, page, pageSize });
+      }
+
+      query = query.in('id', studentIds);
     }
 
     query = query.order('created_at', { ascending: false });
@@ -92,15 +115,10 @@ export async function POST(request: NextRequest) {
     const validatedData = studentSchema.parse(body);
     const schoolId = await getSchoolIdFromRequest(request);
 
-    // Type guard to ensure schoolId is a string
     if (typeof schoolId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid school ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
     }
 
-    // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
     if (!validation.valid) {
       return NextResponse.json(
@@ -109,30 +127,110 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Phase 3: Prefer stream_id over class_id
-    const enrollmentData = {
-      ...validatedData,
-      school_id: schoolId,
-      // Use stream_id as primary enrollment point (Phase 3)
-      current_stream_id: validatedData.current_stream_id,
-      current_stream_name: validatedData.current_stream_name,
-    };
+    const {
+      current_stream_id: streamId,
+      current_stream_name: _streamName,
+      current_class_id: requestedClassId,
+      current_class_name: className,
+      ...studentFields
+    } = validatedData;
 
-    const { data, error } = await queryStudents()
-      .insert(enrollmentData)
+    let classId = requestedClassId;
+
+    if (streamId && !classId) {
+      const { data: stream, error: streamError } = await querySchoolClassStreams()
+        .select('school_class_id')
+        .eq('id', streamId)
+        .eq('school_id', schoolId)
+        .maybeSingle();
+
+      if (streamError) {
+        console.error('[v0] Student stream lookup error:', streamError);
+        return NextResponse.json(
+          { error: formatSupabaseError(streamError) },
+          { status: 400 }
+        );
+      }
+
+      classId = stream?.school_class_id;
+    }
+
+    if (!classId) {
+      return NextResponse.json(
+        { error: 'A class or class stream is required for enrollment' },
+        { status: 400 }
+      );
+    }
+
+    const { data: academicYear, error: academicYearError } = await queryAcademicYears()
+      .select('id')
+      .eq('school_id', schoolId)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (academicYearError || !academicYear) {
+      console.error('[v0] Student academic year lookup error:', academicYearError);
+      return NextResponse.json(
+        { error: academicYearError ? formatSupabaseError(academicYearError) : 'Create an academic year before enrolling students' },
+        { status: 400 }
+      );
+    }
+
+    const { data: student, error: studentError } = await queryStudents()
+      .insert({
+        ...studentFields,
+        current_class_id: classId,
+        current_class_name: className,
+        school_id: schoolId,
+      })
       .select()
       .single();
 
-    if (error) {
-      console.error('[v0] Students POST error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    if (studentError || !student) {
+      console.error('[v0] Students POST error:', studentError);
+      return NextResponse.json(
+        { error: formatSupabaseError(studentError) },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    const { error: enrollmentError } = await queryStudentEnrollments()
+      .insert({
+        student_id: student.id,
+        school_id: schoolId,
+        class_id: classId,
+        stream_id: streamId,
+        academic_year_id: academicYear.id,
+        enrollment_date: new Date().toISOString().slice(0, 10),
+        status: 'active',
+      });
+
+    if (enrollmentError) {
+      console.error('[v0] Student enrollment creation error:', enrollmentError);
+      const { error: rollbackError } = await queryStudents()
+        .delete()
+        .eq('id', student.id)
+        .eq('school_id', schoolId);
+
+      if (rollbackError) {
+        console.error('[v0] Student rollback error:', rollbackError);
+      }
+
+      return NextResponse.json(
+        {
+          error: 'Failed to create student enrollment',
+          details: formatSupabaseError(enrollmentError),
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(student, { status: 201 });
   } catch (error) {
     console.error('[v0] Students POST error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json(
       { error: 'Failed to create student' },
