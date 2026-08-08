@@ -198,9 +198,11 @@ export function AssessmentSelector({
             </option>
             {streams.map((stream) => (
               <option key={stream.id} value={stream.id}>
-                {stream.school_classes?.level && stream.school_classes?.name
-                  ? `${stream.school_classes.level} - ${stream.name}`
-                  : stream.name}
+                {stream.school_classes?.name
+                  ? `${stream.school_classes.name} - ${stream.name}`
+                  : stream.school_classes?.level
+                    ? `${stream.school_classes.level} - ${stream.name}`
+                    : stream.name}
               </option>
             ))}
           </select>
