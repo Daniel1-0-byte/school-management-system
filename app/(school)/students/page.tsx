@@ -223,7 +223,7 @@ export default function StudentsPage() {
                     <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{student.admissionNumber || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       <span className="inline-block px-2 py-1 bg-blue-500/10 text-blue-600 rounded text-xs font-medium">
-                        {student.currentStreamName || student.currentClassName || 'N/A'}
+                        {student.currentStreamName || 'Not enrolled'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : 'N/A'}</td>

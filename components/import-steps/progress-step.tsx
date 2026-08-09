@@ -51,7 +51,7 @@ export function ProgressStep({
         <div className="space-y-4">
           {importResult.success ? (
             <div className="flex items-start gap-3 p-4 bg-muted border border-border rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-foreground">Import Successful</p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -62,7 +62,7 @@ export function ProgressStep({
             </div>
           ) : (
             <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-foreground">Import Failed</p>
                 <p className="text-sm text-destructive mt-1">{importResult.errors[0]?.error}</p>
@@ -76,22 +76,36 @@ export function ProgressStep({
               <p className="text-xl font-bold">{importResult.totalProcessed}</p>
             </div>
             <div className="p-3 bg-muted rounded-lg text-center border border-border">
-              <p className="text-xs text-green-700">Created</p>
-              <p className="text-xl font-bold text-green-600">{importResult.created}</p>
+              <p className="text-xs text-foreground">Created</p>
+              <p className="text-xl font-bold text-primary">{importResult.created}</p>
             </div>
             <div className="p-3 bg-muted rounded-lg text-center border border-border">
-              <p className="text-xs text-amber-700">Updated</p>
+              <p className="text-xs text-foreground">Updated</p>
               <p className="text-xl font-bold text-amber-600">{importResult.updated}</p>
             </div>
             <div className="p-3 bg-muted rounded-lg text-center border border-border">
-              <p className="text-xs text-blue-700">Skipped</p>
+              <p className="text-xs text-foreground">Skipped</p>
               <p className="text-xl font-bold text-blue-600">{importResult.skipped}</p>
             </div>
           </div>
 
           {importResult.warnings.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              {importResult.warnings.length} warning(s) during import
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm font-semibold text-foreground">
+                {importResult.warnings.length} warning(s) during import
+              </p>
+              <ul className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
+                {importResult.warnings.slice(0, 10).map((warning, index) => (
+                  <li key={`${warning.rowNumber}-${index}`}>
+                    Row {warning.rowNumber}: {warning.message}
+                  </li>
+                ))}
+              </ul>
+              {importResult.warnings.length > 10 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  ... and {importResult.warnings.length - 10} more warnings
+                </p>
+              )}
             </div>
           )}
         </div>

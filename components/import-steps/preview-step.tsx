@@ -60,7 +60,7 @@ export function PreviewStep({ validationResult, config }: PreviewStepProps) {
                 {/* Show up to 3 create rows */}
                 {validationResult.rowsToCreate.slice(0, 3).map((row, idx) => (
                   <tr key={`create-${idx}`} className="border-b hover:bg-muted/50">
-                    <td className="px-3 py-2 font-semibold text-green-600">+</td>
+                    <td className="px-3 py-2 font-semibold text-primary">+</td>
                     {headers.map((header: string) => (
                       <td key={`${idx}-${header}`} className="px-3 py-2 truncate max-w-xs">
                         {row[header] ?? ''}
@@ -72,7 +72,7 @@ export function PreviewStep({ validationResult, config }: PreviewStepProps) {
                 {/* Show up to 2 update rows */}
                 {validationResult.rowsToUpdate.slice(0, 2).map((row, idx) => (
                   <tr key={`update-${idx}`} className="border-b hover:bg-muted/50">
-                    <td className="px-3 py-2 font-semibold text-amber-600">~</td>
+                    <td className="px-3 py-2 font-semibold text-foreground">~</td>
                     {headers.map((header: string) => (
                       <td key={`${idx}-${header}`} className="px-3 py-2 truncate max-w-xs">
                         {row[header] ?? ''}

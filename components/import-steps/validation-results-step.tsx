@@ -14,7 +14,7 @@ export function ValidationResultsStep({
   const stats = [
     { label: 'Total Rows', value: validationResult.rowsToCreate.length + validationResult.rowsToUpdate.length + validationResult.rowsSkipped.length + validationResult.rowsWithErrors.length, color: 'text-muted-foreground' },
     { label: 'Valid Rows', value: validationResult.rowsToCreate.length + validationResult.rowsToUpdate.length, color: 'text-primary' },
-    { label: 'Rows with Errors', value: validationResult.rowsWithErrors.length, color: validationResult.rowsWithErrors.length > 0 ? 'text-red-600' : 'text-muted-foreground' },
+    { label: 'Rows with Errors', value: validationResult.rowsWithErrors.length, color: validationResult.rowsWithErrors.length > 0 ? 'text-destructive' : 'text-muted-foreground' },
     { label: 'Rows Skipped', value: validationResult.rowsSkipped.length, color: 'text-yellow-600' },
   ];
 
@@ -48,7 +48,7 @@ export function ValidationResultsStep({
         {validationResult.isValid ? (
           <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
         ) : (
-          <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <XCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
         )}
         <div>
           <p
@@ -73,12 +73,12 @@ export function ValidationResultsStep({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-semibold text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-600" />
+              <AlertCircle className="w-4 h-4 text-destructive" />
               Errors ({validationResult.rowsWithErrors.length})
             </h4>
             <button
               onClick={onDownloadErrors}
-              className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+              className="text-xs px-2 py-1 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
             >
               Download Report
             </button>
@@ -87,7 +87,7 @@ export function ValidationResultsStep({
           <div className="max-h-48 overflow-y-auto border rounded-lg">
             {validationResult.rowsWithErrors.slice(0, 10).map((item, idx) => (
               <div key={idx} className="p-3 border-b last:border-b-0 bg-background">
-                <p className="text-xs font-semibold text-red-600 mb-1">
+                <p className="text-xs font-semibold text-destructive mb-1">
                   Row {validationResult.rowsWithErrors.indexOf(item) + 2}
                 </p>
                 <ul className="space-y-1">

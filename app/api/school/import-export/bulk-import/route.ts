@@ -66,9 +66,13 @@ export async function POST(request: NextRequest) {
         )
       );
 
-    const warnings: string[] = [];
+    const warnings: Array<{ rowNumber: number; message: string }> = [];
 
-    const createStudentEnrollment = async (studentId: string, className: unknown) => {
+    const createStudentEnrollment = async (
+      studentId: string,
+      className: unknown,
+      rowNumber: number
+    ) => {
       if (normalizedModuleName !== 'students' || typeof className !== 'string' || !className.trim()) {
         return;
       }
@@ -88,7 +92,10 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (!academicYear || !schoolClass) {
-        warnings.push(`Student ${studentId}: class "${className}" could not be matched; no enrollment created.`);
+        warnings.push({
+          rowNumber,
+          message: `Class "${className}" could not be matched; no enrollment was created.`,
+        });
         return;
       }
 
@@ -103,7 +110,10 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (!stream) {
-        warnings.push(`Student ${studentId}: no active stream found for class "${className}"; no enrollment created.`);
+        warnings.push({
+          rowNumber,
+          message: `No active stream was found for class "${className}"; no enrollment was created.`,
+        });
         return;
       }
 
@@ -117,7 +127,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (enrollmentError) {
-        warnings.push(`Student ${studentId}: enrollment could not be created (${enrollmentError.message}).`);
+        warnings.push({
+          rowNumber,
+          message: `Enrollment could not be created: ${enrollmentError.message}`,
+        });
       }
     };
 
@@ -146,7 +159,8 @@ export async function POST(request: NextRequest) {
               if (createdStudent) {
                 await createStudentEnrollment(
                   createdStudent.id,
-                  row.current_class_name
+                  row.current_class_name,
+                  rows_to_create.indexOf(row) + 2
                 );
               }
               continue;
