@@ -77,19 +77,48 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const { data: academicYear } = await queryAcademicYears()
+      const { data: academicYear, error: academicYearError } = await queryAcademicYears()
         .select('id, year')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const normalizedClassName = className.trim().toLowerCase();
-      const { data: schoolClass } = await querySchoolClasses()
+      if (academicYearError) {
+        console.error('[v0] Bulk import academic year lookup failed:', {
+          rowNumber,
+          studentId,
+          schoolId,
+          academicYearError,
+        });
+      }
+
+      const normalizedClassName = className.trim();
+      const classQuery = querySchoolClasses()
         .select('id, name')
         .eq('school_id', schoolId)
-        .ilike('name', normalizedClassName)
+        .ilike('name', `%${normalizedClassName}%`)
         .maybeSingle();
+      const { data: schoolClass, error: classError } = await classQuery;
+
+      console.log('[v0] Bulk import class matching:', {
+        rowNumber,
+        studentId,
+        rawClassName: className,
+        normalizedClassName,
+        schoolId,
+        academicYearId: academicYear?.id ?? null,
+        schoolClass,
+        classError,
+      });
+
+      if (classError) {
+        warnings.push({
+          rowNumber,
+          message: `Class lookup failed: ${classError.message}`,
+        });
+        return;
+      }
 
       if (!academicYear || !schoolClass) {
         warnings.push({
@@ -99,7 +128,7 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const { data: stream } = await querySchoolClassStreams()
+      const { data: stream, error: streamError } = await querySchoolClassStreams()
         .select('id, name')
         .eq('school_id', schoolId)
         .eq('school_class_id', schoolClass.id)
@@ -108,6 +137,15 @@ export async function POST(request: NextRequest) {
         .order('name', { ascending: true })
         .limit(1)
         .maybeSingle();
+
+      console.log('[v0] Bulk import stream matching:', {
+        rowNumber,
+        studentId,
+        schoolClassId: schoolClass.id,
+        academicYearId: academicYear.id,
+        stream,
+        streamError,
+      });
 
       if (!stream) {
         warnings.push({
@@ -157,11 +195,23 @@ export async function POST(request: NextRequest) {
                 .eq('admission_number', admissionNumber)
                 .single();
               if (createdStudent) {
-                await createStudentEnrollment(
-                  createdStudent.id,
-                  row.current_class_name,
-                  rows_to_create.indexOf(row) + 2
-                );
+                try {
+                  await createStudentEnrollment(
+                    createdStudent.id,
+                    row.current_class_name,
+                    rows_to_create.indexOf(row) + 2
+                  );
+                } catch (enrollmentError) {
+                  console.error('[v0] Bulk import enrollment exception:', {
+                    rowNumber: rows_to_create.indexOf(row) + 2,
+                    studentId: createdStudent.id,
+                    error: enrollmentError,
+                  });
+                  warnings.push({
+                    rowNumber: rows_to_create.indexOf(row) + 2,
+                    message: 'Enrollment processing failed unexpectedly; student was still created.',
+                  });
+                }
               }
               continue;
             }
