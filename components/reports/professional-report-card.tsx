@@ -43,10 +43,9 @@ export interface ReportCardData {
 
   // Comments
   teacherComment: string | null;
-  conduct: string | null;
-  interest: string | null;
-  strength: string | null;
-  improvement: string | null;
+  conductComment: string | null;
+  talentInterests: string | null;
+  headTeacherComment: string | null;
 
   // Staff
   classTeacherName: string | null;
@@ -505,15 +504,14 @@ textAlign: 'right',
         )}
 
         {/* GES Narrative Sections */}
-        {(data.conduct || data.interest || data.strength || data.improvement) && (
+        {(data.conductComment || data.talentInterests || data.headTeacherComment) && (
           <div className="report-card-narratives">
             <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>GENERAL EVALUATION</h3>
             <div className="report-card-narrative-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {[
-                ['CONDUCT', data.conduct],
-                ['INTEREST', data.interest],
-                ['STRENGTH', data.strength],
-                ['AREA FOR IMPROVEMENT', data.improvement],
+                ['CONDUCT', data.conductComment],
+                ['TALENT AND INTERESTS', data.talentInterests],
+                ["HEAD TEACHER'S REMARKS", data.headTeacherComment],
               ].filter(([, value]) => value).map(([label, value]) => (
                 <div key={label} style={{ padding: '9px 12px', backgroundColor: '#f8fafc', border: '1px solid #dbe3ec', borderLeft: '3px solid #1e3a5f', borderRadius: '3px' }}>
                   <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e3a5f', margin: '0 0 3px' }}>{label}</p>

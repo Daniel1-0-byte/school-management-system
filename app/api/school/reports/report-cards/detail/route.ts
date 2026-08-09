@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     // Fetch report card
     const { data: reportCard, error: reportCardError } = await supabase
       .from('report_cards')
-      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, conduct, interest, strength, improvement, principal_signature, generated_at, present_days, absent_days, total_school_days')
+      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, conduct_comment, talent_interests, head_teacher_comment, principal_signature, generated_at, present_days, absent_days, total_school_days')
       .eq('student_id', studentId)
       .eq('term_id', termId)
       .eq('academic_year_id', academicYearId)
@@ -275,10 +275,9 @@ export async function GET(request: NextRequest) {
 
       // Comments
       teacherComment: reportCard.teacher_comment,
-      conduct: reportCard.conduct,
-      interest: reportCard.interest,
-      strength: reportCard.strength,
-      improvement: reportCard.improvement,
+      conductComment: reportCard.conduct_comment,
+      talentInterests: reportCard.talent_interests,
+      headTeacherComment: reportCard.head_teacher_comment,
 
       // Staff
       classTeacherName: classTeacher
