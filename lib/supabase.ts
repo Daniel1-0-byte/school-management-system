@@ -126,6 +126,14 @@ export function queryStudentEnrollments() {
   return getServerSupabaseClient().from('student_enrollments');
 }
 
+export function querySchoolClasses() {
+  return getServerSupabaseClient().from('school_classes');
+}
+
+export function queryAdmissionNumberCounters() {
+  return getServerSupabaseClient().from('admission_number_counters');
+}
+
 export function queryTeacherAssignments() {
   return getServerSupabaseClient().from('teacher_assignments');
 }

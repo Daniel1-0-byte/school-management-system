@@ -13,7 +13,7 @@ export function ValidationResultsStep({
 }: ValidationResultsStepProps) {
   const stats = [
     { label: 'Total Rows', value: validationResult.rowsToCreate.length + validationResult.rowsToUpdate.length + validationResult.rowsSkipped.length + validationResult.rowsWithErrors.length, color: 'text-muted-foreground' },
-    { label: 'Valid Rows', value: validationResult.rowsToCreate.length + validationResult.rowsToUpdate.length, color: 'text-green-600' },
+    { label: 'Valid Rows', value: validationResult.rowsToCreate.length + validationResult.rowsToUpdate.length, color: 'text-primary' },
     { label: 'Rows with Errors', value: validationResult.rowsWithErrors.length, color: validationResult.rowsWithErrors.length > 0 ? 'text-red-600' : 'text-muted-foreground' },
     { label: 'Rows Skipped', value: validationResult.rowsSkipped.length, color: 'text-yellow-600' },
   ];
@@ -41,19 +41,19 @@ export function ValidationResultsStep({
       <div
         className={`flex items-start gap-3 p-4 rounded-lg ${
           validationResult.isValid
-            ? 'bg-green-50 border border-green-200'
-            : 'bg-red-50 border border-red-200'
+            ? 'bg-muted border border-border'
+            : 'bg-destructive/10 border border-destructive/20'
         }`}
       >
         {validationResult.isValid ? (
-          <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
         ) : (
           <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
         )}
         <div>
           <p
             className={`font-semibold ${
-              validationResult.isValid ? 'text-green-900' : 'text-red-900'
+              validationResult.isValid ? 'text-foreground' : 'text-foreground'
             }`}
           >
             {validationResult.isValid
@@ -61,7 +61,7 @@ export function ValidationResultsStep({
               : `Validation Failed - ${validationResult.totalErrors} errors found`}
           </p>
           {!validationResult.isValid && (
-            <p className="text-sm text-red-800 mt-1">
+            <p className="text-sm text-destructive mt-1">
               Please fix the errors below before importing
             </p>
           )}
@@ -86,7 +86,7 @@ export function ValidationResultsStep({
 
           <div className="max-h-48 overflow-y-auto border rounded-lg">
             {validationResult.rowsWithErrors.slice(0, 10).map((item, idx) => (
-              <div key={idx} className="p-3 border-b last:border-b-0 bg-white">
+              <div key={idx} className="p-3 border-b last:border-b-0 bg-background">
                 <p className="text-xs font-semibold text-red-600 mb-1">
                   Row {validationResult.rowsWithErrors.indexOf(item) + 2}
                 </p>

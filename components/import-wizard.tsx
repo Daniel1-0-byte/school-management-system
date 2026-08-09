@@ -335,7 +335,7 @@ export function ImportWizard({
               <button
                 onClick={handleExecuteImport}
                 disabled={isProcessing}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Importing...' : 'Import Now'}
               </button>

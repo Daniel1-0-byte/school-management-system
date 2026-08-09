@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
-import { queryStudents, queryClasses, querySubjects, queryAttendance, queryGrades, queryAcademicYears, queryTerms, queryStudentEnrollments, queryTeacherAssignments, queryGuardians, queryPickupPersons } from '@/lib/supabase';
+import { queryStudents, queryClasses, querySubjects, queryAttendance, queryGrades, queryAcademicYears, queryTerms, queryStudentEnrollments, queryTeacherAssignments, queryGuardians, queryPickupPersons, querySchoolClasses, querySchoolClassStreams } from '@/lib/supabase';
 import { getModuleConfig } from '@/lib/import-export/column-definitions';
 import { generateAdmissionNumber } from '@/lib/services/admission-number-service';
 
@@ -66,6 +66,61 @@ export async function POST(request: NextRequest) {
         )
       );
 
+    const warnings: string[] = [];
+
+    const createStudentEnrollment = async (studentId: string, className: unknown) => {
+      if (normalizedModuleName !== 'students' || typeof className !== 'string' || !className.trim()) {
+        return;
+      }
+
+      const { data: academicYear } = await queryAcademicYears()
+        .select('id, year')
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const normalizedClassName = className.trim().toLowerCase();
+      const { data: schoolClass } = await querySchoolClasses()
+        .select('id, name')
+        .eq('school_id', schoolId)
+        .ilike('name', normalizedClassName)
+        .maybeSingle();
+
+      if (!academicYear || !schoolClass) {
+        warnings.push(`Student ${studentId}: class "${className}" could not be matched; no enrollment created.`);
+        return;
+      }
+
+      const { data: stream } = await querySchoolClassStreams()
+        .select('id, name')
+        .eq('school_id', schoolId)
+        .eq('school_class_id', schoolClass.id)
+        .eq('academic_year_id', academicYear.id)
+        .eq('status', 'active')
+        .order('name', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!stream) {
+        warnings.push(`Student ${studentId}: no active stream found for class "${className}"; no enrollment created.`);
+        return;
+      }
+
+      const { error: enrollmentError } = await queryStudentEnrollments().insert({
+        student_id: studentId,
+        school_id: schoolId,
+        academic_year_id: academicYear.id,
+        school_class_id: schoolClass.id,
+        stream_id: stream.id,
+        status: 'active',
+      });
+
+      if (enrollmentError) {
+        warnings.push(`Student ${studentId}: enrollment could not be created (${enrollmentError.message}).`);
+      }
+    };
+
     // Insert new records
     if (rows_to_create.length > 0) {
       if (normalizedModuleName === 'students') {
@@ -83,6 +138,17 @@ export async function POST(request: NextRequest) {
             if (!createError) {
               inserted = true;
               created++;
+              const { data: createdStudent } = await queryStudents()
+                .select('id')
+                .eq('school_id', schoolId)
+                .eq('admission_number', admissionNumber)
+                .single();
+              if (createdStudent) {
+                await createStudentEnrollment(
+                  createdStudent.id,
+                  row.current_class_name
+                );
+              }
               continue;
             }
 
@@ -138,6 +204,7 @@ export async function POST(request: NextRequest) {
       created,
       updated,
       total: created + updated,
+      warnings,
     });
   } catch (error) {
     console.error('[v0] Bulk import error:', error);
