@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       conductComment,
       talentInterests,
       headTeacherComment,
+      subjectRemarks,
       presentDays,
       absentDays,
       totalSchoolDays,
@@ -164,6 +165,27 @@ export async function POST(request: NextRequest) {
       }
 
       result = data;
+    }
+
+    if (subjectRemarks && typeof subjectRemarks === 'object') {
+      const remarkEntries = Object.entries(subjectRemarks as Record<string, unknown>);
+      for (const [subjectId, remark] of remarkEntries) {
+        const { error: remarksError } = await supabase
+          .from('grade_entries')
+          .update({ remarks: typeof remark === 'string' && remark.trim() ? remark.trim() : null })
+          .eq('school_id', schoolId)
+          .eq('student_id', studentId)
+          .eq('term_id', termId)
+          .eq('subject_id', subjectId);
+
+        if (remarksError) {
+          console.error('[v0] Error updating subject remarks:', remarksError);
+          return NextResponse.json(
+            { error: 'Failed to update subject remarks' },
+            { status: 500 }
+          );
+        }
+      }
     }
 
     return NextResponse.json({

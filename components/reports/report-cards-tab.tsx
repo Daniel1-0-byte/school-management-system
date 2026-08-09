@@ -379,6 +379,7 @@ function ReportCardEditor({
           conductComment,
           talentInterests,
           headTeacherComment,
+          subjectRemarks,
           presentDays: normalizedPresentDays,
           absentDays: calculatedAbsentDays,
           totalSchoolDays,
