@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     // Fetch report card
     const { data: reportCard, error: reportCardError } = await supabase
       .from('report_cards')
-      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, principal_signature, generated_at')
+      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, principal_signature, generated_at, present_days, absent_days, total_school_days')
       .eq('student_id', studentId)
       .eq('term_id', termId)
       .eq('academic_year_id', academicYearId)
@@ -198,6 +198,26 @@ export async function GET(request: NextRequest) {
       console.error('[v0] Error fetching headteacher:', headteacherError);
     }
 
+    // Prefer saved attendance overrides; fall back to the live attendance calculation.
+    const savedAttendance = reportCard.present_days !== null &&
+      reportCard.present_days !== undefined &&
+      reportCard.absent_days !== null &&
+      reportCard.absent_days !== undefined &&
+      reportCard.total_school_days !== null &&
+      reportCard.total_school_days !== undefined
+      ? {
+          present: reportCard.present_days,
+          absent: reportCard.absent_days,
+          total: reportCard.total_school_days,
+        }
+      : attendanceRecords
+        ? {
+            present: attendanceRecords.filter(a => a.status === 'present').length,
+            absent: attendanceRecords.filter(a => a.status === 'absent').length,
+            total: attendanceRecords.length,
+          }
+        : undefined;
+
     // Build response
     const reportCardData: ReportCardData = {
       // School Info
@@ -230,13 +250,7 @@ export async function GET(request: NextRequest) {
       classSize: reportCard.class_size,
 
       // Attendance
-      attendance: attendanceRecords
-        ? {
-            present: attendanceRecords.filter(a => a.status === 'present').length,
-            absent: attendanceRecords.filter(a => a.status === 'absent').length,
-            total: attendanceRecords.length,
-          }
-        : undefined,
+      attendance: savedAttendance,
 
       // Comments
       teacherComment: reportCard.teacher_comment,

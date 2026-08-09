@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
       ranking,
       teacherComment,
       principalSignature,
+      presentDays,
+      absentDays,
+      totalSchoolDays,
     } = body;
 
     // Validate required fields
@@ -71,6 +74,9 @@ export async function POST(request: NextRequest) {
       ranking: ranking || null,
       teacher_comment: teacherComment || null,
       principal_signature: principalSignature || false,
+      present_days: presentDays ?? null,
+      absent_days: absentDays ?? null,
+      total_school_days: totalSchoolDays ?? null,
       generated_at: new Date().toISOString(),
     };
 
