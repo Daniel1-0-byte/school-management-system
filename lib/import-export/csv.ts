@@ -168,8 +168,16 @@ export function validateCSVFile(file: File): { valid: boolean; error?: string } 
     return { valid: false, error: 'No file selected' };
   }
 
-  if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-    return { valid: false, error: 'File must be a CSV file' };
+  const extension = file.name.toLowerCase().split('.').pop();
+  const supportedExtensions = new Set(['csv', 'xlsx', 'ods']);
+  const supportedMimeTypes = new Set([
+    'text/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.oasis.opendocument.spreadsheet',
+  ]);
+
+  if (!extension || (!supportedExtensions.has(extension) && !supportedMimeTypes.has(file.type))) {
+    return { valid: false, error: 'File must be a CSV, XLSX, or ODS file' };
   }
 
   const maxSizeMB = 50;

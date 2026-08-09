@@ -58,7 +58,7 @@ export function FileUploadStep({
 
       <div className="space-y-4">
         <div className="flex gap-2">
-          {(['csv', 'xlsx', 'xls', 'ods'] as FileFormat[]).map((format) => (
+          {(['csv', 'xlsx', 'ods'] as FileFormat[]).map((format) => (
             <button
               key={format}
               onClick={() => onFormatChange(format)}
@@ -91,7 +91,7 @@ export function FileUploadStep({
           <label className="inline-block">
             <input
               type="file"
-              accept=".csv,.xlsx,.xls,.ods"
+              accept=".csv,.xlsx,.ods,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.oasis.opendocument.spreadsheet"
               onChange={handleInputChange}
               disabled={isLoading}
               className="hidden"
