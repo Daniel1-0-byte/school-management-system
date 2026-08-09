@@ -22,17 +22,17 @@ export function PreviewStep({ validationResult, config }: PreviewStepProps) {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="p-4 bg-muted rounded-lg border border-border">
           <p className="text-sm text-muted-foreground mb-1">To Create</p>
-          <p className="text-2xl font-bold text-blue-600">{validationResult.rowsToCreate.length}</p>
+          <p className="text-2xl font-bold text-foreground">{validationResult.rowsToCreate.length}</p>
         </div>
-        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+        <div className="p-4 bg-muted rounded-lg border border-border">
           <p className="text-sm text-muted-foreground mb-1">To Update</p>
-          <p className="text-2xl font-bold text-amber-600">{validationResult.rowsToUpdate.length}</p>
+          <p className="text-2xl font-bold text-foreground">{validationResult.rowsToUpdate.length}</p>
         </div>
-        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+        <div className="p-4 bg-muted rounded-lg border border-border">
           <p className="text-sm text-muted-foreground mb-1">Total Valid</p>
-          <p className="text-2xl font-bold text-green-600">{totalRows}</p>
+          <p className="text-2xl font-bold text-foreground">{totalRows}</p>
         </div>
       </div>
 
@@ -95,13 +95,13 @@ export function PreviewStep({ validationResult, config }: PreviewStepProps) {
       {/* Legend */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex items-center gap-2 text-sm">
-          <span className="w-6 h-6 flex items-center justify-center bg-green-50 text-green-600 rounded text-xs font-bold">
+          <span className="w-6 h-6 flex items-center justify-center bg-muted text-foreground rounded text-xs font-bold">
             +
           </span>
           <span className="text-muted-foreground">New record to be created</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="w-6 h-6 flex items-center justify-center bg-amber-50 text-amber-600 rounded text-xs font-bold">
+          <span className="w-6 h-6 flex items-center justify-center bg-muted text-foreground rounded text-xs font-bold">
             ~
           </span>
           <span className="text-muted-foreground">Existing record to be updated</span>

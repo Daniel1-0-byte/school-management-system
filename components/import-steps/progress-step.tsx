@@ -50,22 +50,22 @@ export function ProgressStep({
       {importResult && !isProcessing && (
         <div className="space-y-4">
           {importResult.success ? (
-            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-start gap-3 p-4 bg-muted border border-border rounded-lg">
               <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-green-900">Import Successful</p>
-                <p className="text-sm text-green-800 mt-1">
+                <p className="font-semibold text-foreground">Import Successful</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   {importResult.created} created, {importResult.updated} updated,{' '}
                   {importResult.skipped} skipped
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-semibold text-red-900">Import Failed</p>
-                <p className="text-sm text-red-800 mt-1">{importResult.errors[0]?.error}</p>
+                <p className="font-semibold text-foreground">Import Failed</p>
+                <p className="text-sm text-destructive mt-1">{importResult.errors[0]?.error}</p>
               </div>
             </div>
           )}
@@ -75,15 +75,15 @@ export function ProgressStep({
               <p className="text-xs text-muted-foreground">Processed</p>
               <p className="text-xl font-bold">{importResult.totalProcessed}</p>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg text-center border border-green-200">
+            <div className="p-3 bg-muted rounded-lg text-center border border-border">
               <p className="text-xs text-green-700">Created</p>
               <p className="text-xl font-bold text-green-600">{importResult.created}</p>
             </div>
-            <div className="p-3 bg-amber-50 rounded-lg text-center border border-amber-200">
+            <div className="p-3 bg-muted rounded-lg text-center border border-border">
               <p className="text-xs text-amber-700">Updated</p>
               <p className="text-xl font-bold text-amber-600">{importResult.updated}</p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg text-center border border-blue-200">
+            <div className="p-3 bg-muted rounded-lg text-center border border-border">
               <p className="text-xs text-blue-700">Skipped</p>
               <p className="text-xl font-bold text-blue-600">{importResult.skipped}</p>
             </div>
