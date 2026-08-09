@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     // Step 3: Get existing report cards
     const { data: existingReportCards, error: reportCardsError } = await supabase
       .from('report_cards')
-      .select('student_id, total_score, average_score, letter_grade, ranking, teacher_comment, conduct, interest, strength, improvement, principal_signature, present_days, absent_days, total_school_days')
+      .select('student_id, total_score, average_score, letter_grade, ranking, teacher_comment, conduct_comment, talent_interests, head_teacher_comment, principal_signature, present_days, absent_days, total_school_days')
       .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
       .eq('term_id', termId);
