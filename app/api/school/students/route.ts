@@ -99,11 +99,13 @@ export async function GET(request: NextRequest) {
     let streamByStudentId = new Map<string, { id: string; name: string }>();
 
     if (studentIds.length > 0) {
+      console.log('[v0] Students stream lookup studentIds:', studentIds);
       const { data: enrollments, error: streamError } = await queryStudentEnrollments()
         .select('student_id, stream_id, school_class_streams(id, name, school_class_id, school_classes(name))')
         .eq('school_id', schoolId)
         .in('student_id', studentIds)
         .eq('status', 'active');
+      console.log('[v0] Students stream lookup raw enrollments:', enrollments);
 
       if (streamError) {
         console.error('[v0] Students stream lookup error:', streamError);
@@ -128,6 +130,10 @@ export async function GET(request: NextRequest) {
                 .join(' - '),
             },
           ])
+      );
+      console.log(
+        '[v0] Students stream lookup streamByStudentId:',
+        Object.fromEntries(streamByStudentId)
       );
     }
 
