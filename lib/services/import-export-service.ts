@@ -116,7 +116,24 @@ export class ImportExportService {
    * Validate imported data against module configuration
    */
   static validateImport(data: any[], config: ModuleConfig, existingRecords?: any[]): ValidationResult {
-    return ImportValidator.validateData(data, config, existingRecords);
+    console.log('[v0] ImportExportService.validateImport input:', {
+      rowCount: data.length,
+      firstRow: data[0],
+      module: config.moduleName,
+    });
+
+    const result = ImportValidator.validateData(data, config, existingRecords);
+    console.log('[v0] ImportExportService.validateImport output:', {
+      totalRows:
+        result.rowsToCreate.length +
+        result.rowsToUpdate.length +
+        result.rowsSkipped.length +
+        result.rowsWithErrors.length,
+      validRows: result.rowsToCreate.length + result.rowsToUpdate.length,
+      rowsWithErrors: result.rowsWithErrors.length,
+      rowsSkipped: result.rowsSkipped.length,
+    });
+    return result;
   }
 
   /**
