@@ -301,6 +301,9 @@ function ReportCardEditor({
   const [teacherComment, setTeacherComment] = useState(student.report_card?.teacher_comment || '');
   const [principalSignature, setPrincipalSignature] = useState(student.report_card?.principal_signature || false);
   const [subjectRemarks, setSubjectRemarks] = useState<Record<string, string>>({});
+  const [totalSchoolDays, setTotalSchoolDays] = useState(0);
+  const [presentDays, setPresentDays] = useState(0);
+  const [absentDays, setAbsentDays] = useState(0);
 
   // Fetch student detail data on mount
   useEffect(() => {
@@ -316,6 +319,9 @@ function ReportCardEditor({
 
         const data: StudentDetailData = await response.json();
         setStudentDetail(data);
+        setTotalSchoolDays(student.report_card?.total_school_days ?? data.attendance.workingDays);
+        setPresentDays(student.report_card?.present_days ?? data.attendance.presentDays);
+        setAbsentDays(student.report_card?.absent_days ?? data.attendance.absentDays);
 
         // Auto-populate average from grades if not already set
         if (!student.report_card?.average_score && data.overallAverage) {
@@ -356,6 +362,9 @@ function ReportCardEditor({
           ranking: ranking ? parseInt(ranking) : null,
           teacherComment,
           principalSignature,
+          presentDays,
+          absentDays,
+          totalSchoolDays,
         }),
       });
 
@@ -460,17 +469,17 @@ function ReportCardEditor({
         <div className="bg-card border border-border rounded-lg p-6">
           <h3 className="text-lg font-bold text-foreground mb-4">Attendance</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground mb-2">Total School Days</p>
-              <p className="text-2xl font-bold text-foreground">{studentDetail.attendance.workingDays}</p>
+              <div className="bg-muted/50 rounded-lg p-4">
+              <label htmlFor="total-school-days" className="text-sm text-muted-foreground mb-2 block">Total School Days</label>
+              <input id="total-school-days" type="number" min="0" value={totalSchoolDays} onChange={(e) => setTotalSchoolDays(Number(e.target.value))} className="w-full bg-transparent text-2xl font-bold text-foreground outline-none" />
             </div>
             <div className="bg-green-500/10 rounded-lg p-4">
-              <p className="text-sm text-green-600 mb-2">Days Present</p>
-              <p className="text-2xl font-bold text-green-600">{studentDetail.attendance.presentDays}</p>
+              <label htmlFor="days-present" className="text-sm text-green-600 mb-2 block">Days Present</label>
+              <input id="days-present" type="number" min="0" value={presentDays} onChange={(e) => setPresentDays(Number(e.target.value))} className="w-full bg-transparent text-2xl font-bold text-green-600 outline-none" />
             </div>
             <div className="bg-red-500/10 rounded-lg p-4">
-              <p className="text-sm text-red-600 mb-2">Days Absent</p>
-              <p className="text-2xl font-bold text-red-600">{studentDetail.attendance.absentDays}</p>
+              <label htmlFor="days-absent" className="text-sm text-red-600 mb-2 block">Days Absent</label>
+              <input id="days-absent" type="number" min="0" value={absentDays} onChange={(e) => setAbsentDays(Number(e.target.value))} className="w-full bg-transparent text-2xl font-bold text-red-600 outline-none" />
             </div>
           </div>
         </div>
