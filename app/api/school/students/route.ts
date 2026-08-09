@@ -94,8 +94,49 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    const students = data || [];
+    const studentIds = students.map((student: { id: string }) => student.id);
+    let streamByStudentId = new Map<string, { id: string; name: string }>();
+
+    if (studentIds.length > 0) {
+      const { data: enrollments, error: streamError } = await queryStudentEnrollments()
+        .select('student_id, stream_id, school_class_streams(id, name, school_class_id, school_classes(name))')
+        .eq('school_id', schoolId)
+        .in('student_id', studentIds)
+        .eq('status', 'active');
+
+      if (streamError) {
+        console.error('[v0] Students stream lookup error:', streamError);
+        return NextResponse.json(
+          { error: formatSupabaseError(streamError) },
+          { status: 400 }
+        );
+      }
+
+      streamByStudentId = new Map(
+        (enrollments || [])
+          .filter((enrollment: any) => enrollment.stream_id && enrollment.school_class_streams)
+          .map((enrollment: any) => [
+            enrollment.student_id,
+            {
+              id: enrollment.stream_id,
+              name: [
+                enrollment.school_class_streams.school_classes?.name,
+                enrollment.school_class_streams.name,
+              ]
+                .filter(Boolean)
+                .join(' - '),
+            },
+          ])
+      );
+    }
+
     return NextResponse.json({
-      data: data || [],
+      data: students.map((student: any) => ({
+        ...student,
+        current_stream_id: streamByStudentId.get(student.id)?.id || null,
+        current_stream_name: streamByStudentId.get(student.id)?.name || null,
+      })),
       total: count || 0,
       page,
       pageSize,
