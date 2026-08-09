@@ -48,8 +48,8 @@ const studentColumns: ColumnDefinition[] = [
     description: 'Student status in the system',
     required: true,
     dataType: 'enum',
-    enumValues: ['Active', 'Inactive', 'Transferred', 'Graduated'],
-    example: 'Active',
+    enumValues: ['active', 'inactive', 'transferred', 'graduated'],
+    example: 'active',
   },
   {
     csvHeader: 'parental_status',
@@ -269,7 +269,7 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         date_of_birth: '2010-05-15',
         status: 'Active',
         parental_status: 'Both Parents',
-        current_class_name: 'Primary 4A',
+        current_class_name: 'Basic 4',
       },
       {
         admission_number: 'ADM-2024-002',
@@ -278,7 +278,7 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         date_of_birth: '2010-07-22',
         status: 'Active',
         parental_status: 'Both Parents',
-        current_class_name: 'Primary 4A',
+        current_class_name: 'Basic 4',
       },
       {
         admission_number: 'ADM-2024-003',
@@ -287,7 +287,7 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         date_of_birth: '2010-09-10',
         status: 'Active',
         parental_status: 'Both Parents',
-        current_class_name: 'Primary 4B',
+        current_class_name: 'Basic 4',
       },
     ],
     primaryKey: 'admission_number',

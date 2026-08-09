@@ -71,9 +71,18 @@ export class ImportValidator {
    */
   static validateRow(row: any, columns: ColumnDefinition[], rowNumber: number): ValidationError[] {
     const errors: ValidationError[] = [];
+    const normalizedRow = { ...row };
+
+    columns.forEach((column) => {
+      if (column.dataType === 'enum' && typeof normalizedRow[column.csvHeader] === 'string') {
+        normalizedRow[column.csvHeader] = normalizedRow[column.csvHeader].trim().toLowerCase();
+      }
+    });
+
+    Object.assign(row, normalizedRow);
     const schema = this.buildZodSchema(columns);
 
-    const result = schema.safeParse(row);
+    const result = schema.safeParse(normalizedRow);
 
     if (!result.success) {
       result.error.errors.forEach((err) => {
