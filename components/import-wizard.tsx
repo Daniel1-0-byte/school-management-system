@@ -61,7 +61,32 @@ export function ImportWizard({
         return;
       }
 
+      console.log('[v0] Import parsed rows handed to validation:', {
+        fileName: file.name,
+        parsedRowCount: result.data.length,
+        firstRow: result.data[0],
+      });
+
+      const validation = ImportExportService.validateImport(
+        result.data,
+        config,
+        existingRecords
+      );
+      console.log('[v0] Import validation summary:', {
+        inputRowCount: result.data.length,
+        totalRows:
+          validation.rowsToCreate.length +
+          validation.rowsToUpdate.length +
+          validation.rowsSkipped.length +
+          validation.rowsWithErrors.length,
+        validRows:
+          validation.rowsToCreate.length + validation.rowsToUpdate.length,
+        rowsWithErrors: validation.rowsWithErrors.length,
+        rowsSkipped: validation.rowsSkipped.length,
+      });
+
       setFileData(result.data);
+      setValidationResult(validation);
       setIsLoading(false);
       setStep(2);
     } catch (error) {
