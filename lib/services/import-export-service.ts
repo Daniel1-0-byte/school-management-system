@@ -53,6 +53,19 @@ export class ImportExportService {
       };
     }
 
+    console.log('[v0] Import parse result:', {
+      fileName: file.name,
+      fileType: file.type,
+      extension: fileName.split('.').pop(),
+      rowCount: data.length,
+      headers,
+      parseErrors: errors,
+    });
+
+    if (data.length === 0 && errors.length === 0) {
+      errors.push('Could not read any rows from this file');
+    }
+
     // Validate headers
     const headerValidation = ImportValidator.validateHeaders(headers, config);
     if (!headerValidation.valid) {
@@ -79,7 +92,18 @@ export class ImportExportService {
 
           resolve({ data: rows, headers });
         } catch (error) {
-          reject(new Error('Failed to parse Excel file'));
+          console.error('[v0] Spreadsheet parse error:', {
+            fileName: file.name,
+            fileType: file.type,
+            error,
+          });
+          reject(
+            new Error(
+              `Failed to parse ${file.name.toLowerCase().endsWith('.ods') ? 'ODS' : 'XLSX'} file: ${
+                error instanceof Error ? error.message : 'Unknown parse error'
+              }`
+            )
+          );
         }
       };
 
