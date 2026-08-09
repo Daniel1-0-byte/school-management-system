@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 import { queryStudents, queryClasses, querySubjects, queryAttendance, queryGrades, queryAcademicYears, queryTerms, queryStudentEnrollments, queryTeacherAssignments, queryGuardians, queryPickupPersons } from '@/lib/supabase';
+import { getModuleConfig } from '@/lib/import-export/column-definitions';
 
 const bulkImportSchema = z.object({
   school_id: z.string().uuid(),
@@ -43,18 +44,28 @@ export async function POST(request: NextRequest) {
       pickup_persons: queryPickupPersons,
     };
 
-    const queryFunc = queryMap[module_name.toLowerCase()];
-    if (!queryFunc) {
+    const normalizedModuleName = module_name.toLowerCase();
+    const queryFunc = queryMap[normalizedModuleName];
+    const moduleConfig = getModuleConfig(normalizedModuleName);
+    if (!queryFunc || !moduleConfig) {
       return NextResponse.json(
         { error: `Unknown module: ${module_name}` },
         { status: 400 }
       );
     }
 
+    const allowedFields = new Set(moduleConfig.columns.map((column) => column.csvHeader));
+    const sanitizeRow = (row: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(row).filter(([field, value]) =>
+          allowedFields.has(field) && value !== undefined
+        )
+      );
+
     // Insert new records
     if (rows_to_create.length > 0) {
       const createRecords = rows_to_create.map((row) => ({
-        ...row,
+        ...sanitizeRow(row),
         school_id: schoolId,
       }));
 
@@ -73,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (rows_to_update.length > 0) {
       for (const row of rows_to_update) {
         const { error: updateError } = await queryFunc()
-          .update(row)
+          .update(sanitizeRow(row))
           .eq('school_id', schoolId);
 
         if (!updateError) {
