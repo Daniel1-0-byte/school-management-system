@@ -301,10 +301,9 @@ function ReportCardEditor({
   const [ranking, setRanking] = useState(student.report_card?.ranking || '');
   const [teacherComment, setTeacherComment] = useState(student.report_card?.teacher_comment || '');
   const [principalSignature, setPrincipalSignature] = useState(student.report_card?.principal_signature || false);
-  const [conduct, setConduct] = useState(student.report_card?.conduct || '');
-  const [interest, setInterest] = useState(student.report_card?.interest || '');
-  const [strength, setStrength] = useState(student.report_card?.strength || '');
-  const [improvement, setImprovement] = useState(student.report_card?.improvement || '');
+  const [conductComment, setConductComment] = useState(student.report_card?.conduct_comment || '');
+  const [talentInterests, setTalentInterests] = useState(student.report_card?.talent_interests || '');
+  const [headTeacherComment, setHeadTeacherComment] = useState(student.report_card?.head_teacher_comment || '');
   const [subjectRemarks, setSubjectRemarks] = useState<Record<string, string>>({});
   const [totalSchoolDays, setTotalSchoolDays] = useState(0);
   const [presentDays, setPresentDays] = useState(0);
@@ -327,10 +326,9 @@ function ReportCardEditor({
         setStudentDetail(data);
         setTotalSchoolDays(student.report_card?.total_school_days ?? data.attendance.workingDays);
         setPresentDays(student.report_card?.present_days ?? data.attendance.presentDays);
-        setConduct(student.report_card?.conduct || '');
-        setInterest(student.report_card?.interest || '');
-        setStrength(student.report_card?.strength || '');
-        setImprovement(student.report_card?.improvement || '');
+        setConductComment(student.report_card?.conduct_comment || '');
+        setTalentInterests(student.report_card?.talent_interests || '');
+        setHeadTeacherComment(student.report_card?.head_teacher_comment || '');
 
         // Auto-populate average from grades if not already set
         if (!student.report_card?.average_score && data.overallAverage) {
@@ -373,10 +371,9 @@ function ReportCardEditor({
           ranking: ranking ? parseInt(ranking) : null,
           teacherComment,
           principalSignature,
-          conduct,
-          interest,
-          strength,
-          improvement,
+          conductComment,
+          talentInterests,
+          headTeacherComment,
           presentDays: normalizedPresentDays,
           absentDays: calculatedAbsentDays,
           totalSchoolDays,
@@ -597,9 +594,9 @@ function ReportCardEditor({
         </div>
       </div>
 
-      {/* Teacher Comment */}
+      {/* Class Teacher Remarks */}
       <div className="bg-card border border-border rounded-lg p-6">
-        <label className="block text-sm font-semibold text-foreground mb-2">Teacher&apos;s Remark</label>
+        <label className="block text-sm font-semibold text-foreground mb-2">Class Teacher&apos;s Remarks</label>
         <textarea
           value={teacherComment}
           onChange={(e) => setTeacherComment(e.target.value)}
@@ -611,24 +608,18 @@ function ReportCardEditor({
 
       {/* GES Narrative Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[
-          ['conduct', 'Conduct', conduct, setConduct, 'Enter conduct assessment...'],
-          ['interest', 'Interest', interest, setInterest, 'Enter interests and participation...'],
-          ['strength', 'Strength', strength, setStrength, 'Enter key strengths...'],
-          ['improvement', 'Area for Improvement', improvement, setImprovement, 'Enter recommended improvements...'],
-        ].map(([id, label, value, setter, placeholder]) => (
-          <div key={id as string} className="bg-card border border-border rounded-lg p-6">
-            <label htmlFor={id as string} className="block text-sm font-semibold text-foreground mb-2">{label as string}</label>
-            <textarea
-              id={id as string}
-              value={value as string}
-              onChange={(e) => (setter as React.Dispatch<React.SetStateAction<string>>)(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-              placeholder={placeholder as string}
-            />
-          </div>
-        ))}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <label htmlFor="conduct-comment" className="block text-sm font-semibold text-foreground mb-2">Conduct</label>
+          <textarea id="conduct-comment" value={conductComment} onChange={(e) => setConductComment(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary" placeholder="Enter conduct assessment..." />
+        </div>
+        <div className="bg-card border border-border rounded-lg p-6">
+          <label htmlFor="talent-interests" className="block text-sm font-semibold text-foreground mb-2">Talent and Interests</label>
+          <textarea id="talent-interests" value={talentInterests} onChange={(e) => setTalentInterests(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary" placeholder="Enter talents and interests..." />
+        </div>
+        <div className="bg-card border border-border rounded-lg p-6 md:col-span-2">
+          <label htmlFor="head-teacher-comment" className="block text-sm font-semibold text-foreground mb-2">Head Teacher&apos;s Remarks</label>
+          <textarea id="head-teacher-comment" value={headTeacherComment} onChange={(e) => setHeadTeacherComment(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary" placeholder="Enter head teacher&apos;s remarks..." />
+        </div>
       </div>
 
       {/* Principal Signature */}
