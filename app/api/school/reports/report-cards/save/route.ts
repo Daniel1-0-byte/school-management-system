@@ -67,6 +67,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: studentEnrollment, error: enrollmentError } = await supabase
+      .from('student_enrollments')
+      .select('class_id, stream_id')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .eq('academic_year_id', academicYearId)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (enrollmentError || !studentEnrollment) {
+      console.error('[v0] Error resolving student enrollment for class size:', enrollmentError);
+      return NextResponse.json(
+        { error: 'Active student enrollment not found' },
+        { status: 400 }
+      );
+    }
+
+    let classSizeQuery = supabase
+      .from('student_enrollments')
+      .select('student_id')
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId)
+      .eq('class_id', studentEnrollment.class_id)
+      .eq('status', 'active');
+
+    if (studentEnrollment.stream_id) {
+      classSizeQuery = classSizeQuery.eq('stream_id', studentEnrollment.stream_id);
+    }
+
+    const { data: activeEnrollments, error: classSizeError } = await classSizeQuery;
+    if (classSizeError) {
+      console.error('[v0] Error calculating class size:', classSizeError);
+      return NextResponse.json(
+        { error: 'Failed to calculate class size' },
+        { status: 500 }
+      );
+    }
+
+    const classSize = activeEnrollments?.length ?? 0;
+
     const reportCardData = {
       school_id: schoolId,
       student_id: studentId,
@@ -76,6 +116,7 @@ export async function POST(request: NextRequest) {
       average_score: averageScore || null,
       letter_grade: letterGrade || null,
       ranking: ranking || null,
+      class_size: classSize,
       teacher_comment: teacherComment || null,
       conduct: conduct || null,
       interest: interest || null,

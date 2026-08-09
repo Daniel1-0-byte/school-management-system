@@ -270,6 +270,12 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
               </p>
             </div>
             <div>
+              <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Number on Roll</p>
+              <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
+                {data.classSize ?? '—'}
+              </p>
+            </div>
+            <div>
               <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Generated Date</p>
               <p style={{ fontSize: '12px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.generatedDate}
