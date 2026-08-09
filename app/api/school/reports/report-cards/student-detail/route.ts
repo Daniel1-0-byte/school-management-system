@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     const { data: savedReportCard, error: reportCardError } = await supabase
       .from('report_cards')
-      .select('present_days, absent_days, total_school_days')
+      .select('teacher_comment, conduct_comment, talent_interests, head_teacher_comment, present_days, absent_days, total_school_days')
       .eq('school_id', schoolId)
       .eq('student_id', studentId)
       .eq('term_id', termId)
@@ -159,6 +159,10 @@ export async function GET(request: NextRequest) {
         presentDays,
         absentDays,
       },
+      teacherComment: savedReportCard?.teacher_comment ?? '',
+      conductComment: savedReportCard?.conduct_comment ?? '',
+      talentInterests: savedReportCard?.talent_interests ?? '',
+      headTeacherComment: savedReportCard?.head_teacher_comment ?? '',
       subjectGrades,
       overallAverage: overallAverage.toFixed(2),
     });

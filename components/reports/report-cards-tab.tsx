@@ -274,7 +274,11 @@ interface StudentDetailData {
     position?: number | null;
   }>;
   overallAverage: number;
-}
+  teacherComment: string;
+  conductComment: string;
+  talentInterests: string;
+  headTeacherComment: string;
+  }
 
 function ReportCardEditor({
   student,
@@ -326,9 +330,10 @@ function ReportCardEditor({
         setStudentDetail(data);
         setTotalSchoolDays(student.report_card?.total_school_days ?? data.attendance.workingDays);
         setPresentDays(student.report_card?.present_days ?? data.attendance.presentDays);
-        setConductComment(student.report_card?.conduct_comment || '');
-        setTalentInterests(student.report_card?.talent_interests || '');
-        setHeadTeacherComment(student.report_card?.head_teacher_comment || '');
+        setTeacherComment(data.teacherComment || student.report_card?.teacher_comment || '');
+        setConductComment(data.conductComment || student.report_card?.conduct_comment || '');
+        setTalentInterests(data.talentInterests || student.report_card?.talent_interests || '');
+        setHeadTeacherComment(data.headTeacherComment || student.report_card?.head_teacher_comment || '');
 
         // Auto-populate average from grades if not already set
         if (!student.report_card?.average_score && data.overallAverage) {
