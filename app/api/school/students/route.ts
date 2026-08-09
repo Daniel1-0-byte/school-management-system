@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     if (studentIds.length > 0) {
       const { data: enrollments, error: streamError } = await queryStudentEnrollments()
-        .select('student_id, stream_id, school_class_streams(id, name)')
+        .select('student_id, stream_id, school_class_streams(id, name, school_class_id, school_classes(class_name))')
         .eq('school_id', schoolId)
         .in('student_id', studentIds)
         .eq('status', 'active');
@@ -120,7 +120,12 @@ export async function GET(request: NextRequest) {
             enrollment.student_id,
             {
               id: enrollment.stream_id,
-              name: enrollment.school_class_streams.name,
+              name: [
+                enrollment.school_class_streams.school_classes?.class_name,
+                enrollment.school_class_streams.name,
+              ]
+                .filter(Boolean)
+                .join(' - '),
             },
           ])
       );
