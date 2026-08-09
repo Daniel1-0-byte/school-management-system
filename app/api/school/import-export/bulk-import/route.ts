@@ -18,9 +18,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const accessError = await validateSchoolIdAccess(schoolId);
-    if (accessError) {
-      return NextResponse.json({ error: accessError }, { status: 403 });
+    const accessValidation = await validateSchoolIdAccess(schoolId);
+    if (!accessValidation.valid) {
+      return NextResponse.json(
+        { error: accessValidation.error || 'Forbidden' },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();
