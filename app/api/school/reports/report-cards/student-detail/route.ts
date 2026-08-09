@@ -96,6 +96,22 @@ export async function GET(request: NextRequest) {
       console.error('[v0] Error fetching attendance:', attendanceError);
     }
 
+    const { data: savedReportCard, error: reportCardError } = await supabase
+      .from('report_cards')
+      .select('present_days, absent_days, total_school_days')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId)
+      .eq('term_id', termId)
+      .eq('academic_year_id', academicYearId)
+      .not('present_days', 'is', null)
+      .not('absent_days', 'is', null)
+      .not('total_school_days', 'is', null)
+      .maybeSingle();
+
+    if (reportCardError) {
+      console.error('[v0] Error fetching saved report card attendance:', reportCardError);
+    }
+
     // Calculate working days (excluding weekends - assuming 5 day week)
     let workingDays = 0;
     let currentDate = new Date(startDate);
@@ -108,9 +124,14 @@ export async function GET(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Calculate present days
-    const presentDays = (attendanceData || []).filter(a => a.status === 'present').length;
-    const absentDays = workingDays - presentDays;
+    // Prefer a complete saved override; otherwise use the live attendance calculation.
+    const presentDays = savedReportCard
+      ? savedReportCard.present_days
+      : (attendanceData || []).filter(a => a.status === 'present').length;
+    const absentDays = savedReportCard
+      ? savedReportCard.absent_days
+      : workingDays - presentDays;
+    const totalSchoolDays = savedReportCard?.total_school_days ?? workingDays;
 
     // Transform grades
     const subjectGrades = (gradeData || []).map(grade => ({
@@ -133,7 +154,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       attendance: {
-        workingDays,
+        workingDays: totalSchoolDays,
         presentDays,
         absentDays,
       },
