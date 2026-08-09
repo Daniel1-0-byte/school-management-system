@@ -49,6 +49,14 @@ export function ImportWizard({
       
       if (result.errors.length > 0) {
         setUploadError(result.errors.join('; '));
+        setFileData([]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (result.data.length === 0) {
+        setUploadError('Could not read any rows from this file');
+        setFileData([]);
         setIsLoading(false);
         return;
       }
