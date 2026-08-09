@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     // Fetch report card
     const { data: reportCard, error: reportCardError } = await supabase
       .from('report_cards')
-      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, principal_signature, generated_at, present_days, absent_days, total_school_days')
+      .select('total_score, average_score, letter_grade, ranking, class_size, teacher_comment, conduct, interest, strength, improvement, principal_signature, generated_at, present_days, absent_days, total_school_days')
       .eq('student_id', studentId)
       .eq('term_id', termId)
       .eq('academic_year_id', academicYearId)
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     // Fetch grade entries (subjects and scores)
     const { data: gradeEntries, error: gradesError } = await supabase
       .from('grade_entries')
-      .select('subject_id, total_score, letter_grade, class_score, exam_score, assessment_id')
+      .select('subject_id, total_score, letter_grade, class_score, exam_score, assessment_id, remarks')
       .eq('student_id', studentId)
       .eq('term_id', termId);
 
@@ -218,6 +218,23 @@ export async function GET(request: NextRequest) {
           }
         : undefined;
 
+    const reportSubjectIds = (gradeEntries || []).map((entry) => entry.subject_id);
+    const { data: classGradeEntries } = await supabase
+      .from('grade_entries')
+      .select('student_id, subject_id, total_score')
+      .eq('school_id', schoolId)
+      .eq('term_id', termId)
+      .in('subject_id', reportSubjectIds);
+
+    const subjectPositions = new Map<string, number | null>();
+    for (const subjectId of reportSubjectIds) {
+      const scores = (classGradeEntries || [])
+        .filter((entry) => entry.subject_id === subjectId)
+        .sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+      const position = scores.findIndex((entry) => entry.student_id === studentId);
+      subjectPositions.set(subjectId, position >= 0 ? position + 1 : null);
+    }
+
     // Build response
     const reportCardData: ReportCardData = {
       // School Info
@@ -241,7 +258,11 @@ export async function GET(request: NextRequest) {
         gradeEntries?.map(g => ({
           name: subjectMap.get(g.subject_id) || 'Unknown Subject',
           score: g.total_score ?? 0,
+          classScore: g.class_score ?? 0,
+          examScore: g.exam_score ?? 0,
           grade: g.letter_grade || 'N/A',
+          position: subjectPositions.get(g.subject_id) ?? null,
+          remarks: g.remarks || null,
         })) || [],
       totalScore: reportCard.total_score || 0,
       averageScore: reportCard.average_score || 0,
@@ -254,6 +275,10 @@ export async function GET(request: NextRequest) {
 
       // Comments
       teacherComment: reportCard.teacher_comment,
+      conduct: reportCard.conduct,
+      interest: reportCard.interest,
+      strength: reportCard.strength,
+      improvement: reportCard.improvement,
 
       // Staff
       classTeacherName: classTeacher

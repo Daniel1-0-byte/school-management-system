@@ -68,7 +68,8 @@ export async function GET(request: NextRequest) {
         total_score,
         class_score,
         exam_score,
-        subjects(id, name, code)
+        subjects(id, name, code),
+        remarks
       `)
       .eq('school_id', schoolId)
       .eq('student_id', studentId)
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       class_score: grade.class_score || 0,
       exam_score: grade.exam_score || 0,
       total_score: grade.total_score || 0,
-      remarks: '', // Will be populated from report_cards if exists
+      remarks: grade.remarks || '',
     }));
 
     // Calculate overall average

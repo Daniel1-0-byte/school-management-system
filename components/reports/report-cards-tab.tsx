@@ -271,6 +271,7 @@ interface StudentDetailData {
     exam_score: number;
     total_score: number;
     remarks: string;
+    position?: number | null;
   }>;
   overallAverage: number;
 }
@@ -300,6 +301,10 @@ function ReportCardEditor({
   const [ranking, setRanking] = useState(student.report_card?.ranking || '');
   const [teacherComment, setTeacherComment] = useState(student.report_card?.teacher_comment || '');
   const [principalSignature, setPrincipalSignature] = useState(student.report_card?.principal_signature || false);
+  const [conduct, setConduct] = useState(student.report_card?.conduct || '');
+  const [interest, setInterest] = useState(student.report_card?.interest || '');
+  const [strength, setStrength] = useState(student.report_card?.strength || '');
+  const [improvement, setImprovement] = useState(student.report_card?.improvement || '');
   const [subjectRemarks, setSubjectRemarks] = useState<Record<string, string>>({});
   const [totalSchoolDays, setTotalSchoolDays] = useState(0);
   const [presentDays, setPresentDays] = useState(0);
@@ -322,6 +327,10 @@ function ReportCardEditor({
         setStudentDetail(data);
         setTotalSchoolDays(student.report_card?.total_school_days ?? data.attendance.workingDays);
         setPresentDays(student.report_card?.present_days ?? data.attendance.presentDays);
+        setConduct(student.report_card?.conduct || '');
+        setInterest(student.report_card?.interest || '');
+        setStrength(student.report_card?.strength || '');
+        setImprovement(student.report_card?.improvement || '');
 
         // Auto-populate average from grades if not already set
         if (!student.report_card?.average_score && data.overallAverage) {
@@ -329,6 +338,8 @@ function ReportCardEditor({
         }
 
         // Auto-populate total from grades
+        setSubjectRemarks(Object.fromEntries(data.subjectGrades.map((subject) => [subject.subject_id, subject.remarks || ''])));
+
         const subjectTotal = data.subjectGrades.reduce((sum, s) => sum + s.total_score, 0);
         if (!student.report_card?.total_score && subjectTotal > 0) {
           setTotalMarks(subjectTotal);
@@ -362,6 +373,10 @@ function ReportCardEditor({
           ranking: ranking ? parseInt(ranking) : null,
           teacherComment,
           principalSignature,
+          conduct,
+          interest,
+          strength,
+          improvement,
           presentDays: normalizedPresentDays,
           absentDays: calculatedAbsentDays,
           totalSchoolDays,
@@ -592,6 +607,28 @@ function ReportCardEditor({
           className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
           placeholder="Enter teacher's remarks about student performance..."
         />
+      </div>
+
+      {/* GES Narrative Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {[
+          ['conduct', 'Conduct', conduct, setConduct, 'Enter conduct assessment...'],
+          ['interest', 'Interest', interest, setInterest, 'Enter interests and participation...'],
+          ['strength', 'Strength', strength, setStrength, 'Enter key strengths...'],
+          ['improvement', 'Area for Improvement', improvement, setImprovement, 'Enter recommended improvements...'],
+        ].map(([id, label, value, setter, placeholder]) => (
+          <div key={id as string} className="bg-card border border-border rounded-lg p-6">
+            <label htmlFor={id as string} className="block text-sm font-semibold text-foreground mb-2">{label as string}</label>
+            <textarea
+              id={id as string}
+              value={value as string}
+              onChange={(e) => (setter as React.Dispatch<React.SetStateAction<string>>)(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+              placeholder={placeholder as string}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Principal Signature */}

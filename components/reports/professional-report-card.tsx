@@ -21,6 +21,10 @@ export interface ReportCardData {
   subjects: Array<{
     name: string;
     score: number;
+    classScore?: number;
+    examScore?: number;
+    position?: number | null;
+    remarks?: string | null;
     maxScore?: number;
     grade: string;
   }>;
@@ -39,6 +43,10 @@ export interface ReportCardData {
 
   // Comments
   teacherComment: string | null;
+  conduct: string | null;
+  interest: string | null;
+  strength: string | null;
+  improvement: string | null;
 
   // Staff
   classTeacherName: string | null;
@@ -128,6 +136,9 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
           .report-card-header { padding: 19px 26px 17px !important; }
           .report-card-summary { padding: 11px 16px !important; }
+          .report-card-narrative-grid { gap: 6px !important; }
+          .report-card-narratives > h3 { margin-bottom: 5px !important; }
+          .report-card-narrative-grid > div { padding: 6px 9px !important; }
           .report-card-header, .report-card-summary { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
 
@@ -370,19 +381,13 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                     color: '#fff',
                   }}
                 >
-                  Score
+                  SBA
                 </th>
-                <th
-                  style={{
-                    padding: '8px',
-                    textAlign: 'center',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    borderBottom: '1px solid rgba(255,255,255,0.25)',
-                    color: '#fff',
-                  }}
-                >
-                  Grade
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Exam</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Total</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Grade</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Position</th>
+                <th style={{ padding: '8px', textAlign: 'left', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Remarks
                 </th>
               </tr>
             </thead>
@@ -409,21 +414,13 @@ textAlign: 'right',
                       fontWeight: '500',
                     }}
                   >
-                    {subject.score}
-                    {subject.maxScore && `/${subject.maxScore}`}
+                    {subject.classScore ?? subject.score}
                   </td>
-                  <td
-                    style={{
-                      padding: '8px',
-                      textAlign: 'center',
-                      fontSize: '11px',
-                      border: '1px solid #ddd',
-                      fontWeight: 'bold',
-                      color: getGradeColor(subject.grade),
-                    }}
-                  >
-                    {subject.grade}
-                  </td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.examScore ?? 0}</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000', fontWeight: 'bold' }}>{subject.score}</td>
+                  <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: getGradeColor(subject.grade) }}>{subject.grade}</td>
+                  <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.position ?? '—'}</td>
+                  <td style={{ padding: '8px', textAlign: 'left', fontSize: '10px', borderBottom: '1px solid #e2e8f0', color: '#334155' }}>{subject.remarks || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -497,6 +494,26 @@ textAlign: 'right',
               <p style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic', margin: '0', paddingLeft: '12px', color: '#334155', lineHeight: '1.4' }}>
                 {data.teacherComment}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* GES Narrative Sections */}
+        {(data.conduct || data.interest || data.strength || data.improvement) && (
+          <div className="report-card-narratives">
+            <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>GENERAL EVALUATION</h3>
+            <div className="report-card-narrative-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                ['CONDUCT', data.conduct],
+                ['INTEREST', data.interest],
+                ['STRENGTH', data.strength],
+                ['AREA FOR IMPROVEMENT', data.improvement],
+              ].filter(([, value]) => value).map(([label, value]) => (
+                <div key={label} style={{ padding: '9px 12px', backgroundColor: '#f8fafc', border: '1px solid #dbe3ec', borderLeft: '3px solid #1e3a5f', borderRadius: '3px' }}>
+                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e3a5f', margin: '0 0 3px' }}>{label}</p>
+                  <p style={{ fontSize: '10px', color: '#334155', margin: 0, lineHeight: 1.3 }}>{value}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
