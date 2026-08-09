@@ -121,7 +121,11 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
         return;
       }
 
-      await onSubmit(formData);
+      const submitData = student
+        ? formData
+        : (({ admissionNumber: _admissionNumber, ...data }) => data)(formData);
+
+      await onSubmit(submitData);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -185,9 +189,9 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
             type="text"
             name="admissionNumber"
             value={formData.admissionNumber || ''}
-            onChange={handleChange}
-            placeholder="E.g., ADM-2024-001"
-            className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none ${
+            disabled
+            placeholder="Auto-generated on save."
+            className={`w-full px-4 py-2 bg-muted border rounded-lg text-muted-foreground cursor-not-allowed focus:outline-none ${
               errors.admissionNumber ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
             }`}
           />

@@ -9,6 +9,7 @@ import {
   formatSupabaseError,
 } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { generateAdmissionNumber } from '@/lib/services/admission-number-service';
 
 const studentSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     const {
+      admission_number: _ignoredAdmissionNumber,
       current_stream_id: streamId,
       current_stream_name: _streamName,
       current_class_id: requestedClassId,
@@ -224,9 +226,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const admissionNumber = await generateAdmissionNumber(schoolId);
     const { data: student, error: studentError } = await queryStudents()
       .insert({
         ...studentFields,
+        admission_number: admissionNumber,
         current_class_id: classId,
         current_class_name: className,
         school_id: schoolId,
