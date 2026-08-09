@@ -7,15 +7,6 @@ import { ColumnDefinition, ModuleConfig } from './types';
 
 const studentColumns: ColumnDefinition[] = [
   {
-    csvHeader: 'admission_number',
-    displayName: 'Admission Number',
-    description: 'Unique admission number for duplicate checking',
-    required: true,
-    dataType: 'string',
-    maxLength: 50,
-    example: 'ADM-2024-001',
-  },
-  {
     csvHeader: 'first_name',
     displayName: 'First Name',
     description: 'Student first name',
@@ -263,7 +254,6 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
     columns: studentColumns,
     sampleData: [
       {
-        admission_number: 'ADM-2024-001',
         first_name: 'John',
         last_name: 'Doe',
         date_of_birth: '2010-05-15',
@@ -272,7 +262,6 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         current_class_name: 'Basic 4',
       },
       {
-        admission_number: 'ADM-2024-002',
         first_name: 'Mary',
         last_name: 'Smith',
         date_of_birth: '2010-07-22',
@@ -281,7 +270,6 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         current_class_name: 'Basic 4',
       },
       {
-        admission_number: 'ADM-2024-003',
         first_name: 'Peter',
         last_name: 'Johnson',
         date_of_birth: '2010-09-10',
@@ -290,8 +278,8 @@ export const moduleConfigs: Record<string, ModuleConfig> = {
         current_class_name: 'Basic 4',
       },
     ],
-    primaryKey: 'admission_number',
-    duplicateCheckFields: ['admission_number'],
+    primaryKey: 'first_name',
+    duplicateCheckFields: ['first_name', 'last_name', 'date_of_birth'],
     supportsUpdate: true,
     supportsBulkOps: ['delete', 'archive', 'activate', 'deactivate', 'assign_class'],
   },

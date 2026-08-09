@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 import { queryStudents, queryClasses, querySubjects, queryAttendance, queryGrades, queryAcademicYears, queryTerms, queryStudentEnrollments, queryTeacherAssignments, queryGuardians, queryPickupPersons } from '@/lib/supabase';
 import { getModuleConfig } from '@/lib/import-export/column-definitions';
+import { generateAdmissionNumber } from '@/lib/services/admission-number-service';
 
 const bulkImportSchema = z.object({
   school_id: z.string().uuid(),
@@ -67,20 +68,56 @@ export async function POST(request: NextRequest) {
 
     // Insert new records
     if (rows_to_create.length > 0) {
-      const createRecords = rows_to_create.map((row) => ({
-        ...sanitizeRow(row),
-        school_id: schoolId,
-      }));
+      if (normalizedModuleName === 'students') {
+        for (const row of rows_to_create) {
+          let inserted = false;
+          for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+            const admissionNumber = await generateAdmissionNumber(schoolId);
+            const { error: createError } = await queryStudents()
+              .insert({
+                ...sanitizeRow(row),
+                admission_number: admissionNumber,
+                school_id: schoolId,
+              });
 
-      const { error: createError } = await queryFunc().insert(createRecords);
-      if (createError) {
-        console.error('[v0] Bulk import create error:', createError);
-        return NextResponse.json(
-          { error: `Failed to create records: ${createError.message}` },
-          { status: 400 }
-        );
+            if (!createError) {
+              inserted = true;
+              created++;
+              continue;
+            }
+
+            if (createError.code !== '23505') {
+              console.error('[v0] Bulk import student create error:', createError);
+              return NextResponse.json(
+                { error: `Failed to create records: ${createError.message}` },
+                { status: 400 }
+              );
+            }
+          }
+
+          if (!inserted) {
+            return NextResponse.json(
+              { error: 'Unable to generate a unique admission number' },
+              { status: 409 }
+            );
+          }
+        }
+      } else {
+        const createRecords = rows_to_create.map((row) => ({
+          ...sanitizeRow(row),
+          school_id: schoolId,
+        }));
+
+        const { error: createError } = await queryFunc().insert(createRecords);
+        if (createError) {
+          console.error('[v0] Bulk import create error:', createError);
+          return NextResponse.json(
+            { error: `Failed to create records: ${createError.message}` },
+            { status: 400 }
+          );
+        }
+        created = createRecords.length;
       }
-      created = createRecords.length;
     }
 
     // Update existing records
