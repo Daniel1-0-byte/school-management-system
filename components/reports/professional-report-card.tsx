@@ -99,7 +99,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           body { font-size: 11px; }
           .no-print { display: none !important; }
           .report-card-printable {
-            width: auto !important;
+            width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -126,11 +126,13 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           h1 { font-size: 21px !important; }
           h2 { font-size: 16px !important; }
           h3 { font-size: 11px !important; }
-          .report-card-container { line-height: 1.2; }
-          .report-card-container > div { margin-bottom: 6px; }
-          .report-card-info { padding: 13px 18px !important; }
-          .report-card-comment { padding: 9px 18px 6px !important; margin-bottom: 4px !important; }
-          .report-card-signatures { margin-top: 16px !important; padding-top: 12px !important; }
+          .report-card-container { line-height: 1.18; }
+          .report-card-container > div { margin-bottom: 4px; }
+          .report-card-info { padding: 10px 16px !important; }
+          .report-card-comment { padding: 7px 10px !important; margin-bottom: 2px !important; min-height: 0 !important; }
+          .report-card-comments, .report-card-narratives { margin-bottom: 2px !important; }
+          .report-card-comment-grid, .report-card-narrative-grid { gap: 5px !important; }
+          .report-card-signatures { margin-top: 10px !important; padding-top: 9px !important; }
           .report-card-summary p:first-child { color: #dbe7f3 !important; }
           .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
           .report-card-header { padding: 19px 26px 17px !important; }
@@ -478,40 +480,14 @@ textAlign: 'right',
           </div>
         </div>
 
-        {/* Teacher Comment */}
-        {data.teacherComment && (
-          <div>
-            <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>
-              TEACHER&apos;S COMMENT
-            </h3>
-            <div
-              className="report-card-comment"
-              style={{
-                padding: '12px 16px',
-                backgroundColor: '#f8fafc',
-                border: '1px solid #dbe3ec',
-                borderLeft: '4px solid #1e3a5f',
-                borderRadius: '3px',
-                minHeight: '40px',
-                position: 'relative',
-              }}
-            >
-              <p style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic', margin: '0', paddingLeft: '12px', color: '#334155', lineHeight: '1.4' }}>
-                {data.teacherComment}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* GES Narrative Sections */}
-        {(data.conductComment || data.talentInterests || data.headTeacherComment) && (
+        {/* General Evaluation */}
+        {(data.conductComment || data.talentInterests) && (
           <div className="report-card-narratives">
             <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>GENERAL EVALUATION</h3>
             <div className="report-card-narrative-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {[
                 ['CONDUCT', data.conductComment],
                 ['TALENT AND INTERESTS', data.talentInterests],
-                ["HEAD TEACHER'S REMARKS", data.headTeacherComment],
               ].filter(([, value]) => value).map(([label, value]) => (
                 <div key={label} style={{ padding: '9px 12px', backgroundColor: '#f8fafc', border: '1px solid #dbe3ec', borderLeft: '3px solid #1e3a5f', borderRadius: '3px' }}>
                   <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e3a5f', margin: '0 0 3px' }}>{label}</p>
@@ -522,10 +498,28 @@ textAlign: 'right',
           </div>
         )}
 
+        {/* Comments */}
+        {(data.teacherComment || data.headTeacherComment) && (
+          <div className="report-card-comments">
+            <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>COMMENTS</h3>
+            <div className="report-card-comment-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                ["CLASS TEACHER'S COMMENT", data.teacherComment],
+                ["HEAD TEACHER'S REMARKS", data.headTeacherComment],
+              ].filter(([, value]) => value).map(([label, value]) => (
+                <div key={label} className="report-card-comment" style={{ padding: '9px 12px', backgroundColor: '#f8fafc', border: '1px solid #dbe3ec', borderLeft: '3px solid #1e3a5f', borderRadius: '3px', minHeight: '40px' }}>
+                  <p style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e3a5f', margin: '0 0 3px' }}>{label}</p>
+                  <p style={{ fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic', margin: '0', color: '#334155', lineHeight: '1.3' }}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Footer Section */}
         <div
           className="report-card-signatures"
-          style={{ marginTop: '24px', borderTop: '2px solid #ddd', paddingTop: '16px' }}
+          style={{ marginTop: '12px', borderTop: '2px solid #ddd', paddingTop: '10px' }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Class Teacher */}
