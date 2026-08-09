@@ -458,18 +458,17 @@ textAlign: 'right',
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.letterGrade}
               </p>
-            </div>
+              </div>
             {data.ranking && (
               <div>
-                <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class Ranking</p>
-                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
+                <p style={{ fontSize: '9px', color: '#dbe7f3', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class Ranking</p>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#fff' }}>
                   {data.ranking}
                   {data.classSize && ` / ${data.classSize}`}
-              </p>
-            </div>
-            <div aria-hidden="true" />
+                </p>
+              </div>
+            )}
           </div>
-        </div>
         </div>
 
         {/* Teacher Comment */}
