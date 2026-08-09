@@ -89,7 +89,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             padding: 0 !important;
             background: #fff !important;
           }
-          body { font-size: 10px; }
+          body { font-size: 11px; }
           .no-print { display: none !important; }
           .report-card-printable {
             width: auto !important;
@@ -114,15 +114,20 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             page-break-inside: avoid;
             break-inside: avoid;
           }
-          table { font-size: 9px; }
-          th, td { padding: 4px !important; }
-          h1 { font-size: 18px !important; }
-          h2 { font-size: 14px !important; }
-          h3 { font-size: 10px !important; }
-          .report-card-container { line-height: 1.15; }
-          .report-card-container > div { margin-bottom: 6px; }
+          table { font-size: 10px; }
+          th, td { padding: 6px !important; }
+          h1 { font-size: 21px !important; }
+          h2 { font-size: 16px !important; }
+          h3 { font-size: 11px !important; }
+          .report-card-container { line-height: 1.3; }
+          .report-card-container > div { margin-bottom: 10px; }
+          .report-card-info { padding: 15px 18px !important; }
+          .report-card-comment { padding: 14px 18px !important; }
+          .report-card-signatures { margin-top: 30px !important; padding-top: 18px !important; }
           .report-card-summary p:first-child { color: #dbe7f3 !important; }
           .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
+          .report-card-header { padding: 22px 26px 20px !important; }
+          .report-card-summary { padding: 16px !important; }
           .report-card-header, .report-card-summary { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
 
