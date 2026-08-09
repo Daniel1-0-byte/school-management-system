@@ -187,7 +187,7 @@ export default function ReportCardPreviewPage() {
           
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 9mm;
           }
 
           html, body {

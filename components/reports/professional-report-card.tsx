@@ -119,15 +119,15 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
           h1 { font-size: 21px !important; }
           h2 { font-size: 16px !important; }
           h3 { font-size: 11px !important; }
-          .report-card-container { line-height: 1.3; }
-          .report-card-container > div { margin-bottom: 10px; }
-          .report-card-info { padding: 15px 18px !important; }
-          .report-card-comment { padding: 14px 18px !important; }
-          .report-card-signatures { margin-top: 30px !important; padding-top: 18px !important; }
+          .report-card-container { line-height: 1.2; }
+          .report-card-container > div { margin-bottom: 6px; }
+          .report-card-info { padding: 13px 18px !important; }
+          .report-card-comment { padding: 9px 18px 6px !important; margin-bottom: 4px !important; }
+          .report-card-signatures { margin-top: 16px !important; padding-top: 12px !important; }
           .report-card-summary p:first-child { color: #dbe7f3 !important; }
           .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
-          .report-card-header { padding: 22px 26px 20px !important; }
-          .report-card-summary { padding: 16px !important; }
+          .report-card-header { padding: 19px 26px 17px !important; }
+          .report-card-summary { padding: 11px 16px !important; }
           .report-card-header, .report-card-summary { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
 
