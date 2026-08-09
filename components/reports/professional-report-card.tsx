@@ -89,7 +89,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             padding: 0 !important;
             background: #fff !important;
           }
-          body { font-size: 10px; }
+          body { font-size: 11px; }
           .no-print { display: none !important; }
           .report-card-printable {
             width: auto !important;
@@ -114,35 +114,105 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             page-break-inside: avoid;
             break-inside: avoid;
           }
-          table { font-size: 9px; }
-          th, td { padding: 4px !important; }
-          h1 { font-size: 18px !important; }
-          h2 { font-size: 14px !important; }
-          h3 { font-size: 10px !important; }
-          .report-card-container { line-height: 1.15; }
-          .report-card-container > div { margin-bottom: 6px; }
+          table { font-size: 10px; }
+          th, td { padding: 6px !important; }
+          h1 { font-size: 21px !important; }
+          h2 { font-size: 16px !important; }
+          h3 { font-size: 11px !important; }
+          .report-card-container { line-height: 1.3; }
+          .report-card-container > div { margin-bottom: 10px; }
+          .report-card-info { padding: 15px 18px !important; }
+          .report-card-comment { padding: 14px 18px !important; }
+          .report-card-signatures { margin-top: 30px !important; padding-top: 18px !important; }
           .report-card-summary p:first-child { color: #dbe7f3 !important; }
           .report-card-summary p:last-child { color: #fff !important; font-size: 15px !important; }
+          .report-card-header { padding: 22px 26px 20px !important; }
+          .report-card-summary { padding: 16px !important; }
           .report-card-header, .report-card-summary { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+
+        @media screen and (max-width: 640px) {
+          .report-card-container {
+            width: 100% !important;
+            overflow: hidden;
+          }
+          .report-card-header {
+            padding: 14px 12px !important;
+          }
+          .report-card-header-grid {
+            grid-template-columns: 42px minmax(0, 1fr) 42px !important;
+            gap: 8px !important;
+          }
+          .report-card-header-grid > div:first-child,
+          .report-card-header-grid > div:last-child {
+            width: 42px !important;
+            height: 42px !important;
+          }
+          .report-card-header-grid > div:first-child {
+            width: 42px !important;
+            height: 42px !important;
+          }
+          .report-card-header img {
+            max-width: 42px !important;
+            max-height: 42px !important;
+          }
+          .report-card-header h1 {
+            font-size: clamp(17px, 5vw, 24px) !important;
+            line-height: 1.15 !important;
+          }
+          .report-card-header p {
+            font-size: 9px !important;
+            overflow-wrap: anywhere;
+          }
+          .report-card-info {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+            padding: 12px !important;
+          }
+          .report-card-container table {
+            display: block;
+            overflow-x: auto;
+            width: 100%;
+            white-space: nowrap;
+          }
+          .report-card-container th,
+          .report-card-container td {
+            padding: 7px 6px !important;
+          }
+          .report-card-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+          }
+          .report-card-summary p {
+            overflow-wrap: anywhere;
+          }
+          .report-card-comment {
+            padding: 11px 12px !important;
+          }
+          .report-card-signatures > div {
+            grid-template-columns: 1fr !important;
+            gap: 18px !important;
+          }
         }
       `}</style>
 
       <div className="report-card-container" style={{ minHeight: '0', width: '100%' }}>
         {/* Header Section */}
         <div className="report-card-header" style={{ backgroundColor: '#1e3a5f', color: '#fff', padding: '18px 22px 16px', borderRadius: '3px', printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="report-card-header-grid" style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) 72px', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '72px', height: '72px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {data.schoolLogo && (
                 <img src={data.schoolLogo} alt="School Logo" style={{ maxWidth: '72px', maxHeight: '72px', objectFit: 'contain' }} />
               )}
             </div>
-            <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ minWidth: 0, textAlign: 'center' }}>
               <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '27px', fontWeight: 'bold', margin: '0 0 5px', color: '#fff' }}>{data.schoolName}</h1>
               {data.schoolAddress && <p style={{ fontSize: '11px', margin: '2px 0', color: '#dbe7f3' }}>{data.schoolAddress}</p>}
               <p style={{ fontSize: '10px', margin: '2px 0', color: '#dbe7f3' }}>
                 {data.schoolPhone}{data.schoolPhone && data.schoolEmail ? '  |  ' : ''}{data.schoolEmail}
               </p>
             </div>
+            <div aria-hidden="true" />
           </div>
         </div>
 
@@ -393,11 +463,11 @@ textAlign: 'right',
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
                 {data.letterGrade}
               </p>
-            </div>
+              </div>
             {data.ranking && (
               <div>
-                <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class Ranking</p>
-                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
+                <p style={{ fontSize: '9px', color: '#dbe7f3', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Class Ranking</p>
+                <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#fff' }}>
                   {data.ranking}
                   {data.classSize && ` / ${data.classSize}`}
                 </p>
