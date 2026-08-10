@@ -11,6 +11,7 @@ export const StudentCreateSchema = z.object({
   dateOfBirth: z.string().optional(),
   admissionNumber: z.string().optional(),
   currentClassId: z.string().uuid('Invalid class').optional(),
+  currentStreamId: z.string().uuid('Invalid stream').optional(),
   parentalStatus: z.string().optional(),
   medicalNotes: z.string().optional(),
   allergies: z.string().optional(),

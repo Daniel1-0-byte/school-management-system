@@ -65,6 +65,21 @@ export default function StudentDetailPage() {
     );
   }
 
+  if (!student) {
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center">
+        <p className="text-muted-foreground">Student details could not be loaded.</p>
+        <button
+          type="button"
+          onClick={() => router.push('/students')}
+          className="rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
+        >
+          Back to Students
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -83,7 +98,7 @@ export default function StudentDetailPage() {
 
       {/* Form */}
       <div className="bg-card border border-border rounded-lg p-6">
-        <StudentForm student={student || undefined} loading={loading} onSubmit={handleSubmit} submitLabel="Save Changes" />
+        <StudentForm student={student} loading={loading} onSubmit={handleSubmit} submitLabel="Save Changes" />
       </div>
     </div>
   );
