@@ -77,21 +77,60 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const { data: academicYear } = await queryAcademicYears()
+      const { data: academicYear, error: academicYearError } = await queryAcademicYears()
         .select('id, year')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const normalizedClassName = className.trim().toLowerCase();
-      const { data: schoolClass } = await querySchoolClasses()
+      if (academicYearError) {
+        console.error('[v0] Bulk import academic year lookup failed:', {
+          rowNumber,
+          studentId,
+          schoolId,
+          academicYearError,
+        });
+      }
+
+      const normalizedClassName = className.trim();
+      const classQuery = querySchoolClasses()
         .select('id, name')
         .eq('school_id', schoolId)
         .ilike('name', normalizedClassName)
         .maybeSingle();
+      const { data: schoolClass, error: classError } = await classQuery;
 
-      if (!academicYear || !schoolClass) {
+      console.log('[v0] Bulk import class matching:', {
+        rowNumber,
+        studentId,
+        rawClassName: className,
+        normalizedClassName,
+        schoolId,
+        academicYearId: academicYear?.id ?? null,
+        schoolClass,
+        classError,
+      });
+
+      if (classError) {
+        warnings.push({
+          rowNumber,
+          message: `Class lookup failed: ${classError.message}`,
+        });
+        return;
+      }
+
+      if (academicYearError || !academicYear) {
+        warnings.push({
+          rowNumber,
+          message: academicYearError
+            ? `Academic year lookup failed: ${academicYearError.message}`
+            : 'No academic year was found; no enrollment was created.',
+        });
+        return;
+      }
+
+      if (!schoolClass) {
         warnings.push({
           rowNumber,
           message: `Class "${className}" could not be matched; no enrollment was created.`,
@@ -99,7 +138,7 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const { data: stream } = await querySchoolClassStreams()
+      const { data: stream, error: streamError } = await querySchoolClassStreams()
         .select('id, name')
         .eq('school_id', schoolId)
         .eq('school_class_id', schoolClass.id)
@@ -109,10 +148,21 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-      if (!stream) {
+      console.log('[v0] Bulk import stream matching:', {
+        rowNumber,
+        studentId,
+        schoolClassId: schoolClass.id,
+        academicYearId: academicYear.id,
+        stream,
+        streamError,
+      });
+
+      if (streamError || !stream) {
         warnings.push({
           rowNumber,
-          message: `No active stream was found for class "${className}"; no enrollment was created.`,
+          message: streamError
+            ? `Stream lookup failed: ${streamError.message}`
+            : `No active stream was found for class "${className}"; no enrollment was created.`,
         });
         return;
       }
@@ -157,11 +207,23 @@ export async function POST(request: NextRequest) {
                 .eq('admission_number', admissionNumber)
                 .single();
               if (createdStudent) {
-                await createStudentEnrollment(
-                  createdStudent.id,
-                  row.current_class_name,
-                  rows_to_create.indexOf(row) + 2
-                );
+                try {
+                  await createStudentEnrollment(
+                    createdStudent.id,
+                    row.current_class_name,
+                    rows_to_create.indexOf(row) + 2
+                  );
+                } catch (enrollmentError) {
+                  console.error('[v0] Bulk import enrollment exception:', {
+                    rowNumber: rows_to_create.indexOf(row) + 2,
+                    studentId: createdStudent.id,
+                    error: enrollmentError,
+                  });
+                  warnings.push({
+                    rowNumber: rows_to_create.indexOf(row) + 2,
+                    message: 'Enrollment processing failed unexpectedly; student was still created.',
+                  });
+                }
               }
               continue;
             }
