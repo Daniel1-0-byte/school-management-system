@@ -125,15 +125,14 @@ export async function POST(request: NextRequest) {
     // Update invitation status
     const { error: updateError } = await supabase
       .from('staff_invitations')
-      .update({
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
-        user_id: authData.user.id,
-      })
-      .eq('id', invitation.id);
+      .update({ status: 'accepted' })
+      .eq('id', invitation.id)
+      .eq('invite_token', token)
+      .eq('status', 'pending');
 
     if (updateError) {
       console.error('[v0] Invitation update error:', updateError);
+      return NextResponse.json({ error: formatSupabaseError(updateError) }, { status: 400 });
     }
 
     // Log in audit logs
