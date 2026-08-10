@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 
 // Use the sender email from environment or fall back to configured domain
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@schoolmanagementsystem.com';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@resend.dev';
 
 // Initialize Resend lazily to avoid build-time issues
 let resendClient: Resend | null = null;

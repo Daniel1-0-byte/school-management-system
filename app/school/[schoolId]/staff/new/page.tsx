@@ -36,6 +36,10 @@ export default function CreateStaffPage() {
       return 'Enter a valid email address for the staff member.';
     }
 
+    if (message.toLowerCase().includes('resend') || message.toLowerCase().includes('email was not sent')) {
+      return message;
+    }
+
     return message || 'We could not send the invitation. Please try again.';
   };
 
