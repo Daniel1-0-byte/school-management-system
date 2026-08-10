@@ -27,6 +27,18 @@ export default function CreateStaffPage() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load your session'));
   }, []);
 
+  const getInviteErrorMessage = (message: string) => {
+    if (message.includes('staff_invitations_school_id_email_key') || message.toLowerCase().includes('invitation already exists')) {
+      return 'An invitation already exists for this email address in this school. Cancel the existing invitation or use a different email address.';
+    }
+
+    if (message.toLowerCase().includes('invalid email')) {
+      return 'Enter a valid email address for the staff member.';
+    }
+
+    return message || 'We could not send the invitation. Please try again.';
+  };
+
   const handleCreate = async (data: StaffCreateInput) => {
     try {
       if (!inviterId) {
@@ -38,12 +50,12 @@ export default function CreateStaffPage() {
       setError(null);
       const { invitation, error } = await SchoolService.inviteStaff(params.schoolId, inviterId, data);
       if (error) {
-        setError(error);
+        setError(getInviteErrorMessage(error));
       } else if (invitation) {
         setSent(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create staff member');
+      setError(getInviteErrorMessage(err instanceof Error ? err.message : ''));
     } finally {
       setSaving(false);
     }

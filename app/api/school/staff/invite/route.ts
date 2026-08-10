@@ -71,6 +71,14 @@ export async function POST(request: NextRequest) {
 
     if (inviteError) {
       console.error('[v0] Invitation creation error:', inviteError);
+
+      if (inviteError.code === '23505' && inviteError.message.includes('staff_invitations_school_id_email_key')) {
+        return NextResponse.json(
+          { error: 'An invitation already exists for this email address in this school. Cancel the existing invitation or use a different email address.' },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json({ error: formatSupabaseError(inviteError) }, { status: 400 });
     }
 
@@ -120,7 +128,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Staff invitation error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to send invitation' }, { status: 500 });
   }
