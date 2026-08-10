@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSupabaseClient, queryProfiles, queryAuditLogs, queryStaffInvitations, querySchools, formatSupabaseError } from '@/lib/supabase';
@@ -49,8 +50,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Create invitation record
-    const inviteToken = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    const inviteToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: invitation, error: inviteError } = await queryStaffInvitations()
       .insert({
