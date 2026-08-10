@@ -66,13 +66,13 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
       setFormData({
         firstName: student.firstName || '',
         lastName: student.lastName || '',
-        dateOfBirth: student.dateOfBirth,
-        admissionNumber: student.admissionNumber,
-        currentClassId: student.currentClassId,
-        currentStreamId: student.currentStreamId, // Phase 3
-        parentalStatus: student.parentalStatus,
-        medicalNotes: student.medicalNotes,
-        allergies: student.allergies,
+        dateOfBirth: student.dateOfBirth ?? undefined,
+        admissionNumber: student.admissionNumber ?? undefined,
+        currentClassId: student.currentClassId ?? undefined,
+        currentStreamId: student.currentStreamId ?? undefined,
+        parentalStatus: student.parentalStatus ?? undefined,
+        medicalNotes: student.medicalNotes ?? undefined,
+        allergies: student.allergies ?? undefined,
       });
     }
   }, [student]);

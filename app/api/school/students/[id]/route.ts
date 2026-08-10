@@ -9,6 +9,7 @@ const studentUpdateSchema = z.object({
   date_of_birth: z.string().optional(),
   admission_number: z.string().optional(),
   current_class_id: z.string().uuid().optional(),
+  current_stream_id: z.string().uuid().optional(),
   status: z.enum(['active', 'inactive', 'graduated']).optional(),
   parental_status: z.string().optional(),
   medical_notes: z.string().optional(),

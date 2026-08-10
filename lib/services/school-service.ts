@@ -66,8 +66,10 @@ export class SchoolService {
       return { error: response.error };
     }
 
+    const studentRecord = response.data ?? (response as unknown as StudentRecord);
+
     return {
-      student: response.data ? StudentTransformer.toUI(response.data) : undefined,
+      student: studentRecord?.id ? StudentTransformer.toUI(studentRecord) : undefined,
     };
   }
 
