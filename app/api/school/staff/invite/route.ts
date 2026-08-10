@@ -71,6 +71,14 @@ export async function POST(request: NextRequest) {
 
     if (inviteError) {
       console.error('[v0] Invitation creation error:', inviteError);
+
+      if (inviteError.code === '23505' && inviteError.message.includes('staff_invitations_school_id_email_key')) {
+        return NextResponse.json(
+          { error: 'An invitation already exists for this email address in this school. Cancel the existing invitation or use a different email address.' },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json({ error: formatSupabaseError(inviteError) }, { status: 400 });
     }
 
@@ -88,10 +96,26 @@ export async function POST(request: NextRequest) {
 
     if (!emailResult.success) {
       console.error('[v0] Staff invitation email failed:', emailResult.error);
-      // Continue anyway - invitation is created, email can be resent
-    } else {
-      console.log('[v0] Staff invitation email sent to:', validated.email);
+
+      const { error: cleanupError } = await queryStaffInvitations()
+        .delete()
+        .eq('id', invitation.id)
+        .eq('status', 'pending');
+
+      if (cleanupError) {
+        console.error('[v0] Failed to clean up invitation after email failure:', cleanupError);
+      }
+
+      const emailError = emailResult.error as { message?: string } | undefined;
+      const isResendTestingRestriction = emailError?.message?.includes('only send testing emails to your own email address');
+      const message = isResendTestingRestriction
+        ? 'The invitation was not sent because Resend is in testing mode. Send it to the verified Resend account email, or verify a sending domain and set RESEND_FROM_EMAIL to an address on that domain.'
+        : 'The invitation email could not be sent. No invitation was saved; please check the email configuration and try again.';
+
+      return NextResponse.json({ error: message }, { status: 502 });
     }
+
+    console.log('[v0] Staff invitation email sent to:', validated.email);
 
     // Log in audit log
     await queryAuditLogs().insert({
@@ -120,7 +144,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Staff invitation error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to send invitation' }, { status: 500 });
   }
