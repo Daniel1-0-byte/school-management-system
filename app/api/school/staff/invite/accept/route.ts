@@ -108,17 +108,20 @@ export async function POST(request: NextRequest) {
       .insert({
         id: authData.user.id,
         school_id: invitation.school_id,
-        email: invitation.email,
         first_name: invitation.first_name,
         last_name: invitation.last_name,
         system_role: invitation.system_role,
-        department: invitation.department,
         status: 'active',
-        email_verified: true,
       });
 
     if (profileError) {
       console.error('[v0] Profile creation error:', profileError);
+      const { error: rollbackError } = await supabase.auth.admin.deleteUser(authData.user.id);
+
+      if (rollbackError) {
+        console.error('[v0] Auth user rollback error:', rollbackError);
+      }
+
       return NextResponse.json({ error: formatSupabaseError(profileError) }, { status: 400 });
     }
 
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Invitation acceptance error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      return NextResponse.json({ error: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to accept invitation' }, { status: 500 });
   }
