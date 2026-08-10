@@ -130,7 +130,8 @@ export default function StaffPage() {
             </div>
           </div>
           <a
-            href="/staff/add"
+            href={schoolId ? `/school/${schoolId}/staff/new` : '#'}
+            aria-disabled={!schoolId}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity"
           >
             <Plus className="w-5 h-5" />

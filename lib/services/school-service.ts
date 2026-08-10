@@ -249,6 +249,36 @@ export class SchoolService {
   }
 
   /**
+   * STAFF - SEND INVITATION
+   */
+  static async inviteStaff(
+    schoolId: string,
+    invitedBy: string,
+    data: Partial<Staff>
+  ): Promise<{ invitation?: { id: string; email: string; status: string }; error?: string }> {
+    const staffData = StaffTransformer.fromUI(data);
+    const response = await apiClient.post<{ id: string; email: string; status: string }>(
+      '/staff/invite',
+      {
+        school_id: schoolId,
+        invited_by: invitedBy,
+        first_name: staffData.first_name,
+        last_name: staffData.last_name,
+        email: staffData.email,
+        system_role: staffData.system_role,
+        department: staffData.department,
+      },
+      { school_id: schoolId, invited_by: invitedBy }
+    );
+
+    if (response.error) {
+      return { error: response.error };
+    }
+
+    return { invitation: response.data };
+  }
+
+  /**
    * STAFF - UPDATE
    */
   static async updateStaff(
