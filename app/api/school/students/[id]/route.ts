@@ -110,7 +110,7 @@ export async function PUT(
 
     if (currentStreamId) {
       const { data: stream, error: streamError } = await querySchoolClassStreams()
-        .select('id, class_id')
+        .select('id, school_class_id')
         .eq('id', currentStreamId)
         .eq('school_id', schoolId)
         .maybeSingle();
@@ -150,7 +150,7 @@ export async function PUT(
       const enrollmentPayload = {
         student_id: id,
         school_id: schoolId,
-        class_id: stream.class_id,
+        class_id: stream.school_class_id,
         stream_id: currentStreamId,
         academic_year_id: academicYear.id,
         enrollment_date: new Date().toISOString().slice(0, 10),
