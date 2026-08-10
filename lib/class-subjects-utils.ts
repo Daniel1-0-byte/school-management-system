@@ -14,25 +14,33 @@ export async function fetchClassSubjects(
   classId: string,
   schoolId: string
 ) {
-  const { data: classSubjectsResponse, error } = await supabase
+  const { data: assignments, error: assignmentsError } = await supabase
     .from('class_subjects')
-    .select('subject:subjects(id, name, code)')
+    .select('subject_id, created_at')
     .eq('class_id', classId)
     .eq('school_id', schoolId)
     .order('created_at', { ascending: true });
 
-  if (error) {
-    console.error('[v0] Error fetching class subjects:', error);
-    throw error;
+  if (assignmentsError) {
+    console.error('[v0] Error fetching class subject assignments:', assignmentsError);
+    throw assignmentsError;
   }
 
-  // Extract subjects from the nested join response
-  // Response format: [{ subject: { id, name, code } }, ...]
-  const subjects = (classSubjectsResponse || [])
-    .map((item: any) => item.subject)
-    .filter((subject: any) => subject !== null);
+  const subjectIds = (assignments || []).map((assignment) => assignment.subject_id).filter(Boolean);
+  if (subjectIds.length === 0) return [];
 
-  return subjects;
+  const { data: subjects, error: subjectsError } = await supabase
+    .from('subjects')
+    .select('id, name, code')
+    .in('id', subjectIds);
+
+  if (subjectsError) {
+    console.error('[v0] Error fetching assigned subjects:', subjectsError);
+    throw subjectsError;
+  }
+
+  const subjectsById = new Map((subjects || []).map((subject) => [subject.id, subject]));
+  return subjectIds.map((id) => subjectsById.get(id)).filter(Boolean);
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { fetchClassSubjects } from '@/lib/class-subjects-utils';
 
 /**
  * GET /api/school/grades/completion-status
@@ -63,31 +64,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // class_subjects is the verified source of subjects assigned to a school
-    // class. Do not use the legacy system_* or stream-subject tables here.
-    const { data: classSubjectRows, error: classSubjectsError } = await supabase
-      .from('class_subjects')
-      .select('subject_id, subjects(id, name, code)')
-      .eq('school_id', schoolId)
-      .eq('class_id', stream.school_class_id)
-      .order('created_at', { ascending: true });
-
-    if (classSubjectsError) {
-      console.error('[v0] Error fetching class subjects:', classSubjectsError);
+    // class_subjects is the verified source of assignments. Resolve subject
+    // records separately so this does not depend on a fragile nested relation.
+    let classSubjects;
+    try {
+      classSubjects = await fetchClassSubjects(supabase, stream.school_class_id, schoolId);
+    } catch (error) {
+      console.error('[v0] Error fetching class subjects:', error);
       return NextResponse.json(
         { error: 'Failed to fetch class subjects' },
         { status: 500 }
       );
     }
-
-    const classSubjects = (classSubjectRows || [])
-      .map((row: any) => row.subjects)
-      .filter((subject: any) => subject?.id)
-      .map((subject: any) => ({
-        id: subject.id,
-        name: subject.name,
-        code: subject.code,
-      }));
 
     if (!classSubjects || classSubjects.length === 0) {
       // No subjects assigned to this class
