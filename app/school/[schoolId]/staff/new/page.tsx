@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SchoolService } from '@/lib/services/school-service';
@@ -12,16 +12,35 @@ export default function CreateStaffPage() {
   const params = useParams<{ schoolId: string }>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviterId, setInviterId] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load your session');
+        const data = await response.json();
+        const userId = data.session?.userId;
+        if (!userId) throw new Error('Unable to identify the inviting user');
+        setInviterId(userId);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load your session'));
+  }, []);
 
   const handleCreate = async (data: StaffCreateInput) => {
     try {
+      if (!inviterId) {
+        setError('Your session is still loading. Please try again.');
+        return;
+      }
+
       setSaving(true);
       setError(null);
-      const { staff: created, error } = await SchoolService.createStaff(params.schoolId, data);
+      const { invitation, error } = await SchoolService.inviteStaff(params.schoolId, inviterId, data);
       if (error) {
         setError(error);
-      } else if (created) {
-        router.push(`/school/${params.schoolId}/staff`);
+      } else if (invitation) {
+        setSent(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create staff member');
@@ -42,8 +61,8 @@ export default function CreateStaffPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Add Staff Member</h1>
-            <p className="text-muted-foreground">Create a new staff member record</p>
+            <h1 className="text-3xl font-bold text-foreground">Invite Staff Member</h1>
+            <p className="text-muted-foreground">Send an invitation so they can set a password and access the school portal</p>
           </div>
         </div>
 
@@ -54,14 +73,28 @@ export default function CreateStaffPage() {
           </div>
         )}
 
-        {/* Form */}
-        <div className="bg-card rounded-lg border border-border p-6">
-          <StaffForm
-            loading={saving}
-            onSubmit={handleCreate}
-            submitLabel="Create Staff Member"
-          />
-        </div>
+        {sent ? (
+          <div className="bg-card rounded-lg border border-border p-8 text-center">
+            <h2 className="text-xl font-semibold text-foreground">Invitation sent</h2>
+            <p className="mt-2 text-muted-foreground">
+              The staff member will receive an email with a link to set their password and finish setting up access.
+            </p>
+            <button
+              onClick={() => router.push(`/school/${params.schoolId}/staff`)}
+              className="mt-6 rounded-lg bg-primary px-4 py-2 text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              Back to Staff
+            </button>
+          </div>
+        ) : (
+          <div className="bg-card rounded-lg border border-border p-6">
+            <StaffForm
+              loading={saving || !inviterId}
+              onSubmit={handleCreate}
+              submitLabel="Send Invitation"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
