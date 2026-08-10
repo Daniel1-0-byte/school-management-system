@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       const classQuery = querySchoolClasses()
         .select('id, name')
         .eq('school_id', schoolId)
-        .ilike('name', `%${normalizedClassName}%`)
+        .ilike('name', normalizedClassName)
         .maybeSingle();
       const { data: schoolClass, error: classError } = await classQuery;
 
@@ -120,7 +120,17 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      if (!academicYear || !schoolClass) {
+      if (academicYearError || !academicYear) {
+        warnings.push({
+          rowNumber,
+          message: academicYearError
+            ? `Academic year lookup failed: ${academicYearError.message}`
+            : 'No academic year was found; no enrollment was created.',
+        });
+        return;
+      }
+
+      if (!schoolClass) {
         warnings.push({
           rowNumber,
           message: `Class "${className}" could not be matched; no enrollment was created.`,
@@ -147,10 +157,12 @@ export async function POST(request: NextRequest) {
         streamError,
       });
 
-      if (!stream) {
+      if (streamError || !stream) {
         warnings.push({
           rowNumber,
-          message: `No active stream was found for class "${className}"; no enrollment was created.`,
+          message: streamError
+            ? `Stream lookup failed: ${streamError.message}`
+            : `No active stream was found for class "${className}"; no enrollment was created.`,
         });
         return;
       }
