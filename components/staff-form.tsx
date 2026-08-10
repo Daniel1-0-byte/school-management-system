@@ -18,7 +18,7 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
     lastName: '',
     email: '',
     phone: undefined,
-    role: 'teacher',
+    role: 'Teacher',
     department: undefined,
     qualification: undefined,
     experienceYears: undefined,
@@ -37,7 +37,7 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
         lastName: staff.lastName || '',
         email: staff.email || '',
         phone: staff.phone,
-        role: staff.role || 'teacher',
+        role: staff.role || 'Teacher',
         department: staff.department,
         qualification: staff.qualification,
         experienceYears: staff.experienceYears,
@@ -191,9 +191,10 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
               errors.role ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
             }`}
           >
-            <option value="teacher">Teacher</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Admin">Admin</option>
+            <option value="Accountant">Accountant</option>
+            <option value="BusCoordinator">Bus Coordinator</option>
           </select>
           {errors.role && <p className="text-sm text-red-600 mt-1">{errors.role}</p>}
         </div>

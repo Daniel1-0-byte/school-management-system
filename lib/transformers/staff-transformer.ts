@@ -3,6 +3,8 @@
  * Converts database records (snake_case) to UI model (camelCase)
  */
 
+import type { SystemRole } from '@/types';
+
 export interface StaffRecord {
   id: string;
   school_id: string;
@@ -11,7 +13,8 @@ export interface StaffRecord {
   last_name: string;
   email: string;
   phone?: string;
-  role: 'teacher' | 'admin' | 'staff';
+  role?: Exclude<SystemRole, 'Parent'>;
+  system_role?: Exclude<SystemRole, 'Parent'>;
   department?: string;
   qualification?: string;
   experience_years?: number;
@@ -29,7 +32,7 @@ export interface Staff {
   lastName: string;
   email: string;
   phone?: string;
-  role: 'teacher' | 'admin' | 'staff';
+  role: Exclude<SystemRole, 'Parent'>;
   department?: string;
   qualification?: string;
   experienceYears?: number;
@@ -52,7 +55,7 @@ export class StaffTransformer {
       lastName: record.last_name || '',
       email: record.email || '',
       phone: record.phone,
-      role: record.role,
+      role: record.system_role ?? record.role ?? 'Teacher',
       department: record.department,
       qualification: record.qualification,
       experienceYears: record.experience_years,
@@ -79,7 +82,7 @@ export class StaffTransformer {
       last_name: staff.lastName,
       email: staff.email,
       phone: staff.phone,
-      role: staff.role,
+      system_role: staff.role,
       department: staff.department,
       qualification: staff.qualification,
       experience_years: staff.experienceYears,
@@ -113,9 +116,10 @@ export class StaffTransformer {
    */
   static roleLabel(role: string): string {
     const labels: Record<string, string> = {
-      teacher: 'Teacher',
-      admin: 'Admin',
-      staff: 'Staff',
+      Teacher: 'Teacher',
+      Admin: 'Admin',
+      Accountant: 'Accountant',
+      BusCoordinator: 'Bus Coordinator',
     };
     return labels[role] || role;
   }

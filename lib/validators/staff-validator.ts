@@ -4,13 +4,16 @@
  */
 
 import { z } from 'zod';
+import type { SystemRole } from '@/types';
+
+export const StaffSystemRoleSchema = z.enum(['Admin', 'Teacher', 'Accountant', 'BusCoordinator'] satisfies [SystemRole, ...SystemRole[]]);
 
 export const StaffCreateSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  role: z.enum(['teacher', 'admin', 'staff'], { errorMap: () => ({ message: 'Invalid role' }) }),
+  role: StaffSystemRoleSchema,
   department: z.string().optional(),
   qualification: z.string().optional(),
   experienceYears: z.number().min(0).max(100).optional(),

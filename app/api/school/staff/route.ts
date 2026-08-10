@@ -7,10 +7,13 @@ const staffSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
   last_name: z.string().min(1, 'Last name required'),
   email: z.string().email('Valid email required'),
-  phone_number: z.string().optional(),
+  phone: z.string().optional(),
   system_role: z.enum(['Teacher', 'Admin', 'Accountant', 'BusCoordinator']),
   department: z.string().optional(),
-  join_date: z.string().date(),
+  qualification: z.string().optional(),
+  experience_years: z.number().min(0).max(100).optional(),
+  date_of_joining: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'on_leave']).optional(),
 });
 
 export async function GET(request: NextRequest) {

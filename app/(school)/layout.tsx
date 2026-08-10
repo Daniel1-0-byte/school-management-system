@@ -44,10 +44,7 @@ const getNavItems = (role: string): NavItem[] => {
   } else if (role === 'Teacher') {
     return [
       ...baseItems,
-      { label: 'My Classes', href: '/classes', icon: <BookOpen className="w-5 h-5" /> },
-      { label: 'Attendance', href: '/attendance', icon: <Clock className="w-5 h-5" /> },
       { label: 'Grades', href: '/grades', icon: <BarChart3 className="w-5 h-5" /> },
-      { label: 'Messages', href: '/messages', icon: <Mail className="w-5 h-5" /> },
     ];
   } else if (role === 'Parent') {
     return [
@@ -72,6 +69,8 @@ export default function SchoolLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('Admin');
+  const [userName, setUserName] = useState('School Admin');
+  const [userEmail, setUserEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -100,8 +99,18 @@ export default function SchoolLayout({
           return;
         }
 
-        setUserRole(data.session.role || 'Admin');
+        const profile = data.data?.user?.profile;
+        const role = data.session.role || 'Admin';
+        setUserRole(role);
+        setUserEmail(data.session.email || '');
+        setUserName(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || data.session.email || 'School Admin');
         setIsAuthenticated(true);
+
+        const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/attendance', '/reports', '/settings', '/messages'];
+        if (role === 'Teacher' && teacherRestrictedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+          router.replace('/dashboard');
+          return;
+        }
 
         // Check if profile setup is completed
         if (data.session.setupCompleted === false && pathname !== '/setup') {
@@ -232,14 +241,14 @@ export default function SchoolLayout({
         <div className="border-t border-border p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-              S
+              {userName.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                School Admin
+                {userName}
               </p>
               <p className="text-xs text-muted-foreground truncate">
-                Administrator
+                {userRole}
               </p>
             </div>
           </div>
@@ -266,7 +275,7 @@ export default function SchoolLayout({
 
           <div className="ml-auto flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              admin@school.edu
+              {userEmail}
             </span>
           </div>
         </header>
