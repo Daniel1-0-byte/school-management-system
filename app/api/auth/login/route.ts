@@ -111,6 +111,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (schoolCheckError) {
+      console.error('[v0][LOGIN] School query error:', {
+        error: schoolCheckError.message,
+        code: schoolCheckError.code,
+        status: schoolCheckError.status,
+        schoolId: profileData.school_id,
+      });
+
       return NextResponse.json(
         { success: false, error: 'School information not found' },
         { status: 404 }
