@@ -109,6 +109,16 @@ export async function POST(request: NextRequest) {
     // Use the already-created service-role client for this system-level check.
     // This must work for every role, including Teachers whose browser-scoped
     // client is not allowed to read schools by the schools_select_own policy.
+    const rawResult = await supabase
+      .from('schools')
+      .select('id, status, name')
+      .eq('id', profileData.school_id);
+    console.log('[v0][LOGIN] Raw schools query result (no .single()):', {
+      rowCount: rawResult.data?.length,
+      rows: rawResult.data,
+      error: rawResult.error,
+    });
+
     const { data: schoolCheckData, error: schoolCheckError } = await supabase
       .from('schools')
       .select('id, status, name')
