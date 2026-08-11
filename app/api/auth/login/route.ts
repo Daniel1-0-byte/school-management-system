@@ -109,6 +109,22 @@ export async function POST(request: NextRequest) {
     // Use the already-created service-role client for this system-level check.
     // This must work for every role, including Teachers whose browser-scoped
     // client is not allowed to read schools by the schools_select_own policy.
+    const directFetchResult = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/schools?id=eq.${profileData.school_id}&select=id,status,name`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      }
+    );
+    const directFetchBody = await directFetchResult.text();
+    console.log('[v0][LOGIN] Direct REST fetch result:', {
+      status: directFetchResult.status,
+      statusText: directFetchResult.statusText,
+      body: directFetchBody,
+    });
+
     const rawResult = await supabase
       .from('schools')
       .select('id, status, name')
