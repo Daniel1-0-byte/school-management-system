@@ -56,10 +56,7 @@ export default function AttendancePage() {
         if (!yearsResponse.ok) throw new Error(yearsData.error || 'Failed to load academic years');
         if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
 
-        const nextYears = yearsData.data || [];
-        setYears(nextYears);
-        const activeYear = nextYears.find((year: Year) => year.is_active) || nextYears[0];
-        if (activeYear) setYearId(activeYear.id);
+        setYears(yearsData.data || []);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load attendance filters');
       } finally {
@@ -70,37 +67,55 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    if (!yearId) return;
+    if (!yearId) {
+      setTerms([]);
+      setTermId('');
+      setClasses([]);
+      setClassId('');
+      setStudents([]);
+      return;
+    }
     const loadTerms = async () => {
       try {
         const response = await fetch(`/api/school/terms?academic_year_id=${yearId}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load terms');
-        const nextTerms = data.data || [];
-        setTerms(nextTerms);
-
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = (await sessionResponse.json()) as SessionData;
-        if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
-        const classesResult = await SchoolService.getClasses(sessionData.session.schoolId, { pageSize: 100 });
-        console.log('[v0] Attendance classes response:', {
-          schoolId: sessionData.session.schoolId,
-          count: classesResult.classes.length,
-          classes: classesResult.classes,
-          error: classesResult.error || null,
-        });
-        if (classesResult.error) throw new Error(classesResult.error);
-        setClasses(classesResult.classes);
-
-        const matchingTerm = nextTerms.find((term: Term) => today >= term.start_date && today <= term.end_date) || nextTerms[0];
-        setTermId(matchingTerm?.id || '');
-        if (matchingTerm && (date < matchingTerm.start_date || date > matchingTerm.end_date)) setDate(today >= matchingTerm.start_date && today <= matchingTerm.end_date ? today : matchingTerm.start_date);
+        setTerms(data.data || []);
+        setTermId('');
+        setClasses([]);
+        setClassId('');
+        setStudents([]);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load terms');
       }
     };
     loadTerms();
   }, [yearId]);
+
+  useEffect(() => {
+    if (!termId) {
+      setClasses([]);
+      setClassId('');
+      return;
+    }
+
+    const loadClasses = async () => {
+      try {
+        const sessionResponse = await fetch('/api/auth/session');
+        const sessionData = (await sessionResponse.json()) as SessionData;
+        if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
+        const classesResult = await SchoolService.getClasses(sessionData.session.schoolId, { pageSize: 100 });
+        if (classesResult.error) throw new Error(classesResult.error);
+        setClasses(classesResult.classes);
+        setClassId('');
+      } catch (loadError) {
+        setClasses([]);
+        setClassId('');
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load classes');
+      }
+    };
+    loadClasses();
+  }, [termId]);
 
   const loadAttendance = useCallback(async () => {
     if (!classId || !termId || !date) {
