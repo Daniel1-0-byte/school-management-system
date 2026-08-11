@@ -28,8 +28,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: 'light dark',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#0F172A' },
-    { media: '(prefers-color-scheme: dark)', color: '#0F172A' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -42,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-slate-950 scroll-smooth">
-      <body className="antialiased bg-slate-950 text-slate-50">
+    <html lang="en" className="bg-background text-foreground scroll-smooth">
+      <body className="antialiased bg-background text-foreground">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

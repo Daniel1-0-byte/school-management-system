@@ -170,25 +170,22 @@
 
   input::placeholder,
   textarea::placeholder {
-    @apply text-slate-600 opacity-100;
+    @apply text-muted-foreground opacity-100;
   }
 
-  /* Light mode overrides for inputs */
-  :root input,
-  :root textarea,
-  :root select {
-    @apply text-slate-900 caret-slate-900;
+  /* Keep native form controls readable in both themes and on mobile. */
+  input,
+  textarea,
+  select {
+    color: var(--foreground);
+    caret-color: var(--foreground);
+    background-color: var(--background);
+    color-scheme: inherit;
   }
 
-  :root input::placeholder,
-  :root textarea::placeholder {
-    @apply text-slate-500 opacity-100;
-  }
-
-  /* Dark mode placeholder styling */
-  .dark input::placeholder,
-  .dark textarea::placeholder {
-    @apply text-slate-400 opacity-100;
+  option {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
   }
 
   /* Icon color inheritance for toggles and buttons */
