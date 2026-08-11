@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, AlertCircle, Check, Trash2 } from 'lucide-react';
-import { uploadImage, deleteImage, getImagePreview } from '@/lib/storage-utils';
+import { uploadImage, getImagePreview } from '@/lib/storage-utils';
 
 interface SignatureUploadProps {
   currentSignatureUrl: string | null;
@@ -48,7 +48,17 @@ export function SignatureUpload({
       }
 
       if (url) {
-        onUploadSuccess(url);
+        const saveResponse = await fetch('/api/school/settings/signature', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signature_url: url }),
+        });
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok) {
+          throw new Error(saveResult.error || 'Failed to save signature');
+        }
+
+        onUploadSuccess(saveResult.signature_url || url);
         setSuccess(true);
         setPreview(null);
         setTimeout(() => setSuccess(false), 3000);
@@ -108,7 +118,7 @@ export function SignatureUpload({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">Headteacher Signature</label>
+        <label className="block text-sm font-medium text-foreground mb-2">Principal Signature</label>
         <p className="text-xs text-muted-foreground mb-4">Clear signature image • JPEG, PNG, GIF, or WebP • Maximum 5MB</p>
       </div>
 
@@ -119,7 +129,7 @@ export function SignatureUpload({
             <div className="w-40 h-16 rounded-lg bg-muted border border-border overflow-hidden flex items-center justify-center p-2">
               <img
                 src={currentSignatureUrl}
-                alt="Headteacher signature"
+                alt="Principal signature"
                 className="w-full h-full object-contain"
               />
             </div>
