@@ -3,7 +3,7 @@ import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
-import { getServerSupabaseClient, queryProfiles, queryAuditLogs, querySchools } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, queryAuditLogs } from '@/lib/supabase';
 import { sendEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -105,7 +105,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if school is approved
-    const { data: schoolCheckData, error: schoolCheckError } = await querySchools()
+    // Use the already-created service-role client for this system-level check.
+    // This must work for every role, including Teachers whose browser-scoped
+    // client is not allowed to read schools by the schools_select_own policy.
+    const { data: schoolCheckData, error: schoolCheckError } = await supabase
+      .from('schools')
       .select('id, status, name')
       .eq('id', profileData.school_id)
       .single();
