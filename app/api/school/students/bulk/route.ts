@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryStudents, formatSupabaseError } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 const bulkStudentSchema = z.object({
   first_name: z.string().min(1),
@@ -17,6 +17,8 @@ const bulkStudentSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const body = await request.json();
     const { students } = body as { students: unknown[] };
@@ -76,6 +78,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const format = request.nextUrl.searchParams.get('format') || 'csv';
     const schoolId = await getSchoolIdFromRequest(request);

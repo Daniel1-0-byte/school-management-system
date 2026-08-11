@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { seedDefaultCurriculum } from '@/lib/seed-curriculum';
 import { DEFAULT_CURRICULUM } from '@/lib/default-curriculum';
 import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/env';
 
 export async function POST(_request: NextRequest) {
+  const roleError = await requireRole(_request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(_request);
 

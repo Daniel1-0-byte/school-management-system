@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryStudents } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
     if (!schoolId) {

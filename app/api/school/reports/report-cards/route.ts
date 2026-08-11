@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 /**
  * GET /api/school/reports/report-cards
@@ -12,6 +12,8 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils
  * - stream_id: UUID
  */
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 

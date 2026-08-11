@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 interface StudentStatus {
   student_id: string;
@@ -28,6 +28,8 @@ interface BulkValidationResponse {
  * - academic_year_id: UUID
  */
 export async function POST(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 

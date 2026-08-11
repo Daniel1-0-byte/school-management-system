@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { querySchools, formatSupabaseError } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'School name required'),
@@ -18,6 +18,8 @@ const settingsSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 
@@ -56,6 +58,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const body = await request.json();
     const validatedData = settingsSchema.parse(body);
