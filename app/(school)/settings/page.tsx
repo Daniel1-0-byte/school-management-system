@@ -56,7 +56,7 @@ export default function SettingsPage() {
           const profileData = await profileResponse.json();
           if (profileData.user) {
             setUserId(profileData.user.id);
-            setSignatureUrl(profileData.user.signature_url || null);
+            setSignatureUrl(profileData.user.profile?.signature_url || null);
           }
         }
       } catch (err) {
@@ -260,12 +260,12 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Headteacher Signature */}
+          {/* Principal Signature */}
           {!isLoading && userId && (
             <div className="bg-card border border-border rounded-lg p-6 space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Headteacher Signature</h2>
-                <p className="text-sm text-muted-foreground mt-1">Upload your signature to display on report cards</p>
+                <h2 className="text-2xl font-bold text-foreground">Principal Signature</h2>
+                <p className="text-sm text-muted-foreground mt-1">Upload the principal&apos;s signature to display on report cards</p>
               </div>
 
               <SignatureUpload
