@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
         last_name: invitation.last_name,
         system_role: invitation.system_role,
         status: 'active',
+        setup_completed: true,
       });
 
     if (profileError) {
