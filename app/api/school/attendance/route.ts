@@ -46,12 +46,34 @@ export async function GET(request: NextRequest) {
     if (termError || !term) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
     if (date < term.start_date || date > term.end_date) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
 
-    const [{ data: classRow, error: classError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
-      queryClasses().select('id, class_name, grade_level, section, academic_year_id, status').eq('id', classId).eq('school_id', schoolId).maybeSingle(),
+    const classQuery = queryClasses()
+      .select('id, class_name, grade_level, section, academic_year_id, status')
+      .eq('id', classId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const legacyClassQuery = getServerSupabaseClient()
+      .from('classes')
+      .select('id, name, level, academic_year_id')
+      .eq('id', classId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const [{ data: classRow, error: classError }, { data: legacyClassRow, error: legacyClassError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
+      classQuery,
+      legacyClassQuery,
       queryStudents().select('id, first_name, last_name').eq('school_id', schoolId).eq('current_class_id', classId).eq('status', 'active').order('last_name').order('first_name'),
       queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', classId).eq('term_id', term.id).eq('date', date),
     ]);
-    if (classError || !classRow) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    const resolvedClass = classRow || (legacyClassRow ? {
+      id: legacyClassRow.id,
+      class_name: legacyClassRow.name,
+      grade_level: legacyClassRow.level,
+      section: null,
+      academic_year_id: legacyClassRow.academic_year_id,
+      status: 'active',
+    } : null);
+    if ((classError && !legacyClassRow) || (legacyClassError && !classRow) || !resolvedClass) {
+      return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    }
     if (studentError || attendanceError) throw studentError || attendanceError;
 
     const recordMap = new Map((existingRecords || []).map((record: any) => [record.student_id, record]));
@@ -64,12 +86,12 @@ export async function GET(request: NextRequest) {
       students: attendanceStudents,
       term,
       class: {
-        id: classRow.id,
-        name: classRow.class_name,
-        gradeLevel: classRow.grade_level,
-        section: classRow.section,
-        academicYearId: classRow.academic_year_id,
-        status: classRow.status,
+        id: resolvedClass.id,
+        name: resolvedClass.class_name,
+        gradeLevel: resolvedClass.grade_level,
+        section: resolvedClass.section,
+        academicYearId: resolvedClass.academic_year_id,
+        status: resolvedClass.status,
       },
       canEdit: true,
     });
