@@ -132,6 +132,7 @@ export default function StudentsPage() {
         <ImportWizard
           moduleName="students"
           schoolId={schoolId}
+          config={getModuleConfig('students')!}
           onClose={() => setShowImportWizard(false)}
           onSuccess={async () => {
             await fetchStudents();
@@ -145,8 +146,9 @@ export default function StudentsPage() {
         <ExportDialog
           moduleName="students"
           schoolId={schoolId}
-          selectedCount={selectedStudents.size}
-          totalCount={total}
+          config={getModuleConfig('students')!}
+          selectedIds={Array.from(selectedStudents)}
+          hasFilters={Boolean(search || status)}
           onClose={() => setShowExportDialog(false)}
         />
       )}
