@@ -24,7 +24,6 @@ export default function SettingsPage() {
     phone: '+91-1234567890',
     email: 'info@school.edu',
     principalName: 'Dr. Sharma',
-    affiliation: 'CBSE',
   });
   const [schoolId, setSchoolId] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
@@ -46,7 +45,6 @@ export default function SettingsPage() {
             phone: data.phone || '',
             email: data.email || '',
             principalName: data.principal_name || '',
-            affiliation: data.affiliation || 'CBSE',
           });
           setSchoolId(data.id);
           setLogoUrl(data.logo_url);
@@ -72,7 +70,7 @@ export default function SettingsPage() {
   }, []);
 
   const sections: SettingsSection[] = [
-    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings/school-info', enabled: false },
+    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings', enabled: true },
     { id: 'academic', label: 'Academic Years & Terms', icon: <Calendar className="w-5 h-5" />, href: '/settings/academic-years', enabled: true },
     { id: 'fees', label: 'Fee Structure', icon: <DollarSign className="w-5 h-5" />, href: '/settings/fees', enabled: false },
     { id: 'security', label: 'Security', icon: <Lock className="w-5 h-5" />, href: '/settings/security', enabled: false },
@@ -89,7 +87,6 @@ export default function SettingsPage() {
         phone_number: schoolInfo.phone,
         email: schoolInfo.email,
         principal_name: schoolInfo.principalName,
-        affiliation: schoolInfo.affiliation,
         logo_url: logoUrl,
       };
 
@@ -229,21 +226,17 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Affiliation */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Board Affiliation</label>
-                <select
-                  value={schoolInfo.affiliation}
-                  onChange={(e) => setSchoolInfo({ ...schoolInfo, affiliation: e.target.value })}
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-                >
-                  <option value="CBSE">CBSE</option>
-                  <option value="ICSE">ICSE</option>
-                  <option value="State">State Board</option>
-                  <option value="IB">IB</option>
-                </select>
-              </div>
             </div>
+
+            {!isLoading && schoolId && (
+              <div className="pt-6 border-t border-border">
+                <LogoUpload
+                  currentLogoUrl={logoUrl}
+                  schoolId={schoolId}
+                  onUploadSuccess={(url) => setLogoUrl(url)}
+                />
+              </div>
+            )}
 
             {/* Save Button */}
             <div className="pt-4 border-t border-border flex justify-end">
@@ -266,25 +259,6 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
-
-          {/* School Logo */}
-          {!isLoading && schoolId && (
-            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <Building2 className="w-6 h-6 text-primary" />
-                  School Logo
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">Upload your school logo for report cards</p>
-              </div>
-
-              <LogoUpload
-                currentLogoUrl={logoUrl}
-                schoolId={schoolId}
-                onUploadSuccess={(url) => setLogoUrl(url)}
-              />
-            </div>
-          )}
 
           {/* Headteacher Signature */}
           {!isLoading && userId && (

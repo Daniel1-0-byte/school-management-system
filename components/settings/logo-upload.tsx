@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, AlertCircle, Check, X } from 'lucide-react';
-import { uploadImage, deleteImage, getImagePreview } from '@/lib/storage-utils';
+import { getImagePreview } from '@/lib/storage-utils';
 
 interface LogoUploadProps {
   currentLogoUrl: string | null;
@@ -26,21 +26,24 @@ export function LogoUpload({ currentLogoUrl, schoolId, onUploadSuccess }: LogoUp
       const previewUrl = await getImagePreview(file);
       setPreview(previewUrl);
 
-      // Upload to storage
       setIsUploading(true);
-      const { url, error: uploadError } = await uploadImage(
-        'school-logos',
-        file,
-        `${schoolId}/logo-${Date.now()}.${file.name.split('.').pop()}`
-      );
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('schoolId', schoolId);
 
-      if (uploadError) {
-        setError(uploadError);
+      const response = await fetch('/api/school/settings/logo', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.url) {
+        setError(result.error || 'Upload failed');
         return;
       }
 
-      if (url) {
-        onUploadSuccess(url);
+      if (result.url) {
+        onUploadSuccess(result.url);
         setSuccess(true);
         setPreview(null);
         setTimeout(() => setSuccess(false), 3000);
