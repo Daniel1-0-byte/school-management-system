@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { queryProfiles, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest, requireRole } from '@/lib/auth-utils';
 
 const signatureSchema = z.object({
   signature_url: z.string().url().nullable(),
@@ -13,6 +13,8 @@ const signatureSchema = z.object({
  * Only admins can update their own signature
  */
 export async function PUT(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
     const userId = getUserIdFromRequest(request);
@@ -80,6 +82,8 @@ export async function PUT(request: NextRequest) {
  * Remove headteacher signature for the current user
  */
 export async function DELETE(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
     const userId = getUserIdFromRequest(request);

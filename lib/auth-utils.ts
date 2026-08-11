@@ -1,5 +1,5 @@
 import type { Profile, SystemRole } from '@/types';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient, queryProfiles, querySchools } from './supabase';
 
 /**
@@ -217,6 +217,43 @@ export function getInviteExpirationTime(): Date {
  */
 export function isInviteTokenExpired(expiresAt: string): boolean {
   return new Date(expiresAt) < new Date();
+}
+
+/**
+ * Require one of the allowed roles for the authenticated request.
+ * The user identity is verified from the session token, then the role is
+ * read fresh from that user's profiles row; client-supplied role values are ignored.
+ */
+export async function requireRole(
+  request: NextRequest,
+  allowedRoles: readonly SystemRole[]
+): Promise<NextResponse | null> {
+  const authToken = request.cookies.get('sb-auth-token')?.value;
+  if (!authToken) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser(authToken);
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('system_role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile?.system_role) {
+    return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
+  }
+
+  if (!allowedRoles.includes(profile.system_role as SystemRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return null;
 }
 
 /**

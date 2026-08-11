@@ -8,7 +8,7 @@ import {
   getPaginatedResults,
   formatSupabaseError,
 } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 import { generateAdmissionNumber } from '@/lib/services/admission-number-service';
 
 const studentSchema = z.object({
@@ -27,6 +27,8 @@ const studentSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
@@ -152,6 +154,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const body = await request.json();
     const validatedData = studentSchema.parse(body);

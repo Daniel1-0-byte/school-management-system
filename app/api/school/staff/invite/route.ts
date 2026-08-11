@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSupabaseClient, queryProfiles, queryAuditLogs, queryStaffInvitations, querySchools, formatSupabaseError } from '@/lib/supabase';
 import { sendEmail, getStaffInvitationTemplate } from '@/lib/email';
+import { requireRole } from '@/lib/auth-utils';
 
 const invitationSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
@@ -13,6 +14,8 @@ const invitationSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const body = await request.json();
     const validated = invitationSchema.parse(body);
@@ -152,6 +155,8 @@ export async function POST(request: NextRequest) {
 
 // GET handler to list pending invitations
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
   try {
     const schoolId = request.nextUrl.searchParams.get('school_id');
 

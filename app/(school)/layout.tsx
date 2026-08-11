@@ -44,6 +44,7 @@ const getNavItems = (role: string): NavItem[] => {
   } else if (role === 'Teacher') {
     return [
       ...baseItems,
+      { label: 'Attendance', href: '/attendance', icon: <Clock className="w-5 h-5" /> },
       { label: 'Grades', href: '/grades', icon: <BarChart3 className="w-5 h-5" /> },
     ];
   } else if (role === 'Parent') {
@@ -106,7 +107,7 @@ export default function SchoolLayout({
         setUserName(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || data.session.email || 'School Admin');
         setIsAuthenticated(true);
 
-        const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/attendance', '/reports', '/settings', '/messages'];
+        const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/reports', '/settings', '/messages'];
         if (role === 'Teacher' && teacherRestrictedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
           router.replace('/dashboard');
           return;
