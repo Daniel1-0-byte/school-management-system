@@ -229,21 +229,48 @@ export async function requireRole(
   allowedRoles: readonly SystemRole[]
 ): Promise<NextResponse | null> {
   const authToken = request.cookies.get('sb-auth-token')?.value;
+  let userId: string | null = null;
+  let userErrorMessage: string | null = null;
+  let resolvedRole: string | null = null;
+
   if (!authToken) {
+    console.log('[v0][AUTH] requireRole:', {
+      tokenPrefix: null,
+      authSucceeded: false,
+      userId,
+      systemRole: resolvedRole,
+    });
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 
+  // Always create a fresh service-role client; this helper never reuses a
+  // client that has been used for auth state changes elsewhere in the request.
   const supabase = getServerSupabaseClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser(authToken);
+  userId = user?.id ?? null;
+  userErrorMessage = userError?.message ?? null;
+
+  const { data: profile, error: profileError } = user
+    ? await supabase
+        .from('profiles')
+        .select('system_role')
+        .eq('id', user.id)
+        .single()
+    : { data: null, error: null };
+  resolvedRole = profile?.system_role ?? null;
+
+  console.log('[v0][AUTH] requireRole:', {
+    tokenPrefix: authToken.slice(0, 15),
+    authSucceeded: !userError && !!user,
+    userId,
+    systemRole: resolvedRole,
+    authError: userErrorMessage,
+    profileError: profileError?.message ?? null,
+  });
+
   if (userError || !user) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('system_role')
-    .eq('id', user.id)
-    .single();
 
   if (profileError || !profile?.system_role) {
     return NextResponse.json({ error: 'User profile not found' }, { status: 403 });
