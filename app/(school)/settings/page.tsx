@@ -70,7 +70,7 @@ export default function SettingsPage() {
   }, []);
 
   const sections: SettingsSection[] = [
-    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings/school-info', enabled: false },
+    { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings', enabled: true },
     { id: 'academic', label: 'Academic Years & Terms', icon: <Calendar className="w-5 h-5" />, href: '/settings/academic-years', enabled: true },
     { id: 'fees', label: 'Fee Structure', icon: <DollarSign className="w-5 h-5" />, href: '/settings/fees', enabled: false },
     { id: 'security', label: 'Security', icon: <Lock className="w-5 h-5" />, href: '/settings/security', enabled: false },
