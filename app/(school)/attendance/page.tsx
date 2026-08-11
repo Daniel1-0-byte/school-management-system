@@ -1,271 +1,200 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, Save, AlertCircle, Loader2, Download, Check, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertCircle, CalendarDays, Check, Loader2, Save, Users, X } from 'lucide-react';
 
-interface StudentAttendance {
-  studentId: string;
-  studentName: string;
-  status: 'present' | 'absent' | 'leave' | 'not-marked';
-}
+type Status = 'present' | 'absent' | 'leave' | 'not-marked';
+type Student = { studentId: string; studentName: string; status: Status; remarks: string };
+type Year = { id: string; year: string | number; start_date: string; end_date: string; is_active: boolean };
+type Term = { id: string; academic_year_id: string; type: string; start_date: string; end_date: string };
+type SchoolClass = { id: string; name: string; section: string };
+
+const statusStyles: Record<Status, string> = {
+  present: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
+  absent: 'bg-rose-500/10 text-rose-700 border-rose-500/30',
+  leave: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
+  'not-marked': 'bg-muted text-muted-foreground border-border',
+};
 
 export default function AttendancePage() {
-  const [loading, setLoading] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [years, setYears] = useState<Year[]>([]);
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [yearId, setYearId] = useState('');
+  const [termId, setTermId] = useState('');
+  const [classId, setClassId] = useState('');
+  const [date, setDate] = useState(today);
+  const [loading, setLoading] = useState(true);
+  const [loadingRegister, setLoadingRegister] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedClass, setSelectedClass] = useState('');
-  const [students, setStudents] = useState<StudentAttendance[]>([]);
-  const [classes, setClasses] = useState([
-    { id: 'class-1', name: 'Class 1-A' },
-    { id: 'class-2', name: 'Class 2-B' },
-    { id: 'class-3', name: 'Class 3-A' },
-  ]);
+
+  const selectedTerm = terms.find((term) => term.id === termId);
+  const counts = useMemo(() => ({
+    present: students.filter((student) => student.status === 'present').length,
+    absent: students.filter((student) => student.status === 'absent').length,
+    leave: students.filter((student) => student.status === 'leave').length,
+    unmarked: students.filter((student) => student.status === 'not-marked').length,
+  }), [students]);
 
   useEffect(() => {
-    if (selectedClass && selectedDate) {
-      fetchAttendance();
-    }
-  }, [selectedClass, selectedDate]);
+    const loadFilters = async () => {
+      try {
+        setLoading(true);
+        const [yearsResponse, classesResponse] = await Promise.all([
+          fetch('/api/school/academic-years'),
+          fetch('/api/school/classes?page=1&pageSize=100'),
+        ]);
+        const yearsData = await yearsResponse.json();
+        const classesData = await classesResponse.json();
+        if (!yearsResponse.ok) throw new Error(yearsData.error || 'Failed to load academic years');
+        if (!classesResponse.ok) throw new Error(classesData.error || 'Failed to load classes');
+        const nextYears = yearsData.data || [];
+        setYears(nextYears);
+        setClasses(classesData.data || []);
+        const activeYear = nextYears.find((year: Year) => year.is_active) || nextYears[0];
+        if (activeYear) setYearId(activeYear.id);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load attendance filters');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadFilters();
+  }, []);
 
-  const fetchAttendance = async () => {
+  useEffect(() => {
+    if (!yearId) return;
+    const loadTerms = async () => {
+      try {
+        const response = await fetch(`/api/school/terms?academic_year_id=${yearId}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load terms');
+        const nextTerms = data.data || [];
+        setTerms(nextTerms);
+        const matchingTerm = nextTerms.find((term: Term) => today >= term.start_date && today <= term.end_date) || nextTerms[0];
+        setTermId(matchingTerm?.id || '');
+        if (matchingTerm && (date < matchingTerm.start_date || date > matchingTerm.end_date)) setDate(today >= matchingTerm.start_date && today <= matchingTerm.end_date ? today : matchingTerm.start_date);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load terms');
+      }
+    };
+    loadTerms();
+  }, [yearId]);
+
+  const loadAttendance = useCallback(async () => {
+    if (!classId || !termId || !date) {
+      setStudents([]);
+      return;
+    }
     try {
-      setLoading(true);
+      setLoadingRegister(true);
       setError(null);
-
-      const response = await fetch(
-        `/api/school/attendance?classId=${selectedClass}&date=${selectedDate}`
-      );
-      if (!response.ok) throw new Error('Failed to fetch attendance');
-
+      setMessage(null);
+      const response = await fetch(`/api/school/attendance?class_id=${classId}&term_id=${termId}&date=${date}`);
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load attendance');
       setStudents(data.students || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load attendance');
+      setDirty(false);
+    } catch (loadError) {
+      setStudents([]);
+      setError(loadError instanceof Error ? loadError.message : 'Failed to load attendance');
     } finally {
-      setLoading(false);
+      setLoadingRegister(false);
     }
+  }, [classId, termId, date]);
+
+  useEffect(() => { loadAttendance(); }, [loadAttendance]);
+
+  const updateStatus = (studentId: string, status: Status) => {
+    setStudents((current) => current.map((student) => student.studentId === studentId ? { ...student, status } : student));
+    setDirty(true);
+    setMessage(null);
   };
 
-  const updateAttendance = (studentId: string, status: string) => {
-    setStudents(
-      students.map((s) =>
-        s.studentId === studentId
-          ? { ...s, status: status as any }
-          : s
-      )
-    );
+  const markAll = (status: Status) => {
+    setStudents((current) => current.map((student) => ({ ...student, status })));
+    setDirty(true);
+    setMessage(null);
   };
 
-  const handleSave = async () => {
+  const saveAttendance = async () => {
+    if (!classId || !termId || !selectedTerm || students.length === 0) return;
     try {
       setSaving(true);
       setError(null);
-
+      setMessage(null);
       const response = await fetch('/api/school/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          classId: selectedClass,
-          date: selectedDate,
-          attendance: students,
-        }),
+        body: JSON.stringify({ classId, termId, date, records: students.filter((student) => student.status !== 'not-marked').map((student) => ({ studentId: student.studentId, status: student.status, remarks: student.remarks })) }),
       });
-
-      if (!response.ok) throw new Error('Failed to save attendance');
-      setError(null); // Clear any errors
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save attendance');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to save attendance');
+      setDirty(false);
+      setMessage(`Attendance saved for ${data.count} students.`);
+      await loadAttendance();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Failed to save attendance');
     } finally {
       setSaving(false);
     }
   };
 
-  const markAllPresent = () => {
-    setStudents(students.map(s => ({ ...s, status: 'present' })));
-  };
-
-  const markAllAbsent = () => {
-    setStudents(students.map(s => ({ ...s, status: 'absent' })));
-  };
-
-  const presentCount = students.filter(s => s.status === 'present').length;
-  const absentCount = students.filter(s => s.status === 'absent').length;
-  const leaveCount = students.filter(s => s.status === 'leave').length;
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Attendance</h1>
-        <p className="text-muted-foreground mt-1">Mark and manage student attendance</p>
-      </div>
+    <main className="flex flex-col gap-6">
+      <header className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-primary">Daily register</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Attendance</h1>
+        <p className="text-muted-foreground">Record attendance by term, class, and date.</p>
+      </header>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-red-600">Error</p>
-            <p className="text-sm text-red-600/80">{error}</p>
-          </div>
-        </div>
-      )}
+      {(error || message) && <div className={`flex items-start gap-3 rounded-lg border p-4 ${error ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700'}`} role="status">
+        {error ? <AlertCircle className="mt-0.5 size-5 shrink-0" /> : <Check className="mt-0.5 size-5 shrink-0" />}
+        <p className="text-sm font-medium">{error || message}</p>
+      </div>}
 
-      {/* Filters */}
-      <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Date Selector */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              <Calendar className="w-4 h-4 inline mr-2" />
-              Date
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* Class Selector */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Class</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-            >
-              <option value="">Select Class</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+      <section className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 md:p-6" aria-label="Attendance filters">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Academic year
+            <select value={yearId} onChange={(event) => setYearId(event.target.value)} disabled={loading} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
+              <option value="">Select year</option>{years.map((year) => <option key={year.id} value={year.id}>{year.year}</option>)}
             </select>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-end gap-2">
-            <div className="flex-1 p-3 bg-green-500/10 rounded-lg border border-green-500/30">
-              <p className="text-xs text-muted-foreground">Present</p>
-              <p className="text-2xl font-bold text-green-600">{presentCount}</p>
-            </div>
-            <div className="flex-1 p-3 bg-red-500/10 rounded-lg border border-red-500/30">
-              <p className="text-xs text-muted-foreground">Absent</p>
-              <p className="text-2xl font-bold text-red-600">{absentCount}</p>
-            </div>
-            <div className="flex-1 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-              <p className="text-xs text-muted-foreground">Leave</p>
-              <p className="text-2xl font-bold text-yellow-600">{leaveCount}</p>
-            </div>
-          </div>
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Term
+            <select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={!terms.length} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
+              <option value="">Select term</option>{terms.map((term) => <option key={term.id} value={term.id}>{term.type.replace('_', ' ')} · {term.start_date} to {term.end_date}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-foreground"><span className="flex items-center gap-2"><CalendarDays className="size-4" />Date</span>
+            <input type="date" value={date} min={selectedTerm?.start_date} max={selectedTerm?.end_date} onChange={(event) => setDate(event.target.value)} disabled={!selectedTerm} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground" />
+          </label>
+          <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Class
+            <select value={classId} onChange={(event) => setClassId(event.target.value)} disabled={!classes.length} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
+              <option value="">Select class</option>{classes.map((schoolClass) => <option key={schoolClass.id} value={schoolClass.id}>{schoolClass.name} · {schoolClass.section}</option>)}
+            </select>
+          </label>
         </div>
-      </div>
+        {selectedTerm && <p className="text-xs text-muted-foreground">Dates available for this register: {selectedTerm.start_date} through {selectedTerm.end_date}.</p>}
+      </section>
 
-      {/* Quick Actions */}
-      {students.length > 0 && (
-        <div className="flex gap-2">
-          <button
-            onClick={markAllPresent}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 hover:bg-green-500/20 border border-green-500/30 rounded-lg transition-colors"
-          >
-            <Check className="w-4 h-4" />
-            <span>Mark All Present</span>
-          </button>
-          <button
-            onClick={markAllAbsent}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/30 rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4" />
-            <span>Mark All Absent</span>
-          </button>
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Attendance summary">
+        {[['Present', counts.present, 'text-emerald-700'], ['Absent', counts.absent, 'text-rose-700'], ['Leave', counts.leave, 'text-amber-700'], ['Not marked', counts.unmarked, 'text-muted-foreground']].map(([label, count, color]) => <div key={label} className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-1 text-2xl font-bold ${color}`}>{count}</p></div>)}
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:items-center md:justify-between md:p-6">
+          <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Users className="size-5 text-primary" />Student register</h2><p className="mt-1 text-sm text-muted-foreground">{students.length ? `${students.length} enrolled students` : 'Select a term, date, and class to begin.'}{dirty && <span className="ml-2 font-medium text-primary">Unsaved changes</span>}</p></div>
+          {students.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => markAll('present')} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700"><Check className="size-4" />All present</button><button type="button" onClick={() => markAll('absent')} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-700"><X className="size-4" />All absent</button></div>}
         </div>
-      )}
+        {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="leave">Leave</option></select></td></tr>)}</tbody></table></div>}
+      </section>
 
-      {/* Attendance Table */}
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center flex items-center justify-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground">Loading attendance...</p>
-          </div>
-        ) : !selectedClass ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">Please select a class to mark attendance</p>
-          </div>
-        ) : students.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground">No students in this class</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Student Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">Attendance Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.studentId} className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{student.studentName}</td>
-                    <td className="px-6 py-4">
-                      <select
-                        value={student.status}
-                        onChange={(e) => updateAttendance(student.studentId, e.target.value)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium border ${
-                          student.status === 'present'
-                            ? 'bg-green-500/20 text-green-600 border-green-500/30'
-                            : student.status === 'absent'
-                              ? 'bg-red-500/20 text-red-600 border-red-500/30'
-                              : student.status === 'leave'
-                                ? 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
-                                : 'bg-muted border-border'
-                        }`}
-                      >
-                        <option value="not-marked">Not Marked</option>
-                        <option value="present">Present</option>
-                        <option value="absent">Absent</option>
-                        <option value="leave">Leave</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Save Button */}
-      {students.length > 0 && (
-        <div className="flex justify-between">
-          <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
-            <Download className="w-5 h-5" />
-            <span>Export</span>
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5" />
-                <span>Save Attendance</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
-    </div>
+      {students.length > 0 && <div className="flex justify-end"><button type="button" onClick={saveAttendance} disabled={saving || !termId || !classId || !dirty} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Saving...' : dirty ? 'Save attendance' : 'Saved'}</button></div>}
+    </main>
   );
 }

@@ -1,78 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryAttendance, queryStudents, formatSupabaseError } from '@/lib/supabase';
+import { formatSupabaseError, getServerSupabaseClient, queryAttendance, queryStudents } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
-const attendanceRecordSchema = z.object({
-  class_id: z.string().uuid(),
-  date: z.string().date(),
-  attendance: z.array(
-    z.object({
-      student_id: z.string().uuid(),
-      status: z.enum(['present', 'absent', 'late', 'excused']),
-    })
-  ),
+const dateSchema = z.string().date();
+const statusSchema = z.enum(['present', 'absent', 'leave']);
+const saveSchema = z.object({
+  classId: z.string().uuid(),
+  termId: z.string().uuid().optional(),
+  date: dateSchema,
+  records: z.array(z.object({
+    studentId: z.string().uuid(),
+    status: statusSchema,
+    remarks: z.string().max(500).optional().default(''),
+  })),
 });
+
+async function getTermForDate(schoolId: string, date: string, termId?: string) {
+  let query = getServerSupabaseClient()
+    .from('terms')
+    .select('id, academic_year_id, type, start_date, end_date')
+    .eq('school_id', schoolId);
+
+  if (termId) query = query.eq('id', termId);
+  else query = query.lte('start_date', date).gte('end_date', date);
+
+  return query.maybeSingle();
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const classId = request.nextUrl.searchParams.get('class_id');
-    const date = request.nextUrl.searchParams.get('date');
     const schoolId = await getSchoolIdFromRequest(request);
+    const classId = request.nextUrl.searchParams.get('class_id');
+    const termId = request.nextUrl.searchParams.get('term_id');
+    const date = request.nextUrl.searchParams.get('date');
 
-    if (!classId || !date) {
-      return NextResponse.json(
-        { error: 'Class ID and date are required' },
-        { status: 400 }
-      );
+    if (typeof schoolId !== 'string') return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+    if (!classId || !termId || typeof date !== 'string' || !dateSchema.safeParse(date).success) {
+      return NextResponse.json({ error: 'class_id, term_id, and a valid date are required' }, { status: 400 });
     }
-
-    // Type guard to ensure schoolId is a string
-    if (typeof schoolId !== 'string') {
-      return NextResponse.json(
-        { error: 'Invalid school ID' },
-        { status: 400 }
-      );
-    }
-
-    // Validate school_id access
     const validation = await validateSchoolIdAccess(schoolId);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { error: validation.error || 'Invalid school access' },
-        { status: 400 }
-      );
-    }
+    if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
 
-    // Fetch students in the class
-    const { data: students, error: studentError } = await queryStudents()
-      .select('id, first_name, last_name')
-      .eq('school_id', schoolId)
-      .eq('current_class_id', classId)
-      .eq('status', 'active');
+    const { data: term, error: termError } = await getTermForDate(schoolId, date, termId);
+    if (termError || !term) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
+    if (date < term.start_date || date > term.end_date) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
 
-    if (studentError) {
-      throw studentError;
-    }
+    const [{ data: classRow, error: classError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
+      getServerSupabaseClient().from('school_classes').select('id, name, section').eq('id', classId).eq('school_id', schoolId).maybeSingle(),
+      queryStudents().select('id, first_name, last_name').eq('school_id', schoolId).eq('current_class_id', classId).eq('status', 'active').order('last_name').order('first_name'),
+      queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', classId).eq('term_id', term.id).eq('date', date),
+    ]);
+    if (classError || !classRow) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    if (studentError || attendanceError) throw studentError || attendanceError;
 
-    // Fetch existing attendance records
-    const { data: existingRecords } = await queryAttendance()
-      .select('student_id, status')
-      .eq('school_id', schoolId)
-      .eq('class_id', classId)
-      .eq('date', date);
+    const recordMap = new Map((existingRecords || []).map((record: any) => [record.student_id, record]));
+    const attendanceStudents = (students || []).map((student: any) => {
+      const record = recordMap.get(student.id);
+      return { studentId: student.id, studentName: `${student.first_name} ${student.last_name}`.trim(), status: record?.status || 'not-marked', remarks: record?.remarks || '' };
+    });
 
-    const recordMap = new Map(
-      (existingRecords || []).map((r: any) => [r.student_id, r.status])
-    );
-
-    const attendanceData = (students || []).map((student: any) => ({
-      student_id: student.id,
-      student_name: `${student.first_name} ${student.last_name}`,
-      status: recordMap.get(student.id) || null,
-    }));
-
-    return NextResponse.json({ students: attendanceData, total: attendanceData.length });
+    return NextResponse.json({ students: attendanceStudents, term, class: classRow, canEdit: true });
   } catch (error) {
     console.error('[v0] Attendance GET error:', error);
     return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
@@ -82,59 +70,31 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
-    if (!schoolId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (typeof schoolId !== 'string') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
+
+    const body = saveSchema.parse(await request.json());
+    const { data: term } = await getTermForDate(schoolId, body.date, body.termId);
+    if (!term || body.date < term.start_date || body.date > term.end_date) return NextResponse.json({ error: 'Attendance date is outside the selected term' }, { status: 400 });
+
+    const client = getServerSupabaseClient();
+    const { data: validStudents } = await queryStudents().select('id').eq('school_id', schoolId).eq('current_class_id', body.classId).eq('status', 'active').in('id', body.records.map((record) => record.studentId));
+    const validIds = new Set((validStudents || []).map((student: any) => student.id));
+    const records = body.records.filter((record) => validIds.has(record.studentId));
+    const savedAt = new Date().toISOString();
+
+    for (const record of records) {
+      const payload = { school_id: schoolId, student_id: record.studentId, class_id: body.classId, term_id: term.id, date: body.date, status: record.status, remarks: record.remarks || '', updated_at: savedAt };
+      const { data: existing } = await client.from('attendance_records').select('id').eq('school_id', schoolId).eq('student_id', record.studentId).eq('class_id', body.classId).eq('term_id', term.id).eq('date', body.date).maybeSingle();
+      const result = existing?.id ? await client.from('attendance_records').update(payload).eq('id', existing.id) : await client.from('attendance_records').insert({ ...payload, created_at: savedAt });
+      if (result.error) throw result.error;
     }
 
-    const accessError = await validateSchoolIdAccess(schoolId);
-    if (accessError) {
-      return NextResponse.json({ error: accessError }, { status: 403 });
-    }
-
-    const body = await request.json();
-
-    const { date, class_id, records } = z.object({
-      date: z.string().date(),
-      class_id: z.string().uuid(),
-      records: z.array(
-        z.object({
-          studentId: z.string().uuid(),
-          studentName: z.string(),
-          status: z.enum(['present', 'absent', 'leave']),
-        })
-      ),
-    }).parse(body);
-
-    // Insert attendance records
-    const attendanceRecords = records.map((record) => ({
-      school_id: schoolId,
-      student_id: record.studentId,
-      date,
-      status: record.status,
-      class_id,
-      created_at: new Date().toISOString(),
-    }));
-
-    const { error } = await queryAttendance().insert(attendanceRecords);
-
-    if (error) {
-      console.error('[v0] Attendance POST error:', error);
-      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      count: attendanceRecords.length,
-      message: `Successfully recorded attendance for ${attendanceRecords.length} students`,
-    });
+    return NextResponse.json({ success: true, count: records.length, savedAt });
   } catch (error) {
     console.error('[v0] Attendance POST error:', error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to save attendance' },
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) return NextResponse.json({ error: 'Invalid attendance data', details: error.issues }, { status: 400 });
+    return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
   }
 }
