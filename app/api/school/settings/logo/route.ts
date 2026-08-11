@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { requireRole } from '@/lib/auth-utils';
+import { getAuthenticatedProfile, getSchoolIdFromRequest, requireRole } from '@/lib/auth-utils';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -12,10 +12,16 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file');
-    const schoolId = formData.get('schoolId');
+    const submittedSchoolId = formData.get('schoolId');
+    const requestSchoolId = await getSchoolIdFromRequest(request);
+    const { profile, error: profileError } = await getAuthenticatedProfile(request);
 
-    if (!(file instanceof File) || typeof schoolId !== 'string' || !schoolId) {
+    if (!(file instanceof File) || typeof submittedSchoolId !== 'string' || !submittedSchoolId) {
       return NextResponse.json({ error: 'A logo file and school ID are required' }, { status: 400 });
+    }
+
+    if (profileError || !profile || profile.status !== 'active' || profile.school_id !== submittedSchoolId || requestSchoolId !== submittedSchoolId) {
+      return NextResponse.json({ error: 'You are not authorized to update this school' }, { status: 403 });
     }
 
     if (!ALLOWED_TYPES.has(file.type)) {
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServerSupabaseClient();
     const extension = file.type.split('/')[1].replace('jpeg', 'jpg');
-    const path = `${schoolId}/logo.${extension}`;
+    const path = `${submittedSchoolId}/logo.${extension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await supabase.storage
@@ -44,7 +50,7 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from('schools')
       .update({ logo_url: publicUrl.publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', schoolId);
+      .eq('id', submittedSchoolId);
 
     if (updateError) {
       console.error('[v0] School logo record update failed:', updateError);
