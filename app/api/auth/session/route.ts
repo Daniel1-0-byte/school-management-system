@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Fetch profile using service role (bypasses RLS)
 
     const { data: profileData, error: profileError } = await queryProfiles()
-      .select('id, school_id, system_role, first_name, last_name, status, setup_completed')
+      .select('id, school_id, system_role, first_name, last_name, status, setup_completed, signature_url')
       .eq('id', user.id)
       .single();
 
