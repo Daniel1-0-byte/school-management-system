@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryGradeEntriesWithAssessment, formatSupabaseError, getServerSupabaseClient, queryAssessments } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest, requireGradeAssessmentAccess, requireGradeStreamAccess } from '@/lib/auth-utils';
 import { validateGradeEntry, validateBulkGradeEntry } from '@/lib/schemas';
 
 /**
@@ -27,6 +27,23 @@ export async function GET(request: NextRequest) {
     const streamId = request.nextUrl.searchParams.get('stream_id');
     const studentId = request.nextUrl.searchParams.get('student_id');
     const status = request.nextUrl.searchParams.get('status');
+
+    const gradeAccessError = assessmentId
+      ? await requireGradeAssessmentAccess(request, schoolId, assessmentId)
+      : streamId
+        ? await (async () => {
+            const { data: stream } = await getServerSupabaseClient()
+              .from('school_class_streams')
+              .select('academic_year_id')
+              .eq('id', streamId)
+              .eq('school_id', schoolId)
+              .single();
+            return stream?.academic_year_id
+              ? requireGradeStreamAccess(request, schoolId, streamId, stream.academic_year_id)
+              : NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+          })()
+        : null;
+    if (gradeAccessError) return gradeAccessError;
 
     // Build query
     let query = queryGradeEntriesWithAssessment()
@@ -103,6 +120,9 @@ export async function POST(request: NextRequest) {
     if (!validatedData) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
+
+    const gradeAccessError = await requireGradeAssessmentAccess(request, schoolId, validatedData.assessment_id);
+    if (gradeAccessError) return gradeAccessError;
 
     // Verify assessment exists and belongs to school
     const { data: assessment, error: assessmentError } = await queryAssessments()

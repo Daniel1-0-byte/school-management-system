@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireGradeStreamAccess } from '@/lib/auth-utils';
 import { fetchClassSubjects } from '@/lib/class-subjects-utils';
 
 /**
@@ -45,6 +45,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const gradeAccessError = await requireGradeStreamAccess(request, schoolId, streamId, academicYearId);
+    if (gradeAccessError) return gradeAccessError;
 
     const supabase = getServerSupabaseClient();
 

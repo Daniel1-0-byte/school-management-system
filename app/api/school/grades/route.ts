@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryGrades, queryStudents, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { queryGrades, queryStudents, getPaginatedResults, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
+import { getAuthenticatedProfile, getSchoolIdFromRequest, validateSchoolIdAccess, requireGradeClassAccess } from '@/lib/auth-utils';
 
 const gradeEntrySchema = z.object({
   student_id: z.string().uuid(),
@@ -44,6 +44,18 @@ export async function POST(request: NextRequest) {
           })
         ),
       }).parse(body);
+
+      const { data: schoolClass } = await getServerSupabaseClient()
+        .from('school_classes')
+        .select('academic_year_id')
+        .eq('id', class_id)
+        .eq('school_id', schoolId)
+        .single();
+      if (!schoolClass?.academic_year_id) {
+        return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+      }
+      const gradeAccessError = await requireGradeClassAccess(request, schoolId, class_id, schoolClass.academic_year_id);
+      if (gradeAccessError) return gradeAccessError;
 
       const gradeRecords = records.map((record) => ({
         school_id: schoolId,
