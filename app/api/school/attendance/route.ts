@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Attendance POST error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
     }
     return NextResponse.json(
       { error: 'Failed to save attendance' },
