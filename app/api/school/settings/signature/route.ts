@@ -9,7 +9,7 @@ const signatureSchema = z.object({
 
 /**
  * PUT /api/school/settings/signature
- * Update headteacher signature URL for the current user
+ * Update principal signature URL for the current admin user
  * Only admins can update their own signature
  */
 export async function PUT(request: NextRequest) {
