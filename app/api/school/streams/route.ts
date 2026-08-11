@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { querySchoolClassStreams, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getAuthenticatedProfile, getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 /**
  * GET /api/school/streams
@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
         { error: validation.error || 'Invalid school access' },
         { status: 400 }
       );
+    }
+
+    const { profile, error: profileAccessError } = await getAuthenticatedProfile(request);
+    if (profileAccessError || !profile || profile.school_id !== schoolId || profile.status !== 'active') {
+      return NextResponse.json({ error: profileAccessError || 'Forbidden' }, { status: profileAccessError ? 401 : 403 });
     }
 
     // Fetch streams
@@ -55,8 +60,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [] });
     }
 
+    let visibleStreams = streams;
+    if (profile.system_role === 'Teacher') {
+      const { data: assignments, error: assignmentError } = await getServerSupabaseClient()
+        .from('teacher_assignments')
+        .select('class_id')
+        .eq('school_id', schoolId)
+        .eq('teacher_id', profile.id)
+        .eq('academic_year_id', academicYearId || streams[0].academic_year_id);
+
+      if (assignmentError) {
+        console.error('[v0] Teacher stream assignment lookup error:', assignmentError);
+        return NextResponse.json({ error: 'Failed to resolve teacher assignments' }, { status: 500 });
+      }
+
+      const assignedClassIds = new Set((assignments || []).map((assignment: { class_id: string }) => assignment.class_id));
+      visibleStreams = streams.filter((stream: any) => assignedClassIds.has(stream.school_class_id));
+    }
+
+    if (visibleStreams.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
     // Get unique school_class_ids from streams
-    const classIds = [...new Set(streams.map((s: any) => s.school_class_id).filter(Boolean))];
+    const classIds = [...new Set(visibleStreams.map((s: any) => s.school_class_id).filter(Boolean))];
 
     // Fetch school_classes data
     let classesData: any[] = [];
@@ -82,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Merge streams with school_classes data
-    const mergedData = streams.map((stream: any) => ({
+    const mergedData = visibleStreams.map((stream: any) => ({
       ...stream,
       school_classes: classesMap.get(stream.school_class_id) || null,
     }));

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireGradeStreamAccess } from '@/lib/auth-utils';
 
 /**
  * POST /api/school/assessments/auto-create
@@ -29,6 +29,24 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { data: termForAccess, error: termAccessError } = await getServerSupabaseClient()
+      .from('terms')
+      .select('academic_year_id')
+      .eq('id', term_id)
+      .eq('school_id', schoolId)
+      .single();
+    if (termAccessError || !termForAccess?.academic_year_id) {
+      return NextResponse.json({ error: 'Invalid term' }, { status: 404 });
+    }
+
+    const gradeAccessError = await requireGradeStreamAccess(
+      request,
+      schoolId,
+      stream_id,
+      termForAccess.academic_year_id
+    );
+    if (gradeAccessError) return gradeAccessError;
 
     // Get the academic year to include in assessment name
     const { data: term, error: termError } = await getServerSupabaseClient()

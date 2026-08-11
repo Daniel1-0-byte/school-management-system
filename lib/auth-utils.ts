@@ -284,6 +284,138 @@ export async function requireRole(
 }
 
 /**
+ * Resolve the verified session user and current profile without trusting client claims.
+ */
+export async function getAuthenticatedProfile(request: NextRequest) {
+  const authToken = request.cookies.get('sb-auth-token')?.value;
+  if (!authToken) return { user: null, profile: null, error: 'Authentication required' };
+
+  const supabase = getServerSupabaseClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser(authToken);
+  if (userError || !user) return { user: null, profile: null, error: 'Authentication required' };
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, school_id, system_role, status')
+    .eq('id', user.id)
+    .single();
+  if (profileError || !profile) return { user, profile: null, error: 'User profile not found' };
+
+  return { user, profile, error: null };
+}
+
+/**
+ * Authorize a grade operation for a class and academic year.
+ * Admins are unrestricted; Teachers must have an active assignment for the
+ * exact school, class, teacher, and academic year. Subject names are not used
+ * for authorization so one class assignment unlocks every subject in that class.
+ */
+export async function requireGradeClassAccess(
+  request: NextRequest,
+  schoolId: string,
+  classId: string,
+  academicYearId: string
+): Promise<NextResponse | null> {
+  const authToken = request.cookies.get('sb-auth-token')?.value;
+  if (!authToken) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser(authToken);
+  if (userError || !user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('system_role, school_id, status')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile || profile.school_id !== schoolId || profile.status !== 'active') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (profile.system_role === 'Admin') {
+    return null;
+  }
+
+  if (profile.system_role !== 'Teacher') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const { data: assignment, error: assignmentError } = await supabase
+    .from('teacher_assignments')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('teacher_id', user.id)
+    .eq('class_id', classId)
+    .eq('academic_year_id', academicYearId)
+    .limit(1)
+    .maybeSingle();
+
+  if (assignmentError || !assignment) {
+    return NextResponse.json({ error: 'You are not assigned to this class' }, { status: 403 });
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a stream to its class/year and authorize a grade operation.
+ */
+export async function requireGradeStreamAccess(
+  request: NextRequest,
+  schoolId: string,
+  streamId: string,
+  academicYearId: string
+): Promise<NextResponse | null> {
+  const supabase = getServerSupabaseClient();
+  const { data: stream, error } = await supabase
+    .from('school_class_streams')
+    .select('school_class_id, academic_year_id')
+    .eq('id', streamId)
+    .eq('school_id', schoolId)
+    .eq('academic_year_id', academicYearId)
+    .single();
+
+  if (error || !stream?.school_class_id) {
+    return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+  }
+
+  return requireGradeClassAccess(
+    request,
+    schoolId,
+    stream.school_class_id,
+    stream.academic_year_id
+  );
+}
+
+/**
+ * Authorize a grade operation through an assessment's stream and academic year.
+ */
+export async function requireGradeAssessmentAccess(
+  request: NextRequest,
+  schoolId: string,
+  assessmentId: string
+): Promise<NextResponse | null> {
+  const supabase = getServerSupabaseClient();
+  const { data: assessment, error } = await supabase
+    .from('assessments')
+    .select('stream_id, academic_year_id')
+    .eq('id', assessmentId)
+    .eq('school_id', schoolId)
+    .single();
+
+  if (error || !assessment?.stream_id || !assessment.academic_year_id) {
+    return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+  }
+
+  return requireGradeStreamAccess(request, schoolId, assessment.stream_id, assessment.academic_year_id);
+}
+
+/**
  * Extract authenticated user ID from request
  * Returns the UUID of the authenticated user from Supabase JWT auth token
  * Returns null if user is not authenticated or token is invalid

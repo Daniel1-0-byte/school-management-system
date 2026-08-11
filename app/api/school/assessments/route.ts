@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAssessments, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, requireGradeStreamAccess } from '@/lib/auth-utils';
 import { validateAssessment } from '@/lib/schemas';
 
 /**
@@ -39,6 +39,11 @@ export async function GET(request: NextRequest) {
     if (streamId) query = query.eq('stream_id', streamId);
     if (subjectId) query = query.eq('subject_id', subjectId);
     if (status) query = query.eq('status', status);
+
+    if (streamId && academicYearId) {
+      const gradeAccessError = await requireGradeStreamAccess(request, schoolId, streamId, academicYearId);
+      if (gradeAccessError) return gradeAccessError;
+    }
 
     const { data, error } = await query;
 
@@ -107,6 +112,14 @@ export async function POST(request: NextRequest) {
     if (streamError || !stream?.school_class_id) {
       return NextResponse.json({ error: 'Stream does not have a class assigned' }, { status: 400 });
     }
+
+    const gradeAccessError = await requireGradeStreamAccess(
+      request,
+      schoolId,
+      validatedData.stream_id,
+      validatedData.academic_year_id
+    );
+    if (gradeAccessError) return gradeAccessError;
 
     // Get enrolled student count for this class
     const { count: studentCount } = await getServerSupabaseClient()
