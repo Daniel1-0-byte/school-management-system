@@ -8,8 +8,8 @@ import { generateAdmissionNumber } from '@/lib/services/admission-number-service
 const bulkImportSchema = z.object({
   school_id: z.string().uuid(),
   module_name: z.string(),
-  rows_to_create: z.array(z.record(z.any())),
-  rows_to_update: z.array(z.record(z.any())),
+  rows_to_create: z.array(z.record(z.string(), z.any())),
+  rows_to_update: z.array(z.record(z.string(), z.any())),
 });
 
 export async function POST(request: NextRequest) {
@@ -286,7 +286,7 @@ export async function POST(request: NextRequest) {
     console.error('[v0] Bulk import error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

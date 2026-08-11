@@ -127,25 +127,27 @@ export async function POST(request: NextRequest) {
     const gradeScale = policy?.grade_scale ?? { A: 80, B: 70, C: 60, D: 50, F: 0 };
 
     // Calculate total_score using weights
-    let totalScore = null;
-    let letterGrade = null;
+    let totalScore: number | null = null;
+    let letterGrade: string | null = null;
+    const classScore = validatedData.class_score ?? null;
+    const examScore = validatedData.exam_score ?? null;
 
-    if (validatedData.class_score !== null && validatedData.exam_score !== null) {
-      totalScore = (validatedData.class_score * classWeight) + (validatedData.exam_score * examWeight);
+    if (classScore !== null && examScore !== null) {
+      totalScore = (classScore * classWeight) + (examScore * examWeight);
       letterGrade =
         totalScore >= gradeScale.A ? 'A' :
         totalScore >= gradeScale.B ? 'B' :
         totalScore >= gradeScale.C ? 'C' :
         totalScore >= gradeScale.D ? 'D' : 'F';
-    } else if (validatedData.class_score !== null) {
-      totalScore = validatedData.class_score;
+    } else if (classScore !== null) {
+      totalScore = classScore;
       letterGrade =
         totalScore >= gradeScale.A ? 'A' :
         totalScore >= gradeScale.B ? 'B' :
         totalScore >= gradeScale.C ? 'C' :
         totalScore >= gradeScale.D ? 'D' : 'F';
-    } else if (validatedData.exam_score !== null) {
-      totalScore = validatedData.exam_score;
+    } else if (examScore !== null) {
+      totalScore = examScore;
       letterGrade =
         totalScore >= gradeScale.A ? 'A' :
         totalScore >= gradeScale.B ? 'B' :
@@ -172,7 +174,7 @@ export async function POST(request: NextRequest) {
           exam_score: validatedData.exam_score,
           total_score: totalScore,
           letter_grade: letterGrade,
-          recorded_by: validatedData.recorded_by,
+              teacher_id: validatedData.teacher_id ?? null,
           submission_status: 'draft',
           updated_at: new Date().toISOString(),
         })
@@ -192,7 +194,7 @@ export async function POST(request: NextRequest) {
           exam_score: validatedData.exam_score,
           total_score: totalScore,
           letter_grade: letterGrade,
-          recorded_by: validatedData.recorded_by,
+              teacher_id: validatedData.teacher_id ?? null,
           submission_status: 'draft',
         })
         .select('*')
@@ -307,25 +309,27 @@ export async function PUT(request: NextRequest) {
 
     for (const entry of validatedData.entries) {
       // Calculate total_score using weights and letter_grade
-      let totalScore = null;
-      let letterGrade = null;
+      let totalScore: number | null = null;
+      let letterGrade: string | null = null;
+      const classScore = entry.class_score ?? null;
+      const examScore = entry.exam_score ?? null;
 
-      if (entry.class_score !== null && entry.exam_score !== null) {
-        totalScore = (entry.class_score * classWeight) + (entry.exam_score * examWeight);
+      if (classScore !== null && examScore !== null) {
+        totalScore = (classScore * classWeight) + (examScore * examWeight);
         letterGrade =
           totalScore >= gradeScale.A ? 'A' :
           totalScore >= gradeScale.B ? 'B' :
           totalScore >= gradeScale.C ? 'C' :
           totalScore >= gradeScale.D ? 'D' : 'F';
-      } else if (entry.class_score !== null) {
-        totalScore = entry.class_score;
+      } else if (classScore !== null) {
+        totalScore = classScore;
         letterGrade =
           totalScore >= gradeScale.A ? 'A' :
           totalScore >= gradeScale.B ? 'B' :
           totalScore >= gradeScale.C ? 'C' :
           totalScore >= gradeScale.D ? 'D' : 'F';
-      } else if (entry.exam_score !== null) {
-        totalScore = entry.exam_score;
+      } else if (examScore !== null) {
+        totalScore = examScore;
         letterGrade =
           totalScore >= gradeScale.A ? 'A' :
           totalScore >= gradeScale.B ? 'B' :

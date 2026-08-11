@@ -8,7 +8,7 @@ const bulkOperationSchema = z.object({
   module_name: z.string(),
   operation_type: z.enum(['delete', 'archive', 'activate', 'deactivate', 'update', 'assign_class', 'assign_subject', 'assign_teacher']),
   target_ids: z.array(z.string()),
-  update_data: z.record(z.any()).optional(),
+  update_data: z.record(z.string(), z.any()).optional(),
   assignment_target: z.string().optional(),
 });
 
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     console.error('[v0] Bulk operation error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

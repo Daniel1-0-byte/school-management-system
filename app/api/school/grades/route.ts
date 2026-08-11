@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     console.error('[v0] Grades POST error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

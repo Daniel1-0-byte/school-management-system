@@ -7,7 +7,7 @@ const exportSchema = z.object({
   school_id: z.string().uuid(),
   module_name: z.string(),
   scope: z.enum(['current_page', 'filtered', 'selected', 'entire']),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
   selected_ids: z.array(z.string()).optional(),
 });
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     console.error('[v0] Export error:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }
