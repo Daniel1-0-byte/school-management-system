@@ -67,7 +67,7 @@ export default function SchoolLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('Admin');
   const [userName, setUserName] = useState('School Admin');

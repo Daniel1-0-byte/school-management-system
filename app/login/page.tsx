@@ -135,16 +135,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-md w-full mx-auto p-4 py-12">
-        <Link href="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors">
+        <Link href="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to Home
         </Link>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 space-y-6">
+        <div className="bg-card border border-border rounded-xl p-8 space-y-6">
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-white">Log In</h1>
+            <h1 className="text-2xl font-bold text-foreground">Log In</h1>
             <p className="text-slate-400">Sign in to your school account</p>
           </div>
 
@@ -158,7 +158,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Email Address
               </label>
               <input
@@ -167,9 +167,9 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={handleChange}
                 disabled={loading}
-                className={`w-full px-4 py-2 rounded-lg bg-slate-700 border ${
-                  errors.email ? 'border-red-500' : 'border-slate-600'
-                } text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50`}
+                className={`w-full px-4 py-2 rounded-lg bg-background border ${
+                  errors.email ? 'border-red-500' : 'border-input'
+                } text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50`}
                 placeholder="your@school.edu"
                 autoComplete="email"
               />
@@ -179,7 +179,7 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-sm font-medium text-foreground">
                   Password
                 </label>
                 <Link href="/forgot-password" className="text-xs text-blue-400 hover:text-blue-300">
@@ -193,16 +193,16 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={handleChange}
                   disabled={loading}
-                  className={`w-full px-4 py-2 rounded-lg bg-slate-700 border ${
-                    errors.password ? 'border-red-500' : 'border-slate-600'
-                  } text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors pr-10 disabled:opacity-50`}
+                  className={`w-full px-4 py-2 rounded-lg bg-background border ${
+                    errors.password ? 'border-red-500' : 'border-input'
+                  } text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500 transition-colors pr-10 disabled:opacity-50`}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-white disabled:opacity-50"
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground disabled:opacity-50"
                   disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -215,7 +215,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
+              className="w-full px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-foreground font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-6"
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? 'Signing In...' : 'Sign In'}
