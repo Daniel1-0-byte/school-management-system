@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CalendarDays, Check, Loader2, Save, Users, X } from 'lucide-react';
+import { SchoolService } from '@/lib/services/school-service';
+import type { Class } from '@/lib/transformers/class-transformer';
 
 type Status = 'present' | 'absent' | 'leave' | 'not-marked';
 type Student = { studentId: string; studentName: string; status: Status; remarks: string };
 type Year = { id: string; year: string | number; start_date: string; end_date: string; is_active: boolean };
 type Term = { id: string; academic_year_id: string; type: string; start_date: string; end_date: string };
-type SchoolClass = { id: string; name: string; section: string };
+type SessionData = { session?: { schoolId?: string } };
 
 const statusStyles: Record<Status, string> = {
   present: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
@@ -20,7 +22,7 @@ export default function AttendancePage() {
   const today = new Date().toISOString().slice(0, 10);
   const [years, setYears] = useState<Year[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [yearId, setYearId] = useState('');
   const [termId, setTermId] = useState('');
@@ -45,17 +47,21 @@ export default function AttendancePage() {
     const loadFilters = async () => {
       try {
         setLoading(true);
-        const [yearsResponse, classesResponse] = await Promise.all([
+        const [yearsResponse, sessionResponse] = await Promise.all([
           fetch('/api/school/academic-years'),
-          fetch('/api/school/classes?page=1&pageSize=100'),
+          fetch('/api/auth/session'),
         ]);
         const yearsData = await yearsResponse.json();
-        const classesData = await classesResponse.json();
+        const sessionData = (await sessionResponse.json()) as SessionData;
         if (!yearsResponse.ok) throw new Error(yearsData.error || 'Failed to load academic years');
-        if (!classesResponse.ok) throw new Error(classesData.error || 'Failed to load classes');
+        if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
+
+        const classesResult = await SchoolService.getClasses(sessionData.session.schoolId, { pageSize: 100 });
+        if (classesResult.error) throw new Error(classesResult.error);
+
         const nextYears = yearsData.data || [];
         setYears(nextYears);
-        setClasses(classesData.data || []);
+        setClasses(classesResult.classes);
         const activeYear = nextYears.find((year: Year) => year.is_active) || nextYears[0];
         if (activeYear) setYearId(activeYear.id);
       } catch (loadError) {
@@ -175,7 +181,7 @@ export default function AttendancePage() {
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Class
             <select value={classId} onChange={(event) => setClassId(event.target.value)} disabled={!classes.length} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
-              <option value="">Select class</option>{classes.map((schoolClass) => <option key={schoolClass.id} value={schoolClass.id}>{schoolClass.name} · {schoolClass.section}</option>)}
+              <option value="">Select class</option>{classes.map((schoolClass) => <option key={schoolClass.id} value={schoolClass.id}>{schoolClass.className}{schoolClass.section ? ` · ${schoolClass.section}` : ''}</option>)}
             </select>
           </label>
         </div>
