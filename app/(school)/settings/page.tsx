@@ -228,6 +228,16 @@ export default function SettingsPage() {
 
             </div>
 
+            {!isLoading && schoolId && (
+              <div className="pt-6 border-t border-border">
+                <LogoUpload
+                  currentLogoUrl={logoUrl}
+                  schoolId={schoolId}
+                  onUploadSuccess={(url) => setLogoUrl(url)}
+                />
+              </div>
+            )}
+
             {/* Save Button */}
             <div className="pt-4 border-t border-border flex justify-end">
               <button
@@ -249,25 +259,6 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
-
-          {/* School Logo */}
-          {!isLoading && schoolId && (
-            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <Building2 className="w-6 h-6 text-primary" />
-                  School Logo
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">Upload your school logo for report cards</p>
-              </div>
-
-              <LogoUpload
-                currentLogoUrl={logoUrl}
-                schoolId={schoolId}
-                onUploadSuccess={(url) => setLogoUrl(url)}
-              />
-            </div>
-          )}
 
           {/* Headteacher Signature */}
           {!isLoading && userId && (
