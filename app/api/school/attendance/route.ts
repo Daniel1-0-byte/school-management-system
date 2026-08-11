@@ -35,6 +35,8 @@ export async function GET(request: NextRequest) {
     const termId = request.nextUrl.searchParams.get('term_id');
     const date = request.nextUrl.searchParams.get('date');
 
+    console.log('[v0] Attendance GET request:', { schoolId, classId, termId, date });
+
     if (typeof schoolId !== 'string') return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
     if (!classId || !termId || typeof date !== 'string' || !dateSchema.safeParse(date).success) {
       return NextResponse.json({ error: 'class_id, term_id, and a valid date are required' }, { status: 400 });
@@ -43,15 +45,51 @@ export async function GET(request: NextRequest) {
     if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
 
     const { data: term, error: termError } = await getTermForDate(schoolId, date, termId);
+    console.log('[v0] Attendance term lookup:', { schoolId, termId, date, term, termError: termError ? formatSupabaseError(termError) : null });
     if (termError || !term) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
     if (date < term.start_date || date > term.end_date) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
 
-    const [{ data: classRow, error: classError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
-      queryClasses().select('id, class_name, grade_level, section, academic_year_id, status').eq('id', classId).eq('school_id', schoolId).maybeSingle(),
+    const classQuery = queryClasses()
+      .select('id, class_name, grade_level, section, academic_year_id, status')
+      .eq('id', classId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const legacyClassQuery = getServerSupabaseClient()
+      .from('classes')
+      .select('id, name, level, academic_year_id')
+      .eq('id', classId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const [{ data: classRow, error: classError }, { data: legacyClassRow, error: legacyClassError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
+      classQuery,
+      legacyClassQuery,
       queryStudents().select('id, first_name, last_name').eq('school_id', schoolId).eq('current_class_id', classId).eq('status', 'active').order('last_name').order('first_name'),
       queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', classId).eq('term_id', term.id).eq('date', date),
     ]);
-    if (classError || !classRow) return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    console.log('[v0] Attendance class lookup:', {
+      requestedClassId: classId,
+      schoolId,
+      schoolClassesRow: classRow,
+      schoolClassesError: classError ? formatSupabaseError(classError) : null,
+      legacyClassesRow: legacyClassRow,
+      legacyClassesError: legacyClassError ? formatSupabaseError(legacyClassError) : null,
+      studentCount: students?.length ?? 0,
+      studentError: studentError ? formatSupabaseError(studentError) : null,
+      attendanceRecordCount: existingRecords?.length ?? 0,
+      attendanceError: attendanceError ? formatSupabaseError(attendanceError) : null,
+    });
+
+    const resolvedClass = classRow || (legacyClassRow ? {
+      id: legacyClassRow.id,
+      class_name: legacyClassRow.name,
+      grade_level: legacyClassRow.level,
+      section: null,
+      academic_year_id: legacyClassRow.academic_year_id,
+      status: 'active',
+    } : null);
+    if ((classError && !legacyClassRow) || (legacyClassError && !classRow) || !resolvedClass) {
+      return NextResponse.json({ error: 'Class not found' }, { status: 404 });
+    }
     if (studentError || attendanceError) throw studentError || attendanceError;
 
     const recordMap = new Map((existingRecords || []).map((record: any) => [record.student_id, record]));
@@ -64,12 +102,12 @@ export async function GET(request: NextRequest) {
       students: attendanceStudents,
       term,
       class: {
-        id: classRow.id,
-        name: classRow.class_name,
-        gradeLevel: classRow.grade_level,
-        section: classRow.section,
-        academicYearId: classRow.academic_year_id,
-        status: classRow.status,
+        id: resolvedClass.id,
+        name: resolvedClass.class_name,
+        gradeLevel: resolvedClass.grade_level,
+        section: resolvedClass.section,
+        academicYearId: resolvedClass.academic_year_id,
+        status: resolvedClass.status,
       },
       canEdit: true,
     });
