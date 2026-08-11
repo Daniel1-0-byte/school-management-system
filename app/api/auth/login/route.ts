@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RECAPTCHA_SECRET_KEY } from '@/lib/env';
+import { createClient } from '@supabase/supabase-js';
+import { RECAPTCHA_SECRET_KEY, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/env';
 import { RECAPTCHA_VERIFY_URL } from '@/lib/api-constants';
 import { validateLogin } from '@/lib/schemas';
 import { getClientIp } from '@/lib/auth-utils';
-import { getServerSupabaseClient, queryProfiles, queryAuditLogs } from '@/lib/supabase';
-import { sendEmail } from '@/lib/email';
+import { getServerSupabaseClient, queryAuditLogs } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,11 +44,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create Supabase client
-    const supabase = getServerSupabaseClient();
+    // Keep the auth client isolated so signInWithPassword cannot replace the
+    // credentials used by the service-role client for subsequent database work.
+    const authSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Attempt login with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // Attempt login with the anon client only.
+    const { data: authData, error: authError } = await authSupabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -66,10 +67,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create a fresh service-role client after authentication. Never call auth.*
+    // on this client; it is reserved for trusted database operations.
+    const supabase = getServerSupabaseClient();
+
     // Get user profile using service role client (bypasses RLS)
-    console.log('[v0][LOGIN] Looking for profile:', { userId: authData.user.id, email });
-    
-    const { data: profileData, error: profileError } = await queryProfiles()
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
       .select('id, system_role, status, school_id, setup_completed')
       .eq('id', authData.user.id)
       .single();
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
       console.error('[v0][LOGIN] Profile query error:', { 
         error: profileError.message,
         code: profileError.code,
-        status: profileError.status,
+        status: profileError.code,
         userId: authData.user.id
       });
     }
@@ -104,37 +108,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if school is approved
-    console.log('[v0][LOGIN] Supabase project in use:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    // Use the already-created service-role client for this system-level check.
-    // This must work for every role, including Teachers whose browser-scoped
-    // client is not allowed to read schools by the schools_select_own policy.
-    const directFetchResult = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/schools?id=eq.${profileData.school_id}&select=id,status,name`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-      }
-    );
-    const directFetchBody = await directFetchResult.text();
-    console.log('[v0][LOGIN] Direct REST fetch result:', {
-      status: directFetchResult.status,
-      statusText: directFetchResult.statusText,
-      body: directFetchBody,
-    });
-
-    const rawResult = await supabase
-      .from('schools')
-      .select('id, status, name')
-      .eq('id', profileData.school_id);
-    console.log('[v0][LOGIN] Raw schools query result (no .single()):', {
-      rowCount: rawResult.data?.length,
-      rows: rawResult.data,
-      error: rawResult.error,
-    });
-
+    // Check if school is approved using the service-role client only.
     const { data: schoolCheckData, error: schoolCheckError } = await supabase
       .from('schools')
       .select('id, status, name')
@@ -145,7 +119,7 @@ export async function POST(request: NextRequest) {
       console.error('[v0][LOGIN] School query error:', {
         error: schoolCheckError.message,
         code: schoolCheckError.code,
-        status: schoolCheckError.status,
+        status: schoolCheckError.code,
         schoolId: profileData.school_id,
       });
 
