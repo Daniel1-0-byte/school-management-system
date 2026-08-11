@@ -27,23 +27,17 @@ export const supabase = {
 };
 
 // Server-side Supabase client (service role key - bypasses RLS)
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-let serverSupabase: any = null;
-
 export function getServerSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new Error(
       'Server Supabase configuration missing. Please set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment variables.'
     );
   }
-  
-  if (!serverSupabase) {
-    serverSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-  }
-  
-  return serverSupabase;
+
+  return createClient(supabaseUrl, supabaseServiceRoleKey);
 }
 
 // Helper function to check if environment variables are set
