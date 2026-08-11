@@ -24,7 +24,6 @@ export default function SettingsPage() {
     phone: '+91-1234567890',
     email: 'info@school.edu',
     principalName: 'Dr. Sharma',
-    affiliation: 'CBSE',
   });
   const [schoolId, setSchoolId] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
@@ -46,7 +45,6 @@ export default function SettingsPage() {
             phone: data.phone || '',
             email: data.email || '',
             principalName: data.principal_name || '',
-            affiliation: data.affiliation || 'CBSE',
           });
           setSchoolId(data.id);
           setLogoUrl(data.logo_url);
@@ -89,7 +87,6 @@ export default function SettingsPage() {
         phone_number: schoolInfo.phone,
         email: schoolInfo.email,
         principal_name: schoolInfo.principalName,
-        affiliation: schoolInfo.affiliation,
         logo_url: logoUrl,
       };
 
@@ -229,20 +226,6 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {/* Affiliation */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Board Affiliation</label>
-                <select
-                  value={schoolInfo.affiliation}
-                  onChange={(e) => setSchoolInfo({ ...schoolInfo, affiliation: e.target.value })}
-                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
-                >
-                  <option value="CBSE">CBSE</option>
-                  <option value="ICSE">ICSE</option>
-                  <option value="State">State Board</option>
-                  <option value="IB">IB</option>
-                </select>
-              </div>
             </div>
 
             {/* Save Button */}
