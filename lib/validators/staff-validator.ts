@@ -55,7 +55,7 @@ export class StaffValidator {
    * Get validation error message
    */
   static getErrorMessage(error: z.ZodError): string {
-    const firstError = error.errors[0];
+    const firstError = error.issues[0];
     return firstError?.message || 'Validation failed';
   }
 }

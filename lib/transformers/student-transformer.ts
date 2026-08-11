@@ -4,6 +4,7 @@
  */
 
 import type { Student } from '@/types';
+export type { Student } from '@/types';
 
 export interface StudentRecord {
   id: string;
