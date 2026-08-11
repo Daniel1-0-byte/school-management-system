@@ -83,6 +83,12 @@ export default function AttendancePage() {
         const sessionData = (await sessionResponse.json()) as SessionData;
         if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
         const classesResult = await SchoolService.getClasses(sessionData.session.schoolId, { pageSize: 100 });
+        console.log('[v0] Attendance classes response:', {
+          schoolId: sessionData.session.schoolId,
+          count: classesResult.classes.length,
+          classes: classesResult.classes,
+          error: classesResult.error || null,
+        });
         if (classesResult.error) throw new Error(classesResult.error);
         setClasses(classesResult.classes);
 
@@ -105,8 +111,11 @@ export default function AttendancePage() {
       setLoadingRegister(true);
       setError(null);
       setMessage(null);
-      const response = await fetch(`/api/school/attendance?class_id=${classId}&term_id=${termId}&date=${date}`);
+      const requestUrl = `/api/school/attendance?class_id=${classId}&term_id=${termId}&date=${date}`;
+      console.log('[v0] Attendance register request:', { requestUrl, classId, termId, date });
+      const response = await fetch(requestUrl);
       const data = await response.json();
+      console.log('[v0] Attendance register response:', { status: response.status, ok: response.ok, data });
       if (!response.ok) throw new Error(data.error || 'Failed to load attendance');
       setStudents(data.students || []);
       setDirty(false);
