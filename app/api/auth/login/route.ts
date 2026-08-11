@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if school is approved
+    console.log('[v0][LOGIN] Supabase project in use:', process.env.NEXT_PUBLIC_SUPABASE_URL);
     // Use the already-created service-role client for this system-level check.
     // This must work for every role, including Teachers whose browser-scoped
     // client is not allowed to read schools by the schools_select_own policy.
