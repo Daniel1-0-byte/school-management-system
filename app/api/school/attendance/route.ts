@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { formatSupabaseError, getServerSupabaseClient, queryAttendance, queryStudents } from '@/lib/supabase';
+import { formatSupabaseError, getServerSupabaseClient, queryAttendance, queryClasses, queryStudents } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const dateSchema = z.string().date();
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (date < term.start_date || date > term.end_date) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
 
     const [{ data: classRow, error: classError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
-      getServerSupabaseClient().from('school_classes').select('id, name, section').eq('id', classId).eq('school_id', schoolId).maybeSingle(),
+      queryClasses().select('id, class_name, grade_level, section, academic_year_id, status').eq('id', classId).eq('school_id', schoolId).maybeSingle(),
       queryStudents().select('id, first_name, last_name').eq('school_id', schoolId).eq('current_class_id', classId).eq('status', 'active').order('last_name').order('first_name'),
       queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', classId).eq('term_id', term.id).eq('date', date),
     ]);
@@ -60,7 +60,19 @@ export async function GET(request: NextRequest) {
       return { studentId: student.id, studentName: `${student.first_name} ${student.last_name}`.trim(), status: record?.status || 'not-marked', remarks: record?.remarks || '' };
     });
 
-    return NextResponse.json({ students: attendanceStudents, term, class: classRow, canEdit: true });
+    return NextResponse.json({
+      students: attendanceStudents,
+      term,
+      class: {
+        id: classRow.id,
+        name: classRow.class_name,
+        gradeLevel: classRow.grade_level,
+        section: classRow.section,
+        academicYearId: classRow.academic_year_id,
+        status: classRow.status,
+      },
+      canEdit: true,
+    });
   } catch (error) {
     console.error('[v0] Attendance GET error:', error);
     return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
