@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { formatSupabaseError, getServerSupabaseClient, queryAttendance } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest } from '@/lib/auth-utils';
 
 const dateSchema = z.string().date();
 const statusSchema = z.enum(['present', 'absent', 'leave']);
@@ -104,7 +104,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
+    const authenticatedUserId = getUserIdFromRequest(request);
     if (typeof schoolId !== 'string') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!authenticatedUserId) return NextResponse.json({ error: 'User authentication required' }, { status: 401 });
     const validation = await validateSchoolIdAccess(schoolId);
     if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
 
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
     const savedAt = new Date().toISOString();
 
     for (const record of records) {
-      const payload = { school_id: schoolId, student_id: record.studentId, class_id: stream.school_class_id, term_id: term.id, date: body.date, status: record.status, remarks: record.remarks || '', updated_at: savedAt };
+      const payload = { school_id: schoolId, student_id: record.studentId, class_id: stream.school_class_id, term_id: term.id, date: body.date, status: record.status, remarks: record.remarks || '', recorded_by: authenticatedUserId, updated_at: savedAt };
       const { data: existing } = await client.from('attendance_records').select('id').eq('school_id', schoolId).eq('student_id', record.studentId).eq('class_id', stream.school_class_id).eq('term_id', term.id).eq('date', body.date).maybeSingle();
       const result = existing?.id ? await client.from('attendance_records').update(payload).eq('id', existing.id) : await client.from('attendance_records').insert({ ...payload, created_at: savedAt });
       if (result.error) throw result.error;
