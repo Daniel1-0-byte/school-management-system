@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2, Plus, Trash2, Users } from 'lucide-react';
 
 type Teacher = { id: string; first_name: string; last_name: string; email: string | null };
-type Assignment = { id: string; teacher_id: string; subjects: string[]; is_primary: boolean; start_date: string | null; end_date: string | null };
+type Assignment = { id: string; teacher_id: string; subjects: string[]; is_primary_teacher: boolean; start_date: string | null; end_date: string | null };
 type Payload = { stream: { name: string; academic_year_id: string }; assignments: Assignment[]; teachers: Teacher[] };
 
 export default function ClassroomPage() {
@@ -29,7 +29,7 @@ export default function ClassroomPage() {
   const addTeacher = async () => {
     if (!teacherId || !data) return;
     setSaving(true); setError('');
-    const response = await fetch(`/api/school/classrooms/${streamId}/teachers/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherId, academic_year_id: data.stream.academic_year_id, subjects: [], is_primary: primary }) });
+    const response = await fetch(`/api/school/classrooms/${streamId}/teachers/create`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacher_id: teacherId, academic_year_id: data.stream.academic_year_id, subjects: [], is_primary_teacher: primary }) });
     const result = await response.json();
     if (!response.ok) setError(result.error || 'Failed to assign teacher');
     else { setTeacherId(''); setPrimary(false); await load(); }
@@ -53,7 +53,7 @@ export default function ClassroomPage() {
       <section className="rounded-lg border border-border bg-card p-6">
         <div className="mb-5 flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><h2 className="text-lg font-semibold text-foreground">Assigned teachers</h2><p className="text-sm text-muted-foreground">Assign or remove teachers for this classroom.</p></div></div>
         <div className="space-y-3">
-          {data.assignments.length === 0 ? <p className="rounded-md bg-muted/50 p-4 text-sm text-muted-foreground">No teachers assigned yet.</p> : data.assignments.map((assignment) => { const teacher = data.teachers.find((item) => item.id === assignment.teacher_id); return <div key={assignment.id} className="flex items-center justify-between rounded-md border border-border p-4"><div><p className="font-medium text-foreground">{teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown teacher'}</p>{teacher?.email && <p className="text-sm text-muted-foreground">{teacher.email}</p>}{assignment.is_primary && <span className="mt-2 inline-block rounded bg-primary/10 px-2 py-1 text-xs text-primary">Primary teacher</span>}</div><button type="button" onClick={() => removeTeacher(assignment.id)} className="rounded-md p-2 text-destructive hover:bg-destructive/10" aria-label="Remove teacher"><Trash2 className="h-4 w-4" /></button></div>; })}
+          {data.assignments.length === 0 ? <p className="rounded-md bg-muted/50 p-4 text-sm text-muted-foreground">No teachers assigned yet.</p> : data.assignments.map((assignment) => { const teacher = data.teachers.find((item) => item.id === assignment.teacher_id); return <div key={assignment.id} className="flex items-center justify-between rounded-md border border-border p-4"><div><p className="font-medium text-foreground">{teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Unknown teacher'}</p>{teacher?.email && <p className="text-sm text-muted-foreground">{teacher.email}</p>}{assignment.is_primary_teacher && <span className="mt-2 inline-block rounded bg-primary/10 px-2 py-1 text-xs text-primary">Primary teacher</span>}</div><button type="button" onClick={() => removeTeacher(assignment.id)} className="rounded-md p-2 text-destructive hover:bg-destructive/10" aria-label="Remove teacher"><Trash2 className="h-4 w-4" /></button></div>; })}
         </div>
       </section>
       <section className="rounded-lg border border-border bg-card p-6">
