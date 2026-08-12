@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CalendarDays, Check, Loader2, Save, Users, X } from 'lucide-react';
-import { SchoolService } from '@/lib/services/school-service';
-import type { Class } from '@/lib/transformers/class-transformer';
 
 type Status = 'present' | 'absent' | 'leave' | 'not-marked';
 type Student = { studentId: string; studentName: string; status: Status; remarks: string };
 type Year = { id: string; year: string | number; start_date: string; end_date: string; is_active: boolean };
 type Term = { id: string; academic_year_id: string; type: string; start_date: string; end_date: string };
 type SessionData = { session?: { schoolId?: string } };
+type Stream = { id: string; name: string; school_class_id: string; school_classes?: { name?: string | null; level?: string | null } | null };
 
 const statusStyles: Record<Status, string> = {
   present: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
@@ -22,7 +21,7 @@ export default function AttendancePage() {
   const today = new Date().toISOString().slice(0, 10);
   const [years, setYears] = useState<Year[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [classes, setClasses] = useState<Stream[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [yearId, setYearId] = useState('');
   const [termId, setTermId] = useState('');
@@ -101,12 +100,10 @@ export default function AttendancePage() {
 
     const loadClasses = async () => {
       try {
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = (await sessionResponse.json()) as SessionData;
-        if (!sessionResponse.ok || !sessionData.session?.schoolId) throw new Error('Unable to identify the current school');
-        const classesResult = await SchoolService.getClasses(sessionData.session.schoolId, { pageSize: 100 });
-        if (classesResult.error) throw new Error(classesResult.error);
-        setClasses(classesResult.classes);
+        const response = await fetch(`/api/school/streams?academic_year_id=${yearId}&activeOnly=true`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load classes');
+        setClasses(data.data || []);
         setClassId('');
       } catch (loadError) {
         setClasses([]);
@@ -126,7 +123,7 @@ export default function AttendancePage() {
       setLoadingRegister(true);
       setError(null);
       setMessage(null);
-      const requestUrl = `/api/school/attendance?class_id=${classId}&term_id=${termId}&date=${date}`;
+      const requestUrl = `/api/school/attendance?stream_id=${classId}&term_id=${termId}&date=${date}`;
       console.log('[v0] Attendance register request:', { requestUrl, classId, termId, date });
       const response = await fetch(requestUrl);
       const data = await response.json();
@@ -165,7 +162,7 @@ export default function AttendancePage() {
       const response = await fetch('/api/school/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classId, termId, date, records: students.filter((student) => student.status !== 'not-marked').map((student) => ({ studentId: student.studentId, status: student.status, remarks: student.remarks })) }),
+        body: JSON.stringify({ streamId: classId, termId, date, records: students.filter((student) => student.status !== 'not-marked').map((student) => ({ studentId: student.studentId, status: student.status, remarks: student.remarks })) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to save attendance');
@@ -209,7 +206,7 @@ export default function AttendancePage() {
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Class
             <select value={classId} onChange={(event) => setClassId(event.target.value)} disabled={!classes.length} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
-              <option value="">Select class</option>{classes.map((schoolClass) => <option key={schoolClass.id} value={schoolClass.id}>{schoolClass.className}{schoolClass.section ? ` · ${schoolClass.section}` : ''}</option>)}
+              <option value="">Select class</option>{classes.map((stream) => <option key={stream.id} value={stream.id}>{stream.school_classes?.name || stream.school_classes?.level || 'Class'} - {stream.name}</option>)}
             </select>
           </label>
         </div>
