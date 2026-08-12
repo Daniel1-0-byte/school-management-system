@@ -15,6 +15,11 @@ export interface ClassStream {
   capacity: number | null;
   status: string;
   class_teacher_id: string | null;
+  primary_teacher?: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
 }
 
 export default function ClassesPage() {
@@ -273,8 +278,12 @@ export default function ClassesPage() {
               {/* Details */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Class Level</span>
-                  <span className="font-medium text-foreground">{stream.school_classes?.level || 'N/A'}</span>
+                  <span className="text-sm text-muted-foreground">Class Teacher</span>
+                  <span className="font-medium text-foreground">
+                    {stream.primary_teacher
+                      ? `${stream.primary_teacher.first_name || ''} ${stream.primary_teacher.last_name || ''}`.trim() || 'N/A'
+                      : 'N/A'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <span className="text-sm text-muted-foreground">Capacity</span>
