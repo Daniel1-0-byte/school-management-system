@@ -54,9 +54,10 @@ export default function SettingsPage() {
         const profileResponse = await fetch('/api/auth/session');
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
-          if (profileData.user) {
-            setUserId(profileData.user.id);
-            setSignatureUrl(profileData.user.profile?.signature_url || null);
+          const sessionUser = profileData.data?.user ?? profileData.user;
+          if (sessionUser) {
+            setUserId(sessionUser.id);
+            setSignatureUrl(sessionUser.profile?.signature_url || null);
           }
         }
       } catch (err) {
