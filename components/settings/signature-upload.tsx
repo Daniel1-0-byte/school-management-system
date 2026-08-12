@@ -2,18 +2,16 @@
 
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, AlertCircle, Check, Trash2 } from 'lucide-react';
-import { uploadImage, getImagePreview } from '@/lib/storage-utils';
+import { getImagePreview } from '@/lib/storage-utils';
 
 interface SignatureUploadProps {
   currentSignatureUrl: string | null;
-  userId: string;
   onUploadSuccess: (url: string) => void;
   onDeleteSuccess: () => void;
 }
 
 export function SignatureUpload({
   currentSignatureUrl,
-  userId,
   onUploadSuccess,
   onDeleteSuccess,
 }: SignatureUploadProps) {
@@ -34,31 +32,22 @@ export function SignatureUpload({
       const previewUrl = await getImagePreview(file);
       setPreview(previewUrl);
 
-      // Upload to storage
+      // Upload through the authenticated server route so Storage authorization
+      // uses the app session and the service-role client, not an anonymous browser client.
       setIsUploading(true);
-      const { url, error: uploadError } = await uploadImage(
-        'school-logos', // Reuse same bucket for now
-        file,
-        `signatures/${userId}/signature-${Date.now()}.${file.name.split('.').pop()}`
-      );
-
-      if (uploadError) {
-        setError(uploadError);
-        return;
+      const formData = new FormData();
+      formData.append('file', file);
+      const saveResponse = await fetch('/api/school/settings/signature', {
+        method: 'POST',
+        body: formData,
+      });
+      const saveResult = await saveResponse.json();
+      if (!saveResponse.ok) {
+        throw new Error(saveResult.error || 'Failed to upload signature');
       }
 
-      if (url) {
-        const saveResponse = await fetch('/api/school/settings/signature', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ signature_url: url }),
-        });
-        const saveResult = await saveResponse.json();
-        if (!saveResponse.ok) {
-          throw new Error(saveResult.error || 'Failed to save signature');
-        }
-
-        onUploadSuccess(saveResult.signature_url || url);
+      if (saveResult.signature_url) {
+        onUploadSuccess(saveResult.signature_url);
         setSuccess(true);
         setPreview(null);
         setTimeout(() => setSuccess(false), 3000);

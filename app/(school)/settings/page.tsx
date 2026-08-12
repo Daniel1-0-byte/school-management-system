@@ -270,7 +270,6 @@ export default function SettingsPage() {
 
               <SignatureUpload
                 currentSignatureUrl={signatureUrl}
-                userId={userId}
                 onUploadSuccess={(url) => setSignatureUrl(url)}
                 onDeleteSuccess={() => setSignatureUrl(null)}
               />
