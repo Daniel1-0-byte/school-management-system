@@ -118,6 +118,7 @@ export interface Student {
   schoolId: string;
   firstName: string;
   lastName: string;
+  gender: 'male' | 'female' | null;
   dateOfBirth?: string | null;
   admissionNumber?: string | null;
   status: 'active' | 'inactive' | 'graduated';

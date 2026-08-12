@@ -12,6 +12,7 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/l
 const studentUpdateSchema = z.object({
   first_name: z.string().min(1).optional(),
   last_name: z.string().min(1).optional(),
+  gender: z.enum(['male', 'female']).optional(),
   date_of_birth: z.string().optional(),
   admission_number: z.string().optional(),
   current_class_id: z.string().uuid().nullable().optional(),

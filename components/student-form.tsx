@@ -17,6 +17,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
   const [formData, setFormData] = useState<StudentCreateInput>({
     firstName: '',
     lastName: '',
+    gender: '' as unknown as StudentCreateInput['gender'],
     dateOfBirth: undefined,
     admissionNumber: undefined,
     currentClassId: undefined,
@@ -66,6 +67,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
       setFormData({
         firstName: student.firstName || '',
         lastName: student.lastName || '',
+        gender: (student.gender ?? '') as unknown as StudentCreateInput['gender'],
         dateOfBirth: student.dateOfBirth ?? undefined,
         admissionNumber: student.admissionNumber ?? undefined,
         currentClassId: student.currentClassId ?? undefined,
@@ -180,6 +182,26 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
             }`}
           />
           {errors.lastName && <p className="text-sm text-red-600 mt-1">{errors.lastName}</p>}
+        </div>
+
+        {/* Gender */}
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Gender <span className="text-red-600">*</span>
+          </label>
+          <select
+            name="gender"
+            value={formData.gender || ''}
+            onChange={handleChange}
+            className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none ${
+              errors.gender ? 'border-red-500 focus:border-red-500' : 'border-border focus:border-primary'
+            }`}
+          >
+            <option value="">Select gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+          {errors.gender && <p className="text-sm text-red-600 mt-1">{errors.gender}</p>}
         </div>
 
         {/* Admission Number */}

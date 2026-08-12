@@ -14,6 +14,7 @@ import { generateAdmissionNumber } from '@/lib/services/admission-number-service
 const studentSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
   last_name: z.string().min(1, 'Last name required'),
+  gender: z.enum(['male', 'female'], { message: 'Gender is required' }),
   date_of_birth: z.string().optional(),
   admission_number: z.string().optional(),
   current_class_id: z.string().uuid().optional(),

@@ -8,6 +8,7 @@ import { z } from 'zod';
 export const StudentCreateSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
+  gender: z.enum(['male', 'female'], { message: 'Gender is required' }),
   dateOfBirth: z.string().optional(),
   admissionNumber: z.string().optional(),
   currentClassId: z.string().uuid('Invalid class').optional(),

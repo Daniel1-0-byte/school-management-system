@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CalendarDays, Check, Loader2, Save, Users, X } from 'lucide-react';
 
 type Status = 'present' | 'absent' | 'holiday' | 'not-marked';
-type Student = { studentId: string; studentName: string; status: Status; remarks: string };
+type Student = { studentId: string; studentName: string; firstName: string; lastName: string; gender: 'male' | 'female' | null; status: Status; remarks: string };
 type Year = { id: string; year: string | number; start_date: string; end_date: string; is_active: boolean };
 type Term = { id: string; academic_year_id: string; type: string; start_date: string; end_date: string };
 type SessionData = { session?: { schoolId?: string } };
@@ -35,6 +35,16 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedTerm = terms.find((term) => term.id === termId);
+  const groupedStudents = useMemo(() => {
+    const sortBySurname = (a: Student, b: Student) =>
+      a.lastName.localeCompare(b.lastName, undefined, { sensitivity: 'base' }) ||
+      a.firstName.localeCompare(b.firstName, undefined, { sensitivity: 'base' });
+    return [
+      { label: 'Boys', students: students.filter((student) => student.gender === 'male').sort(sortBySurname) },
+      { label: 'Girls', students: students.filter((student) => student.gender === 'female').sort(sortBySurname) },
+      { label: 'Unspecified', students: students.filter((student) => student.gender !== 'male' && student.gender !== 'female').sort(sortBySurname) },
+    ].filter((group) => group.students.length > 0);
+  }, [students]);
   const counts = useMemo(() => ({
     present: students.filter((student) => student.status === 'present').length,
     absent: students.filter((student) => student.status === 'absent').length,
@@ -222,7 +232,7 @@ export default function AttendancePage() {
           <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Users className="size-5 text-primary" />Student register</h2><p className="mt-1 text-sm text-muted-foreground">{students.length ? `${students.length} enrolled students` : 'Select a term, date, and class to begin.'}{dirty && <span className="ml-2 font-medium text-primary">Unsaved changes</span>}</p></div>
           {students.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => markAll('present')} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700"><Check className="size-4" />All present</button><button type="button" onClick={() => markAll('absent')} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-700"><X className="size-4" />All absent</button><button type="button" onClick={() => markAll('holiday')} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-700"><CalendarDays className="size-4" />All holiday</button></div>}
         </div>
-        {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="holiday">Holiday</option></select></td></tr>)}</tbody></table></div>}
+        {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="flex flex-col gap-6 p-4 md:p-6">{groupedStudents.map((group) => <section key={group.label} aria-labelledby={`attendance-group-${group.label.toLowerCase()}`}><div className="mb-3 flex items-center justify-between"><h3 id={`attendance-group-${group.label.toLowerCase()}`} className="text-sm font-semibold uppercase tracking-wide text-foreground">{group.label}</h3><span className="text-xs text-muted-foreground">{group.students.length} {group.students.length === 1 ? 'student' : 'students'}</span></div><div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{group.students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="holiday">Holiday</option></select></td></tr>)}</tbody></table></div></section>)}</div>}
       </section>
 
       {students.length > 0 && <div className="flex justify-end"><button type="button" onClick={saveAttendance} disabled={saving || !termId || !classId || !dirty} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Saving...' : dirty ? 'Save attendance' : 'Saved'}</button></div>}
