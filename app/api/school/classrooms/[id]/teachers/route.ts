@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (streamError || !stream) return NextResponse.json({ error: 'Classroom not found' }, { status: 404 });
   const [{ data: assignments, error: assignmentError }, { data: teachers, error: teacherError }] = await Promise.all([
     queryTeacherAssignments().select('id, teacher_id, academic_year_id, subjects, is_primary_teacher, start_date, end_date').eq('school_id', schoolId).eq('class_id', stream.school_class_id).eq('academic_year_id', stream.academic_year_id).order('is_primary_teacher', { ascending: false }).order('created_at', { ascending: true }),
-    queryProfiles().select('id, first_name, last_name, email').eq('school_id', schoolId).eq('system_role', 'Teacher').eq('status', 'active').order('last_name').order('first_name'),
+    queryProfiles().select('id, first_name, last_name').eq('school_id', schoolId).eq('system_role', 'Teacher').eq('status', 'active').order('last_name').order('first_name'),
   ]);
   if (assignmentError || teacherError) {
     console.error('[v0] Classroom teachers load error:', {
