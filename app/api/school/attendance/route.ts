@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         academicYearId: stream.academic_year_id,
       },
       canEdit: true,
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[v0] Attendance GET error:', error);
     return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
