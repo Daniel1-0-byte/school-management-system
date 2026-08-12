@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, AlertCircle, Building2, Calendar, DollarSign, Lock } from 'lucide-react';
+import { Settings, Save, AlertCircle, Building2, Calendar, DollarSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { LogoUpload } from '@/components/settings/logo-upload';
 import { SignatureUpload } from '@/components/settings/signature-upload';
@@ -30,10 +30,6 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSaving, setPasswordSaving] = useState(false);
 
   // Load school info and user data
   useEffect(() => {
@@ -77,7 +73,6 @@ export default function SettingsPage() {
     { id: 'school', label: 'School Information', icon: <Building2 className="w-5 h-5" />, href: '/settings', enabled: true },
     { id: 'academic', label: 'Academic Years & Terms', icon: <Calendar className="w-5 h-5" />, href: '/settings/academic-years', enabled: true },
     { id: 'fees', label: 'Fee Structure', icon: <DollarSign className="w-5 h-5" />, href: '/settings/fees', enabled: false },
-    { id: 'security', label: 'Security', icon: <Lock className="w-5 h-5" />, href: '#security', enabled: true },
   ];
 
   const handleSave = async () => {
@@ -110,36 +105,6 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleChangePassword = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setPasswordError(null);
-    setPasswordMessage(null);
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters.');
-      return;
-    }
-    setPasswordSaving(true);
-    try {
-      const response = await fetch('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(passwordForm),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Unable to change password.');
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setPasswordMessage('Password changed successfully.');
-    } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Unable to change password.');
-    } finally {
-      setPasswordSaving(false);
     }
   };
 
@@ -310,21 +275,6 @@ export default function SettingsPage() {
               />
             </div>
           )}
-
-          <div id="security" className="bg-card border border-border rounded-lg p-6 space-y-5 scroll-mt-6">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground flex items-center gap-2"><Lock className="w-6 h-6 text-primary" />Security</h2>
-              <p className="text-sm text-muted-foreground mt-1">Change the password for your current account.</p>
-            </div>
-            {passwordError && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600">{passwordError}</p>}
-            {passwordMessage && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700">{passwordMessage}</p>}
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <input type="password" required minLength={8} autoComplete="current-password" placeholder="Current password" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} className="w-full rounded-lg border border-border bg-background px-4 py-2" />
-              <input type="password" required minLength={8} autoComplete="new-password" placeholder="New password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} className="w-full rounded-lg border border-border bg-background px-4 py-2" />
-              <input type="password" required minLength={8} autoComplete="new-password" placeholder="Confirm new password" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} className="w-full rounded-lg border border-border bg-background px-4 py-2" />
-              <button type="submit" disabled={passwordSaving} className="rounded-lg bg-primary px-5 py-2 font-medium text-primary-foreground disabled:opacity-50">{passwordSaving ? 'Updating...' : 'Change Password'}</button>
-            </form>
-          </div>
 
           {/* Quick Links */}
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
