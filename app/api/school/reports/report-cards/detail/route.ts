@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     // Fetch attendance
     const { data: attendanceRecords, error: attendanceError } = await supabase
       .from('attendance_records')
-      .select('status')
+      .select('status, date')
       .eq('student_id', studentId)
       .gte('date', reportCard.generated_at || new Date().toISOString());
 
@@ -213,11 +213,17 @@ export async function GET(request: NextRequest) {
           total: reportCard.total_school_days,
         }
       : attendanceRecords
-        ? {
-            present: attendanceRecords.filter(a => a.status === 'present').length,
-            absent: attendanceRecords.filter(a => a.status === 'absent').length,
-            total: attendanceRecords.length,
-          }
+        ? (() => {
+          const holidayDays = new Set(
+            attendanceRecords.filter((record) => record.status === 'holiday').map((record) => record.date),
+          ).size;
+          const eligibleRecords = attendanceRecords.filter((record) => record.status !== 'holiday');
+          return {
+            present: eligibleRecords.filter((record) => record.status === 'present').length,
+            absent: eligibleRecords.filter((record) => record.status === 'absent').length,
+            total: Math.max(0, attendanceRecords.length - holidayDays),
+          };
+        })()
         : undefined;
 
     const reportSubjectIds = (gradeEntries || []).map((entry) => entry.subject_id);

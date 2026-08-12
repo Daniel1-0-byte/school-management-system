@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, CalendarDays, Check, Loader2, Save, Users, X } from 'lucide-react';
 
-type Status = 'present' | 'absent' | 'leave' | 'not-marked';
+type Status = 'present' | 'absent' | 'holiday' | 'not-marked';
 type Student = { studentId: string; studentName: string; status: Status; remarks: string };
 type Year = { id: string; year: string | number; start_date: string; end_date: string; is_active: boolean };
 type Term = { id: string; academic_year_id: string; type: string; start_date: string; end_date: string };
@@ -13,7 +13,7 @@ type Stream = { id: string; name: string; school_class_id: string; school_classe
 const statusStyles: Record<Status, string> = {
   present: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
   absent: 'bg-rose-500/10 text-rose-700 border-rose-500/30',
-  leave: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
+  holiday: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
   'not-marked': 'bg-muted text-muted-foreground border-border',
 };
 
@@ -38,7 +38,7 @@ export default function AttendancePage() {
   const counts = useMemo(() => ({
     present: students.filter((student) => student.status === 'present').length,
     absent: students.filter((student) => student.status === 'absent').length,
-    leave: students.filter((student) => student.status === 'leave').length,
+    holiday: students.filter((student) => student.status === 'holiday').length,
     unmarked: students.filter((student) => student.status === 'not-marked').length,
   }), [students]);
 
@@ -214,15 +214,15 @@ export default function AttendancePage() {
       </section>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Attendance summary">
-        {[['Present', counts.present, 'text-emerald-700'], ['Absent', counts.absent, 'text-rose-700'], ['Leave', counts.leave, 'text-amber-700'], ['Not marked', counts.unmarked, 'text-muted-foreground']].map(([label, count, color]) => <div key={label} className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-1 text-2xl font-bold ${color}`}>{count}</p></div>)}
+        {[['Present', counts.present, 'text-emerald-700'], ['Absent', counts.absent, 'text-rose-700'], ['Holiday', counts.holiday, 'text-amber-700'], ['Not marked', counts.unmarked, 'text-muted-foreground']].map(([label, count, color]) => <div key={label} className="rounded-xl border border-border bg-card p-4"><p className="text-sm text-muted-foreground">{label}</p><p className={`mt-1 text-2xl font-bold ${color}`}>{count}</p></div>)}
       </section>
 
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 border-b border-border p-4 md:flex-row md:items-center md:justify-between md:p-6">
           <div><h2 className="flex items-center gap-2 font-semibold text-foreground"><Users className="size-5 text-primary" />Student register</h2><p className="mt-1 text-sm text-muted-foreground">{students.length ? `${students.length} enrolled students` : 'Select a term, date, and class to begin.'}{dirty && <span className="ml-2 font-medium text-primary">Unsaved changes</span>}</p></div>
-          {students.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => markAll('present')} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700"><Check className="size-4" />All present</button><button type="button" onClick={() => markAll('absent')} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-700"><X className="size-4" />All absent</button></div>}
+          {students.length > 0 && <div className="flex flex-wrap gap-2"><button type="button" onClick={() => markAll('present')} className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700"><Check className="size-4" />All present</button><button type="button" onClick={() => markAll('absent')} className="inline-flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-700"><X className="size-4" />All absent</button><button type="button" onClick={() => markAll('holiday')} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-700"><CalendarDays className="size-4" />All holiday</button></div>}
         </div>
-        {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="leave">Leave</option></select></td></tr>)}</tbody></table></div>}
+        {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="holiday">Holiday</option></select></td></tr>)}</tbody></table></div>}
       </section>
 
       {students.length > 0 && <div className="flex justify-end"><button type="button" onClick={saveAttendance} disabled={saving || !termId || !classId || !dirty} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Saving...' : dirty ? 'Save attendance' : 'Saved'}</button></div>}

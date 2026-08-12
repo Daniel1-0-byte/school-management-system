@@ -18,7 +18,7 @@ export function AttendanceTable({ records, loading = false, onDelete }: Attendan
         return <CheckCircle2 className="w-4 h-4 text-green-600" />;
       case 'absent':
         return <XCircle className="w-4 h-4 text-red-600" />;
-      case 'leave':
+      case 'holiday':
         return <AlertCircle className="w-4 h-4 text-yellow-600" />;
       default:
         return null;
