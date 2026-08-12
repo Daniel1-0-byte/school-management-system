@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
     if (!streamId || !termId || typeof date !== 'string' || !dateSchema.safeParse(date).success) {
       return NextResponse.json({ error: 'stream_id, term_id, and a valid date are required' }, { status: 400 });
     }
+    const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (day === 0 || day === 6) return NextResponse.json({ error: 'Attendance cannot be recorded on weekends' }, { status: 400 });
     const validation = await validateSchoolIdAccess(schoolId);
     if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
 
@@ -111,6 +113,8 @@ export async function POST(request: NextRequest) {
     if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
 
     const body = saveSchema.parse(await request.json());
+    const day = new Date(`${body.date}T00:00:00Z`).getUTCDay();
+    if (day === 0 || day === 6) return NextResponse.json({ error: 'Attendance cannot be recorded on weekends' }, { status: 400 });
     const { data: term } = await getTermForDate(schoolId, body.date, body.termId);
     if (!term || body.date < term.start_date || body.date > term.end_date) return NextResponse.json({ error: 'Attendance date is outside the selected term' }, { status: 400 });
 

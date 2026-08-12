@@ -35,6 +35,11 @@ export default function AttendancePage() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedTerm = terms.find((term) => term.id === termId);
+  const isWeekendDate = (value: string) => {
+    const day = new Date(`${value}T00:00:00Z`).getUTCDay();
+    return day === 0 || day === 6;
+  };
+  const weekendSelected = isWeekendDate(date);
   const groupedStudents = useMemo(() => {
     const sortBySurname = (a: Student, b: Student) =>
       a.lastName.localeCompare(b.lastName, undefined, { sensitivity: 'base' }) ||
@@ -212,7 +217,15 @@ export default function AttendancePage() {
             </select>
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground"><span className="flex items-center gap-2"><CalendarDays className="size-4" />Date</span>
-            <input type="date" value={date} min={selectedTerm?.start_date} max={selectedTerm?.end_date} onChange={(event) => setDate(event.target.value)} disabled={!selectedTerm} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground" />
+            <input type="date" value={date} min={selectedTerm?.start_date} max={selectedTerm?.end_date} onChange={(event) => {
+              const nextDate = event.target.value;
+              if (isWeekendDate(nextDate)) {
+                setError('Weekend dates are inactive. Select a Monday through Friday date.');
+                return;
+              }
+              setError(null);
+              setDate(nextDate);
+            }} disabled={!selectedTerm} className={`h-11 rounded-lg border bg-background px-3 text-foreground ${weekendSelected ? 'border-destructive/50' : 'border-input'}`} aria-invalid={weekendSelected} />
           </label>
           <label className="flex flex-col gap-2 text-sm font-medium text-foreground">Class
             <select value={classId} onChange={(event) => setClassId(event.target.value)} disabled={!classes.length} className="h-11 rounded-lg border border-input bg-background px-3 text-foreground">
@@ -220,7 +233,7 @@ export default function AttendancePage() {
             </select>
           </label>
         </div>
-        {selectedTerm && <p className="text-xs text-muted-foreground">Dates available for this register: {selectedTerm.start_date} through {selectedTerm.end_date}.</p>}
+        {selectedTerm && <p className="text-xs text-muted-foreground">Dates available for this register: {selectedTerm.start_date} through {selectedTerm.end_date}. Saturdays and Sundays are inactive.</p>}
       </section>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Attendance summary">
@@ -235,7 +248,7 @@ export default function AttendancePage() {
         {loadingRegister ? <div className="flex items-center justify-center gap-2 p-10 text-muted-foreground"><Loader2 className="size-5 animate-spin" />Loading register...</div> : students.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground">{classId ? 'No active students found in this class.' : 'Choose a class to view its students.'}</div> : <div className="flex flex-col gap-6 p-4 md:p-6">{groupedStudents.map((group) => <section key={group.label} aria-labelledby={`attendance-group-${group.label.toLowerCase()}`}><div className="mb-3 flex items-center justify-between"><h3 id={`attendance-group-${group.label.toLowerCase()}`} className="text-sm font-semibold uppercase tracking-wide text-foreground">{group.label}</h3><span className="text-xs text-muted-foreground">{group.students.length} {group.students.length === 1 ? 'student' : 'students'}</span></div><div className="overflow-x-auto"><table className="w-full min-w-[620px]"><thead className="bg-muted/50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</th></tr></thead><tbody>{group.students.map((student) => <tr key={student.studentId} className="border-t border-border"><td className="px-4 py-4 font-medium text-foreground">{student.studentName}</td><td className="px-4 py-4"><select value={student.status} onChange={(event) => updateStatus(student.studentId, event.target.value as Status)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${statusStyles[student.status]}`}><option value="not-marked">Not marked</option><option value="present">Present</option><option value="absent">Absent</option><option value="holiday">Holiday</option></select></td></tr>)}</tbody></table></div></section>)}</div>}
       </section>
 
-      {students.length > 0 && <div className="flex justify-end"><button type="button" onClick={saveAttendance} disabled={saving || !termId || !classId || !dirty} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Saving...' : dirty ? 'Save attendance' : 'Saved'}</button></div>}
+      {students.length > 0 && <div className="flex justify-end"><button type="button" onClick={saveAttendance} disabled={saving || weekendSelected || !termId || !classId || !dirty} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}{saving ? 'Saving...' : dirty ? 'Save attendance' : 'Saved'}</button></div>}
     </main>
   );
 }
