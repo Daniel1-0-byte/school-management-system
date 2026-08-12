@@ -8,6 +8,78 @@ const signatureSchema = z.object({
 });
 
 /**
+ * POST /api/school/settings/signature
+ * Upload a principal signature through the authenticated server.
+ */
+export async function POST(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
+
+  try {
+    const schoolId = await getSchoolIdFromRequest(request);
+    const userId = getUserIdFromRequest(request);
+    if (typeof schoolId !== 'string' || !userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
+    }
+
+    const { data: profile, error: profileError } = await queryProfiles()
+      .select('system_role')
+      .eq('id', userId)
+      .eq('school_id', schoolId)
+      .single();
+    if (profileError || !profile || profile.system_role !== 'Admin') {
+      return NextResponse.json({ error: 'Only admins can upload school signature' }, { status: 403 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file');
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: 'Signature image is required' }, { status: 400 });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: 'Invalid file type. Please upload JPEG, PNG, GIF, or WebP' }, { status: 400 });
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size must be less than 5MB' }, { status: 400 });
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
+    const path = `signatures/${userId}/signature-${Date.now()}.${extension}`;
+    const supabase = getServerSupabaseClient();
+    const { error: uploadError } = await supabase.storage
+      .from('school-logos')
+      .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
+    if (uploadError) {
+      console.error('[v0] Signature storage upload error:', uploadError);
+      return NextResponse.json({ error: formatSupabaseError(uploadError) }, { status: 400 });
+    }
+
+    const { data: publicUrl } = supabase.storage.from('school-logos').getPublicUrl(path);
+    const { data, error } = await queryProfiles()
+      .update({ signature_url: publicUrl.publicUrl })
+      .eq('id', userId)
+      .eq('school_id', schoolId)
+      .select('signature_url')
+      .single();
+    if (error) {
+      return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    return NextResponse.json({ signature_url: data.signature_url });
+  } catch (error) {
+    console.error('[v0] Signature upload error:', error);
+    return NextResponse.json({ error: 'Failed to upload signature' }, { status: 500 });
+  }
+}
+
+/**
  * PUT /api/school/settings/signature
  * Update principal signature URL for the current admin user
  * Only admins can update their own signature
