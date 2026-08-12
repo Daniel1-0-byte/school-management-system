@@ -15,6 +15,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     queryTeacherAssignments().select('id, teacher_id, academic_year_id, subjects, is_primary_teacher, start_date, end_date').eq('school_id', schoolId).eq('class_id', stream.school_class_id).eq('academic_year_id', stream.academic_year_id).order('is_primary_teacher', { ascending: false }).order('created_at', { ascending: true }),
     queryProfiles().select('id, first_name, last_name, email').eq('school_id', schoolId).eq('system_role', 'Teacher').eq('status', 'active').order('last_name').order('first_name'),
   ]);
-  if (assignmentError || teacherError) return NextResponse.json({ error: 'Failed to load classroom teachers' }, { status: 500 });
+  if (assignmentError || teacherError) {
+    console.error('[v0] Classroom teachers load error:', {
+      assignmentError,
+      teacherError,
+    });
+    return NextResponse.json({ error: 'Failed to load classroom teachers' }, { status: 500 });
+  }
   return NextResponse.json({ stream, assignments: assignments || [], teachers: teachers || [] });
 }
