@@ -17,7 +17,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
   const [formData, setFormData] = useState<StudentCreateInput>({
     firstName: '',
     lastName: '',
-    gender: undefined as StudentCreateInput['gender'],
+    gender: '' as unknown as StudentCreateInput['gender'],
     dateOfBirth: undefined,
     admissionNumber: undefined,
     currentClassId: undefined,
@@ -67,7 +67,7 @@ export function StudentForm({ student, loading = false, onSubmit, submitLabel = 
       setFormData({
         firstName: student.firstName || '',
         lastName: student.lastName || '',
-        gender: student.gender ?? undefined as StudentCreateInput['gender'],
+        gender: (student.gender ?? '') as unknown as StudentCreateInput['gender'],
         dateOfBirth: student.dateOfBirth ?? undefined,
         admissionNumber: student.admissionNumber ?? undefined,
         currentClassId: student.currentClassId ?? undefined,
