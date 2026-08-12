@@ -28,7 +28,6 @@ interface NavItem {
 const getNavItems = (role: string): NavItem[] => {
   const baseItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { label: 'Account', href: '/account', icon: <UserCircle className="w-5 h-5" /> },
   ];
 
   if (role === 'Admin') {
@@ -255,6 +254,20 @@ export default function SchoolLayout({
               </p>
             </div>
           </div>
+          <button
+            onClick={() => {
+              router.push('/account');
+              setIsSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${
+              isActive('/account')
+                ? 'bg-primary text-primary-foreground'
+                : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            <UserCircle className="w-4 h-4" />
+            <span>Account</span>
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500/10 rounded-lg transition-colors"
