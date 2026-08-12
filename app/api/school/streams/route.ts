@@ -108,10 +108,49 @@ export async function GET(request: NextRequest) {
       classesMap.set(cls.id, cls);
     });
 
-    // Merge streams with school_classes data
+    // Fetch the primary active teacher for each class in this academic year.
+    const { data: primaryAssignments, error: primaryAssignmentsError } = await getServerSupabaseClient()
+      .from('teacher_assignments')
+      .select('class_id, teacher_id')
+      .in('class_id', classIds)
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId || visibleStreams[0].academic_year_id)
+      .eq('is_primary_teacher', true)
+      .is('end_date', null);
+
+    if (primaryAssignmentsError) {
+      console.error('[v0] Primary class teacher fetch error:', primaryAssignmentsError);
+    }
+
+    const teacherIds = [...new Set((primaryAssignments || []).map((assignment: { teacher_id: string }) => assignment.teacher_id).filter(Boolean))];
+    const teachersMap = new Map<string, { id: string; first_name: string | null; last_name: string | null }>();
+    if (teacherIds.length > 0) {
+      const { data: teachers, error: teachersError } = await getServerSupabaseClient()
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', teacherIds)
+        .eq('school_id', schoolId)
+        .eq('system_role', 'Teacher')
+        .eq('status', 'active');
+
+      if (teachersError) {
+        console.error('[v0] Primary teacher profile fetch error:', teachersError);
+      } else {
+        (teachers || []).forEach((teacher) => teachersMap.set(teacher.id, teacher));
+      }
+    }
+
+    const primaryTeacherMap = new Map<string, { id: string; first_name: string | null; last_name: string | null }>();
+    (primaryAssignments || []).forEach((assignment: { class_id: string; teacher_id: string }) => {
+      const teacher = teachersMap.get(assignment.teacher_id);
+      if (teacher && !primaryTeacherMap.has(assignment.class_id)) primaryTeacherMap.set(assignment.class_id, teacher);
+    });
+
+    // Merge streams with school_classes and the primary active teacher.
     const mergedData = visibleStreams.map((stream: any) => ({
       ...stream,
       school_classes: classesMap.get(stream.school_class_id) || null,
+      primary_teacher: primaryTeacherMap.get(stream.school_class_id) || null,
     }));
 
     return NextResponse.json({
