@@ -258,7 +258,7 @@ export interface AttendanceRecord {
   studentId: string;
   classId: string;
   date: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
+  status: 'present' | 'absent' | 'late' | 'excused' | 'holiday';
   remarks?: string | null;
   recordedBy: string; // Profile.id
   createdAt: string;

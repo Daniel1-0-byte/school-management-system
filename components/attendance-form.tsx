@@ -9,7 +9,7 @@ import type { Class } from '@/lib/transformers/class-transformer';
 interface AttendanceRecord {
   studentId: string;
   studentName: string;
-  status: 'present' | 'absent' | 'leave';
+  status: 'present' | 'absent' | 'holiday';
 }
 
 interface AttendanceFormProps {
@@ -85,7 +85,7 @@ export function AttendanceForm({ schoolId, onSuccess }: AttendanceFormProps) {
     fetchStudents();
   }, [classId, schoolId]);
 
-  const updateAttendance = (studentId: string, status: 'present' | 'absent' | 'leave') => {
+  const updateAttendance = (studentId: string, status: 'present' | 'absent' | 'holiday') => {
     setAttendance((prev) =>
       prev.map((record) =>
         record.studentId === studentId ? { ...record, status } : record
@@ -263,14 +263,14 @@ export function AttendanceForm({ schoolId, onSuccess }: AttendanceFormProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => updateAttendance(record.studentId, 'leave')}
+                    onClick={() => updateAttendance(record.studentId, 'holiday')}
                     disabled={submitting}
                     className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                      record.status === 'leave'
+                      record.status === 'holiday'
                         ? 'bg-yellow-500 text-white'
                         : 'bg-background border border-border hover:bg-muted'
                     }`}
-                    title="Leave"
+                    title="Holiday"
                   >
                     <AlertCircle className="w-4 h-4" />
                   </button>

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate attendance rate
     const presentCount = attendance.filter((a) => a.status === 'present').length;
-    const totalRecords = attendance.length;
+    const totalRecords = attendance.filter((a) => a.status !== 'holiday').length;
     const average = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
 
     return NextResponse.json({ average: Math.round(average * 10) / 10 });

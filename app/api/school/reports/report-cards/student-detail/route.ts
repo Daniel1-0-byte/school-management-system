@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     const { data: attendanceData, error: attendanceError } = await supabase
       .from('attendance_records')
-      .select('status')
+      .select('status, date')
       .eq('school_id', schoolId)
       .eq('student_id', studentId)
       .eq('class_id', schoolClassId)
@@ -127,14 +127,16 @@ export async function GET(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Prefer a complete saved override; otherwise use the live attendance calculation.
-    const presentDays = savedReportCard
-      ? savedReportCard.present_days
-      : (attendanceData || []).filter(a => a.status === 'present').length;
-    const absentDays = savedReportCard
-      ? savedReportCard.absent_days
-      : workingDays - presentDays;
-    const totalSchoolDays = savedReportCard?.total_school_days ?? workingDays;
+    // Holidays are not school days and are excluded from every attendance denominator.
+    const holidayDays = new Set(
+      (attendanceData || []).filter((record) => record.status === 'holiday').map((record) => record.date),
+    ).size;
+    const calculatedTotalSchoolDays = Math.max(0, workingDays - holidayDays);
+    const calculatedPresentDays = (attendanceData || []).filter((record) => record.status === 'present').length;
+    const calculatedAbsentDays = (attendanceData || []).filter((record) => record.status === 'absent').length;
+    const presentDays = savedReportCard?.present_days ?? calculatedPresentDays;
+    const absentDays = savedReportCard?.absent_days ?? calculatedAbsentDays;
+    const totalSchoolDays = savedReportCard?.total_school_days ?? calculatedTotalSchoolDays;
 
     // Transform grades
     const subjectGrades = (gradeData || []).map(grade => ({

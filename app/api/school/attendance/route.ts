@@ -4,7 +4,7 @@ import { formatSupabaseError, getServerSupabaseClient, queryAttendance } from '@
 import { getSchoolIdFromRequest, validateSchoolIdAccess, getUserIdFromRequest } from '@/lib/auth-utils';
 
 const dateSchema = z.string().date();
-const statusSchema = z.enum(['present', 'absent', 'leave']);
+const statusSchema = z.enum(['present', 'absent', 'holiday']);
 const saveSchema = z.object({
   streamId: z.string().uuid(),
   termId: z.string().uuid().optional(),

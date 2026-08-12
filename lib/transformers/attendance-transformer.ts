@@ -3,7 +3,7 @@ export interface AttendanceRecord {
   student_id: string;
   class_id: string;
   date: string;
-  status: 'present' | 'absent' | 'leave' | 'late';
+  status: 'present' | 'absent' | 'holiday' | 'late';
   remarks?: string;
   created_at: string;
   updated_at: string;
@@ -14,7 +14,7 @@ export interface Attendance {
   studentId: string;
   classId: string;
   date: string;
-  status: 'present' | 'absent' | 'leave' | 'late';
+  status: 'present' | 'absent' | 'holiday' | 'late';
   remarks?: string;
 }
 
@@ -51,7 +51,7 @@ export class AttendanceTransformer {
         return 'bg-green-500/20 text-green-600';
       case 'absent':
         return 'bg-red-500/20 text-red-600';
-      case 'leave':
+      case 'holiday':
         return 'bg-yellow-500/20 text-yellow-600';
       case 'late':
         return 'bg-orange-500/20 text-orange-600';
