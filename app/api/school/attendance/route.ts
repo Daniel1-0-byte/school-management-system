@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { formatSupabaseError, getServerSupabaseClient, queryAttendance, queryClasses, queryStudents } from '@/lib/supabase';
+import { formatSupabaseError, getServerSupabaseClient, queryAttendance } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
 
 const dateSchema = z.string().date();
 const statusSchema = z.enum(['present', 'absent', 'leave']);
 const saveSchema = z.object({
-  classId: z.string().uuid(),
+  streamId: z.string().uuid(),
   termId: z.string().uuid().optional(),
   date: dateSchema,
   records: z.array(z.object({
@@ -31,15 +31,15 @@ async function getTermForDate(schoolId: string, date: string, termId?: string) {
 export async function GET(request: NextRequest) {
   try {
     const schoolId = await getSchoolIdFromRequest(request);
-    const classId = request.nextUrl.searchParams.get('class_id');
+    const streamId = request.nextUrl.searchParams.get('stream_id');
     const termId = request.nextUrl.searchParams.get('term_id');
     const date = request.nextUrl.searchParams.get('date');
 
-    console.log('[v0] Attendance GET request:', { schoolId, classId, termId, date });
+    console.log('[v0] Attendance GET request:', { schoolId, streamId, termId, date });
 
     if (typeof schoolId !== 'string') return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
-    if (!classId || !termId || typeof date !== 'string' || !dateSchema.safeParse(date).success) {
-      return NextResponse.json({ error: 'class_id, term_id, and a valid date are required' }, { status: 400 });
+    if (!streamId || !termId || typeof date !== 'string' || !dateSchema.safeParse(date).success) {
+      return NextResponse.json({ error: 'stream_id, term_id, and a valid date are required' }, { status: 400 });
     }
     const validation = await validateSchoolIdAccess(schoolId);
     if (!validation.valid) return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 403 });
@@ -49,47 +49,33 @@ export async function GET(request: NextRequest) {
     if (termError || !term) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
     if (date < term.start_date || date > term.end_date) return NextResponse.json({ error: 'Selected date is outside the selected term' }, { status: 400 });
 
-    const classQuery = queryClasses()
-      .select('id, class_name, grade_level, section, academic_year_id, status')
-      .eq('id', classId)
+    const { data: stream, error: streamError } = await getServerSupabaseClient()
+      .from('school_class_streams')
+      .select('id, name, school_class_id, academic_year_id, school_classes(name, level)')
+      .eq('id', streamId)
       .eq('school_id', schoolId)
+      .eq('academic_year_id', term.academic_year_id)
       .maybeSingle();
-    const legacyClassQuery = getServerSupabaseClient()
-      .from('classes')
-      .select('id, name, level, academic_year_id')
-      .eq('id', classId)
-      .eq('school_id', schoolId)
-      .maybeSingle();
-    const [{ data: classRow, error: classError }, { data: legacyClassRow, error: legacyClassError }, { data: students, error: studentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
-      classQuery,
-      legacyClassQuery,
-      queryStudents().select('id, first_name, last_name').eq('school_id', schoolId).eq('current_class_id', classId).eq('status', 'active').order('last_name').order('first_name'),
-      queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', classId).eq('term_id', term.id).eq('date', date),
+    if (streamError || !stream) return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+
+    const [{ data: enrollments, error: enrollmentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
+      getServerSupabaseClient().from('student_enrollments').select('student_id, students(first_name, last_name)').eq('school_id', schoolId).eq('academic_year_id', term.academic_year_id).eq('class_id', stream.school_class_id).eq('stream_id', stream.id).eq('status', 'active'),
+      queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', stream.school_class_id).eq('term_id', term.id).eq('date', date),
     ]);
+    const students = (enrollments || []).map((enrollment: any) => ({ id: enrollment.student_id, first_name: enrollment.students?.first_name || '', last_name: enrollment.students?.last_name || '' }));
+    const studentError = enrollmentError;
     console.log('[v0] Attendance class lookup:', {
-      requestedClassId: classId,
+      requestedStreamId: streamId,
       schoolId,
-      schoolClassesRow: classRow,
-      schoolClassesError: classError ? formatSupabaseError(classError) : null,
-      legacyClassesRow: legacyClassRow,
-      legacyClassesError: legacyClassError ? formatSupabaseError(legacyClassError) : null,
+      stream,
+      streamError: streamError ? formatSupabaseError(streamError) : null,
+      enrollmentError: enrollmentError ? formatSupabaseError(enrollmentError) : null,
       studentCount: students?.length ?? 0,
       studentError: studentError ? formatSupabaseError(studentError) : null,
       attendanceRecordCount: existingRecords?.length ?? 0,
       attendanceError: attendanceError ? formatSupabaseError(attendanceError) : null,
     });
 
-    const resolvedClass = classRow || (legacyClassRow ? {
-      id: legacyClassRow.id,
-      class_name: legacyClassRow.name,
-      grade_level: legacyClassRow.level,
-      section: null,
-      academic_year_id: legacyClassRow.academic_year_id,
-      status: 'active',
-    } : null);
-    if ((classError && !legacyClassRow) || (legacyClassError && !classRow) || !resolvedClass) {
-      return NextResponse.json({ error: 'Class not found' }, { status: 404 });
-    }
     if (studentError || attendanceError) throw studentError || attendanceError;
 
     const recordMap = new Map((existingRecords || []).map((record: any) => [record.student_id, record]));
@@ -102,12 +88,10 @@ export async function GET(request: NextRequest) {
       students: attendanceStudents,
       term,
       class: {
-        id: resolvedClass.id,
-        name: resolvedClass.class_name,
-        gradeLevel: resolvedClass.grade_level,
-        section: resolvedClass.section,
-        academicYearId: resolvedClass.academic_year_id,
-        status: resolvedClass.status,
+        id: stream.id,
+        name: stream.name,
+        className: (stream.school_classes as any)?.name || (stream.school_classes as any)?.level || 'Class',
+        academicYearId: stream.academic_year_id,
       },
       canEdit: true,
     });
@@ -129,14 +113,16 @@ export async function POST(request: NextRequest) {
     if (!term || body.date < term.start_date || body.date > term.end_date) return NextResponse.json({ error: 'Attendance date is outside the selected term' }, { status: 400 });
 
     const client = getServerSupabaseClient();
-    const { data: validStudents } = await queryStudents().select('id').eq('school_id', schoolId).eq('current_class_id', body.classId).eq('status', 'active').in('id', body.records.map((record) => record.studentId));
-    const validIds = new Set((validStudents || []).map((student: any) => student.id));
+    const { data: stream } = await client.from('school_class_streams').select('id, school_class_id, academic_year_id').eq('id', body.streamId).eq('school_id', schoolId).eq('academic_year_id', term.academic_year_id).maybeSingle();
+    if (!stream) return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+    const { data: validStudents } = await client.from('student_enrollments').select('student_id').eq('school_id', schoolId).eq('academic_year_id', term.academic_year_id).eq('class_id', stream.school_class_id).eq('stream_id', stream.id).eq('status', 'active').in('student_id', body.records.map((record) => record.studentId));
+    const validIds = new Set((validStudents || []).map((student: any) => student.student_id));
     const records = body.records.filter((record) => validIds.has(record.studentId));
     const savedAt = new Date().toISOString();
 
     for (const record of records) {
-      const payload = { school_id: schoolId, student_id: record.studentId, class_id: body.classId, term_id: term.id, date: body.date, status: record.status, remarks: record.remarks || '', updated_at: savedAt };
-      const { data: existing } = await client.from('attendance_records').select('id').eq('school_id', schoolId).eq('student_id', record.studentId).eq('class_id', body.classId).eq('term_id', term.id).eq('date', body.date).maybeSingle();
+      const payload = { school_id: schoolId, student_id: record.studentId, class_id: stream.school_class_id, term_id: term.id, date: body.date, status: record.status, remarks: record.remarks || '', updated_at: savedAt };
+      const { data: existing } = await client.from('attendance_records').select('id').eq('school_id', schoolId).eq('student_id', record.studentId).eq('class_id', stream.school_class_id).eq('term_id', term.id).eq('date', body.date).maybeSingle();
       const result = existing?.id ? await client.from('attendance_records').update(payload).eq('id', existing.id) : await client.from('attendance_records').insert({ ...payload, created_at: savedAt });
       if (result.error) throw result.error;
     }
