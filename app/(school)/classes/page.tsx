@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, BookOpen } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, AlertCircle, Loader2, BookOpen, Users } from 'lucide-react';
 
 export interface ClassStream {
   id: string;
@@ -247,6 +247,14 @@ export default function ClassesPage() {
                   <p className="text-sm text-muted-foreground">{stream.school_classes?.name}</p>
                 </div>
                 <div className="flex gap-2">
+                  <a
+                    href={`/classes/${stream.id}`}
+                    title="Manage Classroom"
+                    aria-label={`Manage ${stream.name}`}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                  </a>
                   <a
                     href={`/classes/${stream.id}/edit`}
                     className="p-2 hover:bg-muted rounded-lg transition-colors"
