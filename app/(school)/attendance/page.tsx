@@ -138,9 +138,9 @@ export default function AttendancePage() {
       setLoadingRegister(true);
       setError(null);
       setMessage(null);
-      const requestUrl = `/api/school/attendance?stream_id=${classId}&term_id=${termId}&date=${date}`;
+      const requestUrl = `/api/school/attendance?stream_id=${classId}&term_id=${termId}&date=${date}&_=${Date.now()}`;
       console.log('[v0] Attendance register request:', { requestUrl, classId, termId, date });
-      const response = await fetch(requestUrl);
+      const response = await fetch(requestUrl, { cache: 'no-store' });
       const data = await response.json();
       console.log('[v0] Attendance register response:', { status: response.status, ok: response.ok, data });
       if (!response.ok) throw new Error(data.error || 'Failed to load attendance');
