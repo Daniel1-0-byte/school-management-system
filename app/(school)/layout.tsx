@@ -11,6 +11,7 @@ import {
   BarChart3,
   Mail,
   Settings,
+  UserCircle,
   LogOut,
   Menu,
   X,
@@ -27,6 +28,7 @@ interface NavItem {
 const getNavItems = (role: string): NavItem[] => {
   const baseItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: 'Account', href: '/account', icon: <UserCircle className="w-5 h-5" /> },
   ];
 
   if (role === 'Admin') {
