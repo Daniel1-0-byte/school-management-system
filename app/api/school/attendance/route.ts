@@ -59,10 +59,10 @@ export async function GET(request: NextRequest) {
     if (streamError || !stream) return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
 
     const [{ data: enrollments, error: enrollmentError }, { data: existingRecords, error: attendanceError }] = await Promise.all([
-      getServerSupabaseClient().from('student_enrollments').select('student_id, students(first_name, last_name)').eq('school_id', schoolId).eq('academic_year_id', term.academic_year_id).eq('class_id', stream.school_class_id).eq('stream_id', stream.id).eq('status', 'active'),
+      getServerSupabaseClient().from('student_enrollments').select('student_id, students(first_name, last_name, gender)').eq('school_id', schoolId).eq('academic_year_id', term.academic_year_id).eq('class_id', stream.school_class_id).eq('stream_id', stream.id).eq('status', 'active'),
       queryAttendance().select('student_id, status, remarks').eq('school_id', schoolId).eq('class_id', stream.school_class_id).eq('term_id', term.id).eq('date', date),
     ]);
-    const students = (enrollments || []).map((enrollment: any) => ({ id: enrollment.student_id, first_name: enrollment.students?.first_name || '', last_name: enrollment.students?.last_name || '' }));
+    const students = (enrollments || []).map((enrollment: any) => ({ id: enrollment.student_id, first_name: enrollment.students?.first_name || '', last_name: enrollment.students?.last_name || '', gender: enrollment.students?.gender ?? null }));
     const studentError = enrollmentError;
     console.log('[v0] Attendance class lookup:', {
       requestedStreamId: streamId,
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     const recordMap = new Map((existingRecords || []).map((record: any) => [record.student_id, record]));
     const attendanceStudents = (students || []).map((student: any) => {
       const record = recordMap.get(student.id);
-      return { studentId: student.id, studentName: `${student.first_name} ${student.last_name}`.trim(), status: record?.status || 'not-marked', remarks: record?.remarks || '' };
+      return { studentId: student.id, studentName: `${student.first_name} ${student.last_name}`.trim(), firstName: student.first_name, lastName: student.last_name, gender: student.gender, status: record?.status || 'not-marked', remarks: record?.remarks || '' };
     });
 
     return NextResponse.json({
