@@ -11,6 +11,8 @@ export interface StudentRecord {
   school_id: string;
   first_name: string;
   last_name: string;
+  gender?: 'male' | 'female' | null;
+
   date_of_birth?: string;
   admission_number?: string;
   current_class_id?: string;
@@ -35,6 +37,7 @@ export class StudentTransformer {
       schoolId: record.school_id,
       firstName: record.first_name || '',
       lastName: record.last_name || '',
+      gender: record.gender ?? null,
       dateOfBirth: record.date_of_birth,
       admissionNumber: record.admission_number,
       currentClassId: record.current_class_id,
@@ -64,6 +67,7 @@ export class StudentTransformer {
     return {
       first_name: student.firstName,
       last_name: student.lastName,
+      gender: student.gender,
       date_of_birth: student.dateOfBirth,
       admission_number: student.admissionNumber,
       current_class_id: student.currentClassId,
