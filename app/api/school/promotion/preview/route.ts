@@ -23,13 +23,19 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = getServerSupabaseClient();
-  const [{ data: sourceClass, error: sourceClassError }, { data: targetClasses, error: targetClassesError }] = await Promise.all([
+  const [{ data: sourceClass, error: sourceClassError }, { data: sourceYearClasses, error: sourceYearClassesError }, { data: targetClasses, error: targetClassesError }] = await Promise.all([
     supabase.from('school_classes').select('id, name, display_order, academic_year_id').eq('id', classId).eq('school_id', schoolId).eq('academic_year_id', sourceYearId).single(),
+    supabase.from('school_classes').select('id, display_order').eq('school_id', schoolId).eq('academic_year_id', sourceYearId).order('display_order', { ascending: false }),
     supabase.from('school_classes').select('id, name, display_order, academic_year_id').eq('school_id', schoolId).eq('academic_year_id', targetYearId).order('display_order'),
   ]);
   if (sourceClassError || !sourceClass) return NextResponse.json({ error: 'Source class not found for the selected academic year' }, { status: 404 });
-  if (targetClassesError) return NextResponse.json({ error: formatSupabaseError(targetClassesError) }, { status: 400 });
+  if (sourceYearClassesError || targetClassesError) return NextResponse.json({ error: formatSupabaseError(sourceYearClassesError || targetClassesError) }, { status: 400 });
 
+  const highestSourceDisplayOrder = (sourceYearClasses || []).reduce(
+    (highest: number, item: any) => Math.max(highest, item.display_order ?? -Infinity),
+    -Infinity,
+  );
+  const isFinalClass = sourceClass.display_order === highestSourceDisplayOrder;
   const destinationClass = (targetClasses || []).find((item: any) => item.display_order === sourceClass.display_order + 1) || null;
   const [{ data: enrollments, error: enrollmentError }, { data: targetStreams, error: streamError }] = await Promise.all([
     queryStudentEnrollments().select('id, student_id, stream_id, class_id, academic_year_id, status, students(id, first_name, last_name)').eq('school_id', schoolId).eq('academic_year_id', sourceYearId).eq('class_id', classId).eq('status', 'active'),
@@ -48,11 +54,14 @@ export async function GET(request: NextRequest) {
     return { enrollment_id: enrollment.id, student_id: enrollment.student_id, name, source_stream_name: sourceStreamNames.get(enrollment.stream_id) || null, target_stream: matchingStream ? { id: matchingStream.id, name: matchingStream.name } : null, default_outcome: destinationClass ? 'promote' : 'graduate' };
   });
 
-  const warnings = !destinationClass
+  const informationalMessages = isFinalClass
+    ? ['This is the final class — students will graduate.']
+    : [];
+  const warnings = !destinationClass && !isFinalClass
     ? ['The next class is not configured in the target academic year. Promotion is disabled for this class.']
-    : !targetStreams?.length
+    : !isFinalClass && !targetStreams?.length
       ? ['The next class exists, but it has no active streams. Promotion is disabled until a stream is created.']
       : [];
 
-  return NextResponse.json({ source: { id: sourceClass.id, name: sourceClass.name, display_order: sourceClass.display_order }, target: destinationClass ? { id: destinationClass.id, name: destinationClass.name, display_order: destinationClass.display_order, streams: (targetStreams || []).map((stream: any) => ({ id: stream.id, name: stream.name })) } : null, warnings, students });
+  return NextResponse.json({ source: { id: sourceClass.id, name: sourceClass.name, display_order: sourceClass.display_order, is_final_class: isFinalClass }, target: destinationClass ? { id: destinationClass.id, name: destinationClass.name, display_order: destinationClass.display_order, streams: (targetStreams || []).map((stream: any) => ({ id: stream.id, name: stream.name })) } : null, informational_messages: informationalMessages, warnings, students });
 }
