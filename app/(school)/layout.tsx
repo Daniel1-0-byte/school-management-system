@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  GraduationCap,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,6 +40,7 @@ const getNavItems = (role: string): NavItem[] => {
       { label: 'Attendance', href: '/attendance', icon: <Clock className="w-5 h-5" /> },
       { label: 'Grades', href: '/grades', icon: <BarChart3 className="w-5 h-5" /> },
       { label: 'Reports', href: '/reports', icon: <BarChart3 className="w-5 h-5" /> },
+      { label: 'Promotion', href: '/promotion', icon: <GraduationCap className="w-5 h-5" /> },
       { label: 'Messages', href: '/messages', icon: <Mail className="w-5 h-5" /> },
       { label: 'Settings', href: '/settings', icon: <Settings className="w-5 h-5" /> },
     ];
