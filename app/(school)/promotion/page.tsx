@@ -37,21 +37,36 @@ export default function PromotionPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/school/academic-years').then((response) => response.json()),
-      fetch('/api/school/streams?activeOnly=true').then((response) => response.json()),
-    ]).then(([yearResult, streamResult]) => {
-      const loadedYears: Year[] = yearResult.data || [];
-      setYears(loadedYears);
-      setSourceYear(loadedYears[0]?.id || '');
-      setTargetYear(loadedYears[1]?.id || '');
-      const loadedClasses = (streamResult.data || [])
-        .map((stream: any) => stream.school_classes)
-        .filter(Boolean)
-        .reduce((items: ClassItem[], item: ClassItem) => items.some((existing) => existing.id === item.id) ? items : [...items, item], []);
-      setClasses(loadedClasses.sort((a: ClassItem, b: ClassItem) => (a.display_order ?? 999) - (b.display_order ?? 999)));
-    }).catch(() => setError('Unable to load academic years and classes'));
+    fetch('/api/school/academic-years')
+      .then((response) => response.json())
+      .then((result) => {
+        const loadedYears: Year[] = result.data || [];
+        setYears(loadedYears);
+        setSourceYear(loadedYears[0]?.id || '');
+        setTargetYear(loadedYears[1]?.id || '');
+      })
+      .catch(() => setError('Unable to load academic years'));
   }, []);
+
+  useEffect(() => {
+    if (!sourceYear) {
+      setClasses([]);
+      setClassId('');
+      return;
+    }
+
+    fetch(`/api/school/streams?activeOnly=true&academic_year_id=${encodeURIComponent(sourceYear)}`)
+      .then((response) => response.json())
+      .then((result) => {
+        const loadedClasses = (result.data || [])
+          .map((stream: any) => stream.school_classes)
+          .filter(Boolean)
+          .reduce((items: ClassItem[], item: ClassItem) => items.some((existing) => existing.id === item.id) ? items : [...items, item], []);
+        setClasses(loadedClasses.sort((a: ClassItem, b: ClassItem) => (a.display_order ?? 999) - (b.display_order ?? 999)));
+        setClassId('');
+      })
+      .catch(() => setError('Unable to load classes for the selected source academic year'));
+  }, [sourceYear]);
 
   const canPreview = Boolean(sourceYear && targetYear && classId && sourceYear !== targetYear);
   const blocked = !preview?.target || Boolean(preview?.warnings.length);
