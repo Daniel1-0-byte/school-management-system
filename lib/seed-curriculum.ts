@@ -44,14 +44,15 @@ export async function seedDefaultCurriculum(
       subjectMap.set(subject.name, subject.id);
     });
 
-    // Insert classes
-    for (const { className, subjects } of DEFAULT_CURRICULUM) {
+    // Insert classes with a stable progression order for future promotions.
+    for (const [index, { className, subjects }] of DEFAULT_CURRICULUM.entries()) {
       const { data: classData, error: classError } = await supabase
         .from('school_classes')
         .insert({
           name: className,
           school_id: schoolId,
           academic_year_id: academicYearId,
+          display_order: index + 1,
         })
         .select('id')
         .single();
