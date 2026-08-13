@@ -524,9 +524,10 @@ textAlign: 'right',
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Class Teacher */}
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 28px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
+              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
                 CLASS TEACHER
               </p>
+              <div style={{ height: '30px', marginBottom: '12px' }} />
               <div style={{ borderTop: '1px solid #334155', marginBottom: '5px' }} />
               <p style={{ fontSize: '11px', margin: '0', color: '#000' }}>
                 {data.classTeacherName || 'Not Assigned'}
@@ -540,8 +541,9 @@ textAlign: 'right',
               </p>
 
               {/* Signature Image */}
-              {data.headteacherSignature && (
-                <div style={{ marginBottom: '12px', minHeight: '30px' }}>
+              <div style={{ height: '30px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start' }}>
+                {data.headteacherSignature && (
+                <div style={{ minHeight: '30px' }}>
                   <img
                     src={data.headteacherSignature}
                     alt="Headteacher Signature"
@@ -552,9 +554,10 @@ textAlign: 'right',
                     }}
                   />
                 </div>
-              )}
+                )}
+              </div>
 
-              <div style={{ borderTop: '1px solid #334155', marginTop: '26px', marginBottom: '5px' }} />
+              <div style={{ borderTop: '1px solid #334155', marginBottom: '5px' }} />
               <p style={{ fontSize: '11px', margin: '0', color: '#000' }}>{data.headteacherName}</p>
             </div>
           </div>
