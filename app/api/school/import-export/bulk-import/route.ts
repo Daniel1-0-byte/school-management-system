@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       const { data: academicYear, error: academicYearError } = await queryAcademicYears()
         .select('id, year')
         .eq('school_id', schoolId)
-        .order('start_date', { ascending: false })
+        .eq('is_active', true)
         .limit(1)
         .maybeSingle();
 
@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
       const classQuery = querySchoolClasses()
         .select('id, name')
         .eq('school_id', schoolId)
+        .eq('academic_year_id', academicYear?.id ?? '')
         .ilike('name', normalizedClassName)
         .maybeSingle();
       const { data: schoolClass, error: classError } = await classQuery;
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
         student_id: studentId,
         school_id: schoolId,
         academic_year_id: academicYear.id,
-        school_class_id: schoolClass.id,
+        class_id: schoolClass.id,
         stream_id: stream.id,
         status: 'active',
       });
