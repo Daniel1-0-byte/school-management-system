@@ -122,6 +122,26 @@ export function ReportCardsTab({
 
   const completedCount = data.students.filter(s => s.status === 'completed').length;
   const pendingCount = data.students.filter(s => s.status === 'pending').length;
+  let lastAverage: number | null = null;
+  let lastPosition = 0;
+  const studentsByAverage = [...data.students]
+    .sort((a, b) => {
+      const averageA = a.report_card?.average_score ?? -Infinity;
+      const averageB = b.report_card?.average_score ?? -Infinity;
+      if (averageA !== averageB) return averageB - averageA;
+      return a.name.localeCompare(b.name);
+    })
+    .map((student, index) => {
+      const average = student.report_card?.average_score;
+      if (average == null) return { student, position: null };
+
+      if (average !== lastAverage) {
+        lastPosition = index + 1;
+        lastAverage = average;
+      }
+
+      return { student, position: lastPosition };
+    });
 
   return (
     <div className="space-y-6">
@@ -171,7 +191,7 @@ export function ReportCardsTab({
               </tr>
             </thead>
             <tbody>
-              {data.students.map((student) => (
+              {studentsByAverage.map(({ student, position }) => (
                 <tr key={student.student_id} className="border-b border-border hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{student.name}</td>
                   <td className="px-4 py-3 text-center text-muted-foreground">{student.admission_number}</td>
@@ -182,7 +202,7 @@ export function ReportCardsTab({
                     {student.report_card?.letter_grade || '-'}
                   </td>
                   <td className="px-4 py-3 text-center text-foreground">
-                    {student.report_card?.ranking || '-'}
+                    {position ?? '-'}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span
