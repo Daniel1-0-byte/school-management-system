@@ -54,13 +54,36 @@ export default function CreateStaffPage() {
       setSaving(true);
       setError(null);
 
+      console.log('[v0] Teacher signature form state at submission:', {
+        hasSignatureFile: Boolean(data.signatureFile),
+        fileName: data.signatureFile?.name || null,
+        fileType: data.signatureFile?.type || null,
+        fileSize: data.signatureFile?.size || null,
+      });
+
       if (data.signatureFile) {
         const safeEmail = data.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
-        const { error: uploadError } = await uploadImage(
-          'teacher-signatures',
+        const bucket = 'teacher-signatures';
+        const path = `${params.schoolId}/${safeEmail}.png`;
+        console.log('[v0] Teacher signature upload starting:', {
+          bucket,
+          path,
+          fileName: data.signatureFile.name,
+          fileType: data.signatureFile.type,
+          fileSize: data.signatureFile.size,
+        });
+        const uploadResult = await uploadImage(
+          bucket,
           data.signatureFile,
-          `${params.schoolId}/${safeEmail}.png`,
+          path,
         );
+        const { error: uploadError } = uploadResult;
+        console.log('[v0] Teacher signature upload result:', {
+          bucket,
+          path,
+          url: uploadResult.url,
+          error: uploadResult.error,
+        });
         if (uploadError) {
           setError(`Signature upload failed: ${uploadError}`);
           return;
