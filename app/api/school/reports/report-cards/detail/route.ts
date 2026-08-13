@@ -90,10 +90,15 @@ export async function GET(request: NextRequest) {
       .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
       .eq('school_class_id', enrollment.class_id)
-      .single();
+      .order('class_teacher_id', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
 
     if (streamError || !stream) {
       return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+    }
+    if (streamError) {
+      console.error('[v0] Error fetching report stream:', streamError);
     }
 
     // Fetch class information
@@ -182,11 +187,13 @@ export async function GET(request: NextRequest) {
       .gte('date', reportCard.generated_at || new Date().toISOString());
 
     // Fetch teacher and headteacher info
-    const { data: classTeacher, error: teacherError } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', stream.class_teacher_id)
-      .single();
+    const { data: classTeacher, error: teacherError } = stream.class_teacher_id
+      ? await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('id', stream.class_teacher_id)
+          .maybeSingle()
+      : { data: null, error: null };
 
     // Fetch headteacher (admin) with signature
     const { data: headteacher, error: headteacherError } = await supabase
