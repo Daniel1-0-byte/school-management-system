@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const destinationClass = (targetClasses || []).find((item: any) => item.display_order === sourceClass.display_order + 1) || null;
   const [{ data: enrollments, error: enrollmentError }, { data: targetStreams, error: streamError }] = await Promise.all([
-    queryStudentEnrollments().select('id, student_id, stream_id, class_id, academic_year_id, status, students(id, first_name, middle_name, last_name)').eq('school_id', schoolId).eq('academic_year_id', sourceYearId).eq('class_id', classId).eq('status', 'active'),
+    queryStudentEnrollments().select('id, student_id, stream_id, class_id, academic_year_id, status, students(id, first_name, last_name)').eq('school_id', schoolId).eq('academic_year_id', sourceYearId).eq('class_id', classId).eq('status', 'active'),
     destinationClass ? supabase.from('school_class_streams').select('id, name, school_class_id, academic_year_id, status').eq('school_id', schoolId).eq('academic_year_id', targetYearId).eq('school_class_id', destinationClass.id).eq('status', 'active').order('name') : Promise.resolve({ data: [], error: null } as any),
   ]);
   if (enrollmentError || streamError) return NextResponse.json({ error: formatSupabaseError(enrollmentError || streamError) }, { status: 400 });
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
   const students = (enrollments || []).map((enrollment: any) => {
     const student = Array.isArray(enrollment.students) ? enrollment.students[0] : enrollment.students;
-    const name = [student?.first_name, student?.middle_name, student?.last_name].filter(Boolean).join(' ') || 'Unnamed student';
+    const name = [student?.first_name, student?.last_name].filter(Boolean).join(' ') || 'Unnamed student';
     const matchingStream = (targetStreams || []).find((stream: any) => stream.name === sourceStreamNames.get(enrollment.stream_id)) || (targetStreams || [])[0] || null;
     return { enrollment_id: enrollment.id, student_id: enrollment.student_id, name, source_stream_name: sourceStreamNames.get(enrollment.stream_id) || null, target_stream: matchingStream ? { id: matchingStream.id, name: matchingStream.name } : null, default_outcome: destinationClass ? 'promote' : 'graduate' };
   });
