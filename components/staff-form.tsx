@@ -22,8 +22,9 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
     department: undefined,
     qualification: undefined,
     experienceYears: undefined,
-    dateOfJoining: undefined,
-    status: 'active',
+        dateOfJoining: undefined,
+        signatureFile: undefined,
+        status: 'active',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,6 +43,7 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
         qualification: staff.qualification,
         experienceYears: staff.experienceYears,
         dateOfJoining: staff.dateOfJoining,
+        signatureFile: undefined,
         status: staff.status,
       });
     }
@@ -282,6 +284,23 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
           {errors.dateOfJoining && <p className="text-sm text-red-600 mt-1">{errors.dateOfJoining}</p>}
         </div>
       </div>
+
+      {!staff && (
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2" htmlFor="signatureFile">
+            Teacher Signature <span className="text-muted-foreground font-normal">(Optional)</span>
+          </label>
+          <input
+            id="signatureFile"
+            name="signatureFile"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => setFormData((prev) => ({ ...prev, signatureFile: event.target.files?.[0] }))}
+            className="w-full rounded-lg border border-border bg-background px-4 py-2 text-sm"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Upload a PNG, JPEG, or WebP image. This is not required.</p>
+        </div>
+      )}
 
       {/* Submit Button */}
       <div className="flex justify-end pt-4 border-t border-border">

@@ -18,6 +18,7 @@ export const StaffCreateSchema = z.object({
   qualification: z.string().optional(),
   experienceYears: z.number().min(0).max(100).optional(),
   dateOfJoining: z.string().optional(),
+  signatureFile: z.instanceof(File).optional(),
   status: z.enum(['active', 'inactive', 'on_leave']).default('active'),
 });
 

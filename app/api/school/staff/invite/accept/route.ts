@@ -102,6 +102,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const safeEmail = invitation.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+    const signaturePath = `signatures/${invitation.school_id}/${safeEmail}.png`;
+    const { data: signatureFiles } = await supabase.storage
+      .from('school-logos')
+      .list(`signatures/${invitation.school_id}`, { search: `${safeEmail}.png`, limit: 1 });
+    const signatureUrl = signatureFiles?.some((file) => file.name === `${safeEmail}.png`)
+      ? supabase.storage.from('school-logos').getPublicUrl(signaturePath).data.publicUrl
+      : null;
+
     // Create profile
     const { error: profileError } = await supabase
       .from('profiles')
@@ -113,6 +122,7 @@ export async function POST(request: NextRequest) {
         system_role: invitation.system_role,
         status: 'active',
         setup_completed: true,
+        signature_url: signatureUrl,
       });
 
     if (profileError) {

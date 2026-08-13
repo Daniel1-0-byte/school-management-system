@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SchoolService } from '@/lib/services/school-service';
 import { StaffForm } from '@/components/staff-form';
+import { uploadImage } from '@/lib/storage-utils';
 import type { StaffCreateInput } from '@/lib/validators/staff-validator';
 
 export default function CreateStaffPage() {
@@ -52,6 +53,20 @@ export default function CreateStaffPage() {
 
       setSaving(true);
       setError(null);
+
+      if (data.signatureFile) {
+        const safeEmail = data.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+        const { error: uploadError } = await uploadImage(
+          'school-logos',
+          data.signatureFile,
+          `signatures/${params.schoolId}/${safeEmail}.png`,
+        );
+        if (uploadError) {
+          setError(`Signature upload failed: ${uploadError}`);
+          return;
+        }
+      }
+
       const { invitation, error } = await SchoolService.inviteStaff(params.schoolId, inviterId, data);
       if (error) {
         setError(getInviteErrorMessage(error));
