@@ -221,13 +221,16 @@ export class SchoolService {
       return { error: response.error };
     }
 
-    return {
-      staff: response.data ? StaffTransformer.toUI(response.data) : undefined,
-    };
+  const staffRecord = response.data ?? (response as unknown as StaffRecord);
+
+  return {
+    staff: staffRecord?.id ? StaffTransformer.toUI(staffRecord) : undefined,
+    error: staffRecord?.id ? undefined : 'Staff member was not found',
+  };
   }
 
   /**
-   * STAFF - CREATE
+  * STAFF - CREATE
    */
   static async createStaff(schoolId: string, data: Partial<Staff>): Promise<{ staff?: Staff; error?: string }> {
     const payload = {
@@ -296,13 +299,16 @@ export class SchoolService {
       return { error: response.error };
     }
 
-    return {
-      staff: response.data ? StaffTransformer.toUI(response.data) : undefined,
-    };
+  const updatedRecord = response.data ?? (response as unknown as StaffRecord);
+
+  return {
+    staff: updatedRecord?.id ? StaffTransformer.toUI(updatedRecord) : undefined,
+    error: updatedRecord?.id ? undefined : 'Staff member update returned no record',
+  };
   }
 
   /**
-   * STAFF - DELETE
+  * STAFF - DELETE
    */
   static async deleteStaff(schoolId: string, staffId: string): Promise<{ success: boolean; error?: string }> {
     const response = await apiClient.delete<void>(`/staff/${staffId}`, {

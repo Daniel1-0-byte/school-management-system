@@ -51,7 +51,12 @@ export default function TeacherAssignmentsPage() {
     try {
       const result = await SchoolService.deleteTeacherAssignment(schoolId, id);
       if (result.error) {
-        setError(result.error);
+        if (result.error.toLowerCase().includes('not found') || result.error.toLowerCase().includes('already removed')) {
+          await fetchAssignments();
+          setError(null);
+        } else {
+          setError(result.error);
+        }
       } else {
         await fetchAssignments();
       }

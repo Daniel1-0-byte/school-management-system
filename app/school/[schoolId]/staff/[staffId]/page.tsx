@@ -128,6 +128,12 @@ export default function StaffDetailPage() {
             />
           </div>
         )}
+
+        {!loading && !staff && !error && (
+          <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
+            Staff member details could not be loaded. Please return to the Staff page and try again.
+          </div>
+        )}
       </div>
     </div>
   );
