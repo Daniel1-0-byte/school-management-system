@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
         class_id: schoolClass.id,
         stream_id: stream.id,
         status: 'active',
+        enrollment_date: new Date().toISOString().slice(0, 10),
       });
 
       if (enrollmentError) {
