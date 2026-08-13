@@ -23,8 +23,32 @@ export async function GET(request: NextRequest) {
     supabase.from('terms').select('id, name, start_date, end_date, academic_year_id').eq('school_id', schoolId).eq('academic_year_id', academicYearId).order('start_date'),
     supabase.from('student_enrollments').select('id, class_id, stream_id, academic_year_id, status, enrollment_date, school_classes(name, display_order), school_class_streams(name)').eq('student_id', studentId).eq('school_id', schoolId).order('enrollment_date', { ascending: false }),
   ]);
-  if (studentResult.error || !studentResult.data) return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-  if (enrollmentResult.error || termsResult.error || historyResult.error) return NextResponse.json({ error: 'Unable to load student records' }, { status: 500 });
+  if (studentResult.error || !studentResult.data) {
+    console.error('[v0] Student records student lookup failed:', {
+      studentId,
+      schoolId,
+      error: studentResult.error
+        ? { message: studentResult.error.message, code: studentResult.error.code, details: studentResult.error.details, hint: studentResult.error.hint }
+        : { message: 'Student lookup returned no data' },
+    });
+    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
+  }
+  if (enrollmentResult.error || termsResult.error || historyResult.error) {
+    console.error('[v0] Student records base queries failed:', {
+      studentId,
+      academicYearId,
+      enrollment: enrollmentResult.error
+        ? { message: enrollmentResult.error.message, code: enrollmentResult.error.code, details: enrollmentResult.error.details, hint: enrollmentResult.error.hint }
+        : null,
+      terms: termsResult.error
+        ? { message: termsResult.error.message, code: termsResult.error.code, details: termsResult.error.details, hint: termsResult.error.hint }
+        : null,
+      history: historyResult.error
+        ? { message: historyResult.error.message, code: historyResult.error.code, details: historyResult.error.details, hint: historyResult.error.hint }
+        : null,
+    });
+    return NextResponse.json({ error: 'Unable to load student records' }, { status: 500 });
+  }
 
   const terms = termsResult.data || [];
   const selectedTerm = termId ? terms.find((term) => term.id === termId) : terms[0];
@@ -39,7 +63,23 @@ export async function GET(request: NextRequest) {
       supabase.from('grade_entries').select('id, subject_id, score, grade_type, letter_grade, remarks, term_id, subjects(id, name)').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id),
       supabase.from('report_cards').select('*').eq('school_id', schoolId).eq('student_id', studentId).eq('academic_year_id', academicYearId).eq('term_id', selectedTerm.id),
     ]);
-    if (attendanceResult.error || gradesResult.error || reportsResult.error) return NextResponse.json({ error: 'Unable to load term records' }, { status: 500 });
+    if (attendanceResult.error || gradesResult.error || reportsResult.error) {
+      console.error('[v0] Student records term queries failed:', {
+        studentId,
+        academicYearId,
+        termId: selectedTerm.id,
+        attendance: attendanceResult.error
+          ? { message: attendanceResult.error.message, code: attendanceResult.error.code, details: attendanceResult.error.details, hint: attendanceResult.error.hint }
+          : null,
+        grades: gradesResult.error
+          ? { message: gradesResult.error.message, code: gradesResult.error.code, details: gradesResult.error.details, hint: gradesResult.error.hint }
+          : null,
+        reports: reportsResult.error
+          ? { message: reportsResult.error.message, code: reportsResult.error.code, details: reportsResult.error.details, hint: reportsResult.error.hint }
+          : null,
+      });
+      return NextResponse.json({ error: 'Unable to load term records' }, { status: 500 });
+    }
     attendance = attendanceResult.data || [];
     grades = gradesResult.data || [];
     reportCards = reportsResult.data || [];
