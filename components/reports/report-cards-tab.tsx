@@ -325,6 +325,7 @@ function ReportCardEditor({
   const [ranking, setRanking] = useState(student.report_card?.ranking || '');
   const [teacherComment, setTeacherComment] = useState(student.report_card?.teacher_comment || '');
   const [principalSignature, setPrincipalSignature] = useState(student.report_card?.principal_signature || false);
+  const [classTeacherSignoff, setClassTeacherSignoff] = useState(student.report_card?.class_teacher_signoff || false);
   const [conductComment, setConductComment] = useState(student.report_card?.conduct_comment || '');
   const [talentInterests, setTalentInterests] = useState(student.report_card?.talent_interests || '');
   const [headTeacherComment, setHeadTeacherComment] = useState(student.report_card?.head_teacher_comment || '');
@@ -395,8 +396,9 @@ function ReportCardEditor({
           letterGrade,
           ranking: ranking ? parseInt(ranking) : null,
           teacherComment,
-          principalSignature,
-          conductComment,
+  principalSignature,
+  classTeacherSignoff,
+  conductComment,
           talentInterests,
           headTeacherComment,
           subjectRemarks,
@@ -646,6 +648,15 @@ function ReportCardEditor({
           <label htmlFor="head-teacher-comment" className="block text-sm font-semibold text-foreground mb-2">Head Teacher&apos;s Remarks</label>
           <textarea id="head-teacher-comment" value={headTeacherComment} onChange={(e) => setHeadTeacherComment(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary" placeholder="Enter head teacher&apos;s remarks..." />
         </div>
+      </div>
+
+      {/* Class Teacher Sign-off */}
+      <div className="bg-card border border-border rounded-lg p-6">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" checked={classTeacherSignoff} onChange={(e) => setClassTeacherSignoff(e.target.checked)} className="w-4 h-4 rounded border-border" />
+          <span className="text-sm font-semibold text-foreground">Class Teacher Signature / Sign-off</span>
+        </label>
+        <p className="mt-2 text-xs text-muted-foreground">The assigned class teacher&apos;s uploaded signature will appear on the report card when available.</p>
       </div>
 
       {/* Principal Signature */}
