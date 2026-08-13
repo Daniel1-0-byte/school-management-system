@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryProfiles, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 const staffSchema = z.object({
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.or(
-        `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`
+        `first_name.ilike.%${search}%,last_name.ilike.%${search}%`
       );
     }
 
@@ -65,15 +65,34 @@ export async function GET(request: NextRequest) {
 
     query = query.order('created_at', { ascending: false });
 
-    const { data, error, count } = await getPaginatedResults(query, page, pageSize);
+    const { data: profileData, error, count } = await getPaginatedResults(query, page, pageSize);
 
     if (error) {
       console.error('[v0] Staff GET error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    const authClient = getServerSupabaseClient();
+    const { data: authUsers, error: authError } = await authClient.auth.admin.listUsers({
+      page,
+      perPage: pageSize,
+    });
+
+    if (authError) {
+      console.error('[v0] Staff auth users lookup error:', authError);
+    }
+
+    const emailsById = new Map(
+      (authUsers?.users || []).map((user) => [user.id, user.email || ''])
+    );
+    const staffData = (profileData || []).map((profile: Record<string, unknown>) => ({
+      ...profile,
+      email: emailsById.get(profile.id) || '',
+      date_of_joining: profile.created_at || null,
+    }));
+
     return NextResponse.json({
-      data: data || [],
+      data: staffData,
       total: count || 0,
       page,
       pageSize,

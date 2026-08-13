@@ -49,6 +49,7 @@ export interface ReportCardData {
 
   // Staff
   classTeacherName: string | null;
+  classTeacherSignature: string | null;
   headteacherName: string;
   headteacherSignature: string | null;
 
@@ -524,10 +525,12 @@ textAlign: 'right',
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Class Teacher */}
             <div>
-              <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
-                CLASS TEACHER
-              </p>
-              <div style={{ height: '30px', marginBottom: '12px' }} />
+  <p style={{ fontSize: '10px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#1e3a5f', letterSpacing: '0.8px' }}>
+  CLASS TEACHER
+  </p>
+  <div style={{ height: '30px', marginBottom: '12px', display: 'flex', alignItems: 'flex-start' }}>
+  {data.classTeacherSignature && <img src={data.classTeacherSignature} alt="Class teacher signature" style={{ maxHeight: '30px', maxWidth: '120px', objectFit: 'contain' }} />}
+  </div>
               <div style={{ borderTop: '1px solid #334155', marginBottom: '5px' }} />
               <p style={{ fontSize: '11px', margin: '0', color: '#000' }}>
                 {data.classTeacherName || 'Not Assigned'}
