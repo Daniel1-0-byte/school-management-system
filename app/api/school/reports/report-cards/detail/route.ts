@@ -262,6 +262,10 @@ export async function GET(request: NextRequest) {
       subjectPositions.set(subjectId, position >= 0 ? position + 1 : null);
     }
 
+    const headteacherSignature = headteacher?.signature_url
+      ? (await supabase.storage.from('teacher-signatures').createSignedUrl(headteacher.signature_url, 3600)).data?.signedUrl || headteacher.signature_url
+      : null;
+
     // Build response
     const reportCardData: ReportCardData = {
       // School Info
@@ -313,7 +317,7 @@ export async function GET(request: NextRequest) {
       headteacherName: headteacher
         ? `${headteacher.first_name} ${headteacher.last_name}`
         : 'Headteacher',
-      headteacherSignature: headteacher?.signature_url || null,
+      headteacherSignature,
 
       // Generated Date
       generatedDate: new Date().toLocaleDateString('en-US', {

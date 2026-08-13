@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       .from('teacher-signatures')
       .list(invitation.school_id, { search: `${safeEmail}.png`, limit: 1 });
     const signatureUrl = signatureFiles?.some((file) => file.name === `${safeEmail}.png`)
-      ? supabase.storage.from('teacher-signatures').getPublicUrl(signaturePath).data.publicUrl
+      ? signaturePath
       : null;
 
     // Create profile
