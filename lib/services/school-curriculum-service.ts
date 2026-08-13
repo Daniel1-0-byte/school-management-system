@@ -89,7 +89,7 @@ export class SchoolCurriculumService {
         const { data: yearData, error: yearError } = await queryAcademicYears()
           .select('id')
           .eq('school_id', schoolId)
-          .eq('status', 'active')
+          .eq('is_active', true)
           .limit(1);
 
         if (yearError || !yearData || yearData.length === 0) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabaseClient, queryProfiles } from '@/lib/supabase';
+import { getServerSupabaseClient, queryAcademicYears, queryProfiles } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +64,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { data: activeAcademicYear, error: academicYearError } = await queryAcademicYears()
+      .select('id')
+      .eq('school_id', profileData.school_id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (academicYearError) {
+      console.error('[v0][SESSION] Active academic year lookup failed:', {
+        error: academicYearError.message,
+      });
+    }
+
     const response = NextResponse.json({
       success: true,
       session: {
@@ -71,6 +84,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: profileData.system_role,
         schoolId: profileData.school_id,
+        academicYearId: activeAcademicYear?.id ?? null,
         setupCompleted: profileData.setup_completed,
       },
       data: {
