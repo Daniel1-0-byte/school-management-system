@@ -186,14 +186,26 @@ export async function GET(request: NextRequest) {
       .eq('student_id', studentId)
       .gte('date', reportCard.generated_at || new Date().toISOString());
 
-    // Fetch teacher and headteacher info
-    const { data: classTeacher, error: teacherError } = stream.class_teacher_id
-      ? await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', stream.class_teacher_id)
-          .maybeSingle()
-      : { data: null, error: null };
+    // Fetch the primary class teacher for this student's class and academic year.
+    // Class teachers sign printed report cards by hand, so only the name is returned.
+    const { data: primaryAssignment, error: teacherError } = await supabase
+      .from('teacher_assignments')
+      .select('profiles!teacher_assignments_teacher_id_fkey(first_name, last_name)')
+      .eq('school_id', schoolId)
+      .eq('class_id', enrollment.class_id)
+      .eq('academic_year_id', academicYearId)
+      .eq('is_primary_teacher', true)
+      .is('end_date', null)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (teacherError) {
+      console.error('[v0] Error fetching primary class teacher:', teacherError);
+    }
+    const classTeacher = Array.isArray(primaryAssignment?.profiles)
+      ? primaryAssignment.profiles[0] ?? null
+      : primaryAssignment?.profiles ?? null;
 
     // Fetch headteacher (admin) with signature
     const { data: headteacher, error: headteacherError } = await supabase
