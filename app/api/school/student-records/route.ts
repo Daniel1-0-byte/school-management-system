@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
   let reportCards: any[] = [];
   if (selectedTerm) {
     const [attendanceResult, gradesResult, reportsResult] = await Promise.all([
-      supabase.from('attendance_records').select('id, attendance_date, status, remarks, class_id, term_id').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id).order('attendance_date', { ascending: false }),
-      supabase.from('grade_entries').select('id, subject_id, total_score, grade, remarks, term_id, subjects(id, name)').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id),
+      supabase.from('attendance_records').select('id, date, status, remarks, class_id, term_id').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id).order('date', { ascending: false }),
+      supabase.from('grade_entries').select('id, subject_id, score, grade_type, letter_grade, remarks, term_id, subjects(id, name)').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id),
       supabase.from('report_cards').select('*').eq('school_id', schoolId).eq('student_id', studentId).eq('academic_year_id', academicYearId).eq('term_id', selectedTerm.id),
     ]);
     if (attendanceResult.error || gradesResult.error || reportsResult.error) return NextResponse.json({ error: 'Unable to load term records' }, { status: 500 });
