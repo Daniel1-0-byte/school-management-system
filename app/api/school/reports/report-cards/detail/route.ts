@@ -186,11 +186,10 @@ export async function GET(request: NextRequest) {
       .eq('student_id', studentId)
       .gte('date', reportCard.generated_at || new Date().toISOString());
 
-    // Fetch the primary class teacher for this student's class and academic year.
-    // Class teachers sign printed report cards by hand, so only the name is returned.
+    // Fetch the primary class teacher and optional signature for this class/year.
     const { data: primaryAssignment, error: teacherError } = await supabase
       .from('teacher_assignments')
-      .select('profiles!teacher_assignments_teacher_id_fkey(first_name, last_name)')
+      .select('teacher_id, profiles!teacher_assignments_teacher_id_fkey(first_name, last_name, signature_url)')
       .eq('school_id', schoolId)
       .eq('class_id', enrollment.class_id)
       .eq('academic_year_id', academicYearId)
@@ -206,6 +205,9 @@ export async function GET(request: NextRequest) {
     const classTeacher = Array.isArray(primaryAssignment?.profiles)
       ? primaryAssignment.profiles[0] ?? null
       : primaryAssignment?.profiles ?? null;
+    const classTeacherSignature = classTeacher?.signature_url
+      ? (await supabase.storage.from('teacher-signatures').createSignedUrl(classTeacher.signature_url, 3600)).data?.signedUrl || null
+      : null;
 
     // Fetch headteacher (admin) with signature
     const { data: headteacher, error: headteacherError } = await supabase
@@ -311,10 +313,11 @@ export async function GET(request: NextRequest) {
       headTeacherComment: reportCard.head_teacher_comment,
 
       // Staff
-      classTeacherName: classTeacher
-        ? `${classTeacher.first_name} ${classTeacher.last_name}`
-        : null,
-      headteacherName: headteacher
+  classTeacherName: classTeacher
+  ? `${classTeacher.first_name} ${classTeacher.last_name}`
+  : null,
+  classTeacherSignature,
+  headteacherName: headteacher
         ? `${headteacher.first_name} ${headteacher.last_name}`
         : 'Headteacher',
       headteacherSignature,
