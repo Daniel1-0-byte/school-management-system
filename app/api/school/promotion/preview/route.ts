@@ -48,5 +48,11 @@ export async function GET(request: NextRequest) {
     return { enrollment_id: enrollment.id, student_id: enrollment.student_id, name, source_stream_name: sourceStreamNames.get(enrollment.stream_id) || null, target_stream: matchingStream ? { id: matchingStream.id, name: matchingStream.name } : null, default_outcome: destinationClass ? 'promote' : 'graduate' };
   });
 
-  return NextResponse.json({ source: { id: sourceClass.id, name: sourceClass.name, display_order: sourceClass.display_order }, target: destinationClass ? { id: destinationClass.id, name: destinationClass.name, display_order: destinationClass.display_order, streams: (targetStreams || []).map((stream: any) => ({ id: stream.id, name: stream.name })) } : null, warnings: destinationClass && !targetStreams?.length ? ['The next class exists, but it has no active streams. Promotion is disabled until a stream is created.'] : [], students });
+  const warnings = !destinationClass
+    ? ['The next class is not configured in the target academic year. Promotion is disabled for this class.']
+    : !targetStreams?.length
+      ? ['The next class exists, but it has no active streams. Promotion is disabled until a stream is created.']
+      : [];
+
+  return NextResponse.json({ source: { id: sourceClass.id, name: sourceClass.name, display_order: sourceClass.display_order }, target: destinationClass ? { id: destinationClass.id, name: destinationClass.name, display_order: destinationClass.display_order, streams: (targetStreams || []).map((stream: any) => ({ id: stream.id, name: stream.name })) } : null, warnings, students });
 }
