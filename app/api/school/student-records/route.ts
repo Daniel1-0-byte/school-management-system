@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const [studentResult, enrollmentResult, termsResult, historyResult] = await Promise.all([
     supabase.from('students').select('id, school_id, first_name, last_name, date_of_birth, admission_number, status, current_class_name, current_class_id, parental_status, medical_notes, allergies, gender, created_at, updated_at').eq('id', studentId).eq('school_id', schoolId).single(),
     supabase.from('student_enrollments').select('id, student_id, class_id, stream_id, academic_year_id, status, enrollment_date, school_classes(id, name, display_order), school_class_streams(id, name)').eq('student_id', studentId).eq('school_id', schoolId).eq('academic_year_id', academicYearId).maybeSingle(),
-    supabase.from('terms').select('id, name, start_date, end_date, academic_year_id').eq('school_id', schoolId).eq('academic_year_id', academicYearId).order('start_date'),
+    supabase.from('terms').select('id, type, start_date, end_date, academic_year_id').eq('school_id', schoolId).eq('academic_year_id', academicYearId).order('start_date'),
     supabase.from('student_enrollments').select('id, class_id, stream_id, academic_year_id, status, enrollment_date, school_classes(name, display_order), school_class_streams(name)').eq('student_id', studentId).eq('school_id', schoolId).order('enrollment_date', { ascending: false }),
   ]);
   if (studentResult.error || !studentResult.data) {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   if (selectedTerm) {
     const [attendanceResult, gradesResult, reportsResult] = await Promise.all([
       supabase.from('attendance_records').select('id, date, status, remarks, class_id, term_id').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id).order('date', { ascending: false }),
-      supabase.from('grade_entries').select('id, subject_id, score, grade_type, letter_grade, remarks, term_id, subjects(id, name)').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id),
+      supabase.from('grade_entries').select('id, subject_id, total_score, class_score, exam_score, grade_type, letter_grade, remarks, term_id, subjects(id, name)').eq('school_id', schoolId).eq('student_id', studentId).eq('term_id', selectedTerm.id),
       supabase.from('report_cards').select('*').eq('school_id', schoolId).eq('student_id', studentId).eq('academic_year_id', academicYearId).eq('term_id', selectedTerm.id),
     ]);
     if (attendanceResult.error || gradesResult.error || reportsResult.error) {
