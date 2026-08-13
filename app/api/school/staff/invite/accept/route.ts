@@ -103,12 +103,12 @@ export async function POST(request: NextRequest) {
     }
 
     const safeEmail = invitation.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
-    const signaturePath = `signatures/${invitation.school_id}/${safeEmail}.png`;
+    const signaturePath = `${invitation.school_id}/${safeEmail}.png`;
     const { data: signatureFiles } = await supabase.storage
-      .from('school-logos')
-      .list(`signatures/${invitation.school_id}`, { search: `${safeEmail}.png`, limit: 1 });
+      .from('teacher-signatures')
+      .list(invitation.school_id, { search: `${safeEmail}.png`, limit: 1 });
     const signatureUrl = signatureFiles?.some((file) => file.name === `${safeEmail}.png`)
-      ? supabase.storage.from('school-logos').getPublicUrl(signaturePath).data.publicUrl
+      ? supabase.storage.from('teacher-signatures').getPublicUrl(signaturePath).data.publicUrl
       : null;
 
     // Create profile

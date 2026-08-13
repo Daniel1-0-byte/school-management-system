@@ -57,9 +57,9 @@ export default function CreateStaffPage() {
       if (data.signatureFile) {
         const safeEmail = data.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
         const { error: uploadError } = await uploadImage(
-          'school-logos',
+          'teacher-signatures',
           data.signatureFile,
-          `signatures/${params.schoolId}/${safeEmail}.png`,
+          `${params.schoolId}/${safeEmail}.png`,
         );
         if (uploadError) {
           setError(`Signature upload failed: ${uploadError}`);
