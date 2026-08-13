@@ -33,12 +33,28 @@ export async function uploadImage(
     const supabase = getSupabaseClientSide();
 
     // Upload file
+    console.log('[v0] Supabase storage upload request:', {
+      bucket,
+      path,
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+    });
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
         cacheControl: '3600',
         upsert: true,
       });
+
+    console.log('[v0] Supabase storage upload response:', {
+      bucket,
+      path,
+      uploadedPath: data?.path || null,
+      error: error
+        ? { message: error.message, name: error.name, statusCode: error.statusCode }
+        : null,
+    });
 
     if (error) {
       console.error(`[v0] Upload to ${bucket} failed:`, error);
