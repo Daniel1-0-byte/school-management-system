@@ -88,6 +88,7 @@ export async function GET(request: NextRequest) {
     const staffData = (profileData || []).map((profile: Record<string, unknown>) => ({
       ...profile,
       email: emailsById.get(profile.id) || '',
+      date_of_joining: profile.created_at || null,
     }));
 
     return NextResponse.json({
