@@ -274,9 +274,13 @@ export default function StaffPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors">
+                      <a
+                        href={schoolId ? `/school/${schoolId}/staff/${member.id}` : '#'}
+                        aria-label={`Edit ${member.firstName} ${member.lastName}`}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded hover:bg-muted transition-colors"
+                      >
                         <Edit2 className="w-4 h-4" />
-                      </button>
+                      </a>
                       <button
                         onClick={() => handleDelete(member.id)}
                         className="inline-flex items-center gap-1 px-3 py-1 text-xs text-red-600 hover:bg-red-500/10 rounded transition-colors"

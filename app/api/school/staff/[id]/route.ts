@@ -6,7 +6,7 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/l
 const staffUpdateSchema = z.object({
   first_name: z.string().min(1).optional(),
   last_name: z.string().min(1).optional(),
-  phone_number: z.string().optional(),
+  phone: z.string().optional(),
   system_role: z.enum(['Teacher', 'Admin', 'Accountant', 'BusCoordinator']).optional(),
   department: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
@@ -120,13 +120,29 @@ export async function DELETE(
     const { id } = await params;
     console.log('[DELETE] id:', id);
 
-    const { error } = await queryProfiles()
+    const schoolId = await getSchoolIdFromRequest(request);
+    if (typeof schoolId !== 'string') {
+      return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
+    }
+
+    const validation = await validateSchoolIdAccess(schoolId);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error || 'Invalid school access' }, { status: 400 });
+    }
+
+    const { data: deletedStaff, error } = await queryProfiles()
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('school_id', schoolId)
+      .select('id');
 
     if (error) {
       console.error('[v0] Staff DELETE error:', error);
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
+    }
+
+    if (!deletedStaff || deletedStaff.length === 0) {
+      return NextResponse.json({ error: 'Staff member not found or already deleted' }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
