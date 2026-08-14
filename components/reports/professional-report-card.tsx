@@ -241,7 +241,7 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
             STUDENT INFORMATION
           </h3>
           <div
-            className="report-card-info bg-card dark:bg-card"
+            className="report-card-info"
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
