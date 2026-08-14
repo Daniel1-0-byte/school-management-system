@@ -25,11 +25,7 @@ export default function StudentRecordsPage() {
       (async () => {
         const yearResponse = await fetch('/api/school/academic-years');
         const yearResult = await yearResponse.json();
-        console.log('[v0] Academic years fetch:', {
-          status: yearResponse.status,
-          ok: yearResponse.ok,
-          result: yearResult,
-        });
+        console.log('[v0] Academic years fetch RAW:', JSON.stringify(yearResult, null, 2));
         if (!yearResponse.ok) throw new Error(yearResult.error || 'Academic years request failed');
         if (yearResult.error) console.error('[v0] Academic years API error:', yearResult.error);
         return yearResult;
@@ -37,17 +33,17 @@ export default function StudentRecordsPage() {
       fetch('/api/school/students?limit=500').then((r) => r.json()),
       fetch('/api/auth/session').then(async (response) => {
         const raw = await response.json();
-        console.log('[v0] Student records session response:', {
+        console.log('[v0] Student records session response RAW:', JSON.stringify({
           status: response.status,
           ok: response.ok,
           academicYearId: raw?.session?.academicYearId || null,
           raw,
-        });
+        }, null, 2));
         if (!response.ok) throw new Error(raw.error || 'Session request failed');
         return raw;
       }),
     ]).then(([yearResult, studentResult, session]) => {
-      console.log('[v0] Student records filter results:', { yearResult, studentResult, session });
+      console.log('[v0] Student records filter results RAW:', JSON.stringify({ yearResult, studentResult, session }, null, 2));
       const loadedYears = yearResult.data || [];
       setYears(loadedYears);
       setYearId(session.session?.academicYearId || loadedYears[0]?.id || '');
