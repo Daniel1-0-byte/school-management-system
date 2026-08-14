@@ -22,6 +22,7 @@ export interface StaffRecord {
   status: 'active' | 'inactive' | 'on_leave';
   created_at: string;
   updated_at: string;
+  signature_url?: string | null;
 }
 
 export interface Staff {
@@ -40,6 +41,7 @@ export interface Staff {
   status: 'active' | 'inactive' | 'on_leave';
   createdAt: string;
   updatedAt: string;
+  signatureUrl?: string | null;
 }
 
 export class StaffTransformer {
@@ -63,6 +65,7 @@ export class StaffTransformer {
       status: record.status,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
+      signatureUrl: record.signature_url,
     };
   }
 
@@ -88,6 +91,7 @@ export class StaffTransformer {
       experience_years: staff.experienceYears,
       date_of_joining: staff.dateOfJoining,
       status: staff.status,
+      signature_url: staff.signatureUrl,
     };
   }
 

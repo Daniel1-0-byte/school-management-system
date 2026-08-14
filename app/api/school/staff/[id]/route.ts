@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryProfiles, formatSupabaseError } from '@/lib/supabase';
+import { queryProfiles, formatSupabaseError, getServerSupabaseClient } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 const staffUpdateSchema = z.object({
@@ -10,6 +10,7 @@ const staffUpdateSchema = z.object({
   system_role: z.enum(['Teacher', 'Admin', 'Accountant', 'BusCoordinator']).optional(),
   department: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
+  signature_url: z.string().min(1).optional(),
 });
 
 export async function GET(
@@ -51,7 +52,16 @@ export async function GET(
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
-    return NextResponse.json(data);
+    let responseData = data;
+    if (data.signature_url) {
+      const serverSupabase = getServerSupabaseClient();
+      const { data: signed } = await serverSupabase.storage
+        .from('teacher-signatures')
+        .createSignedUrl(data.signature_url, 3600);
+      responseData = { ...data, signature_url: signed?.signedUrl || null };
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('[v0] Staff GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch staff' }, { status: 500 });
