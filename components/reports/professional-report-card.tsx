@@ -24,8 +24,9 @@ export interface ReportCardData {
     classScore?: number;
     examScore?: number;
     position?: number | null;
-    remarks?: string | null;
-    maxScore?: number;
+  remarks?: string | null;
+  weightingFallback?: boolean;
+  maxScore?: number;
     grade: string;
   }>;
   totalScore: number;
@@ -422,9 +423,9 @@ textAlign: 'right',
                       fontWeight: '500',
                     }}
                   >
-                    {subject.classScore ?? subject.score}
+                    {subject.classScore ?? subject.score}{subject.weightingFallback && <small style={{ display: 'block', fontSize: '8px', color: '#64748b' }}>Current policy fallback</small>}
                   </td>
-                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.examScore ?? 0}</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.examScore ?? 0}{subject.weightingFallback && <small style={{ display: 'block', fontSize: '8px', color: '#64748b' }}>Current policy fallback</small>}</td>
                   <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000', fontWeight: 'bold' }}>{subject.score}</td>
                   <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: getGradeColor(subject.grade) }}>{subject.grade}</td>
                   <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.position ?? '—'}</td>
