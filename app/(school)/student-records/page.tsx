@@ -22,13 +22,18 @@ export default function StudentRecordsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/school/academic-years').then(async (response) => {
-        const raw = await response.json();
-        console.log('[v0] Student records academic years response:', { status: response.status, ok: response.ok, raw });
-        if (!response.ok) throw new Error(raw.error || 'Academic years request failed');
-        if (raw.error) console.error('[v0] Student records academic years API error:', raw.error);
-        return raw;
-      }),
+      (async () => {
+        const yearResponse = await fetch('/api/school/academic-years');
+        const yearResult = await yearResponse.json();
+        console.log('[v0] Academic years fetch:', {
+          status: yearResponse.status,
+          ok: yearResponse.ok,
+          result: yearResult,
+        });
+        if (!yearResponse.ok) throw new Error(yearResult.error || 'Academic years request failed');
+        if (yearResult.error) console.error('[v0] Academic years API error:', yearResult.error);
+        return yearResult;
+      })(),
       fetch('/api/school/students?limit=500').then((r) => r.json()),
       fetch('/api/auth/session').then(async (response) => {
         const raw = await response.json();
