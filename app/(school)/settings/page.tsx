@@ -5,6 +5,7 @@ import { Settings, Save, AlertCircle, Building2, Calendar, DollarSign } from 'lu
 import { useRouter } from 'next/navigation';
 import { LogoUpload } from '@/components/settings/logo-upload';
 import { SignatureUpload } from '@/components/settings/signature-upload';
+import { gradingPolicySchema } from '@/lib/schemas';
 
 interface SettingsSection {
   id: string;
@@ -30,6 +31,16 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [gradingPolicy, setGradingPolicy] = useState({
+    class_score_weight: 30,
+    exam_score_weight: 70,
+    grade_scale: { A: 80, B: 70, C: 60, D: 50, F: 0 },
+  });
+  const [gradingPolicyLoading, setGradingPolicyLoading] = useState(true);
+  const [gradingPolicySaving, setGradingPolicySaving] = useState(false);
+  const [gradingPolicyMessage, setGradingPolicyMessage] = useState<string | null>(null);
+  const [gradingPolicyError, setGradingPolicyError] = useState<string | null>(null);
 
   // Load school info and user data
   useEffect(() => {
@@ -57,13 +68,28 @@ export default function SettingsPage() {
           const sessionUser = profileData.data?.user ?? profileData.user;
           if (sessionUser) {
             setUserId(sessionUser.id);
+            setIsAdmin(sessionUser.profile?.system_role === 'Admin' || sessionUser.system_role === 'Admin');
             setSignatureUrl(sessionUser.profile?.signature_url || null);
           }
+        }
+
+        const gradingPolicyResponse = await fetch('/api/school/grading-policies');
+        const gradingPolicyResult = await gradingPolicyResponse.json();
+        if (!gradingPolicyResponse.ok) {
+          throw new Error(gradingPolicyResult.error || 'Failed to load grading policy');
+        }
+        if (gradingPolicyResult.data) {
+          setGradingPolicy((current) => ({
+            ...current,
+            ...gradingPolicyResult.data,
+            grade_scale: { ...current.grade_scale, ...(gradingPolicyResult.data.grade_scale || {}) },
+          }));
         }
       } catch (err) {
         console.error('[v0] Failed to load settings:', err);
       } finally {
         setIsLoading(false);
+        setGradingPolicyLoading(false);
       }
     };
 
@@ -106,6 +132,40 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGradingPolicySave = async () => {
+    const totalWeight = gradingPolicy.class_score_weight + gradingPolicy.exam_score_weight;
+    if (totalWeight !== 100) {
+      setGradingPolicyError('Class score weight and exam score weight must sum to exactly 100.');
+      setGradingPolicyMessage(null);
+      return;
+    }
+
+    const parsedPolicy = gradingPolicySchema.safeParse(gradingPolicy);
+    if (!parsedPolicy.success) {
+      setGradingPolicyError('Enter valid percentages from 0 to 100 for every grading policy field.');
+      setGradingPolicyMessage(null);
+      return;
+    }
+
+    try {
+      setGradingPolicySaving(true);
+      setGradingPolicyError(null);
+      setGradingPolicyMessage(null);
+      const response = await fetch('/api/school/grading-policies', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(gradingPolicy),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to save grading policy');
+      setGradingPolicyMessage('Grading policy saved successfully.');
+    } catch (err) {
+      setGradingPolicyError(err instanceof Error ? err.message : 'Failed to save grading policy');
+    } finally {
+      setGradingPolicySaving(false);
     }
   };
 
@@ -259,6 +319,76 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+
+          {/* Grading Policy */}
+          {isAdmin && (
+            <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Grading Policy</h2>
+                <p className="text-sm text-muted-foreground mt-1">Configure weighted scores and minimum letter-grade percentages.</p>
+              </div>
+
+              {gradingPolicyError && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{gradingPolicyError}</p>}
+              {gradingPolicyMessage && <p className="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">{gradingPolicyMessage}</p>}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {(['class_score_weight', 'exam_score_weight'] as const).map((field) => (
+                  <div key={field}>
+                    <label className="mb-2 block text-sm font-medium text-foreground" htmlFor={field}>
+                      {field === 'class_score_weight' ? 'Class score weight (%)' : 'Exam score weight (%)'}
+                    </label>
+                    <input
+                      id={field}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={gradingPolicy[field]}
+                      onChange={(event) => setGradingPolicy((current) => ({ ...current, [field]: Number(event.target.value) }))}
+                      disabled={gradingPolicyLoading || gradingPolicySaving}
+                      className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <p className={`text-sm ${gradingPolicy.class_score_weight + gradingPolicy.exam_score_weight === 100 ? 'text-muted-foreground' : 'text-destructive'}`}>
+                Weights total: {gradingPolicy.class_score_weight + gradingPolicy.exam_score_weight}% (must equal 100%)
+              </p>
+
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Letter-grade minimums (%)</h3>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                  {(['A', 'B', 'C', 'D', 'F'] as const).map((grade) => (
+                    <div key={grade}>
+                      <label className="mb-2 block text-sm font-medium text-foreground" htmlFor={`grade-${grade}`}>{grade}</label>
+                      <input
+                        id={`grade-${grade}`}
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={gradingPolicy.grade_scale[grade]}
+                        onChange={(event) => setGradingPolicy((current) => ({ ...current, grade_scale: { ...current.grade_scale, [grade]: Number(event.target.value) } }))}
+                        disabled={gradingPolicyLoading || gradingPolicySaving}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={handleGradingPolicySave}
+                  disabled={gradingPolicyLoading || gradingPolicySaving || gradingPolicy.class_score_weight + gradingPolicy.exam_score_weight !== 100}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Save className="h-5 w-5" />
+                  {gradingPolicySaving ? 'Saving...' : 'Save Grading Policy'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Principal Signature */}
           {!isLoading && userId && (
