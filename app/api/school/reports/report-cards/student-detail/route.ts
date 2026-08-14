@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
         total_score,
         class_score,
         exam_score,
+        class_score_weight_snapshot,
+        exam_score_weight_snapshot,
         subjects(id, name, code),
         remarks
       `)
@@ -138,14 +140,23 @@ export async function GET(request: NextRequest) {
     const absentDays = savedReportCard?.absent_days ?? calculatedAbsentDays;
     const totalSchoolDays = savedReportCard?.total_school_days ?? calculatedTotalSchoolDays;
 
-    // Transform grades
+    const { data: gradingPolicy } = await supabase
+      .from('school_grading_policies')
+      .select('class_score_weight, exam_score_weight')
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const classWeight = (gradingPolicy?.class_score_weight ?? 30) / 100;
+    const examWeight = (gradingPolicy?.exam_score_weight ?? 70) / 100;
+
+    // Transform grades. Report-card component columns show weighted contributions.
     const subjectGrades = (gradeData || []).map(grade => ({
       subject_id: grade.subject_id,
-      subject_name: grade.subjects?.name || '',
-      class_score: grade.class_score || 0,
-      exam_score: grade.exam_score || 0,
+      subject_name: (Array.isArray(grade.subjects) ? grade.subjects[0] : grade.subjects as { name?: string } | null)?.name || '',
+      class_score: (grade.class_score || 0) * ((grade.class_score_weight_snapshot ?? gradingPolicy?.class_score_weight ?? 30) / 100),
+      exam_score: (grade.exam_score || 0) * ((grade.exam_score_weight_snapshot ?? gradingPolicy?.exam_score_weight ?? 70) / 100),
       total_score: grade.total_score || 0,
       remarks: grade.remarks || '',
+      weighting_fallback: grade.class_score_weight_snapshot == null || grade.exam_score_weight_snapshot == null,
     }));
 
     // Calculate overall average

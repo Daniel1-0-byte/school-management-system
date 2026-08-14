@@ -290,8 +290,9 @@ interface StudentDetailData {
     class_score: number;
     exam_score: number;
     total_score: number;
-    remarks: string;
-    position?: number | null;
+  remarks: string;
+  weighting_fallback?: boolean;
+  position?: number | null;
   }>;
   overallAverage: number;
   teacherComment: string;
@@ -470,7 +471,7 @@ function ReportCardEditor({
             {printing ? 'Printing...' : 'Print'}
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Student Name</p>
@@ -534,8 +535,8 @@ function ReportCardEditor({
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-foreground">Subject</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Class Score</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam Score</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">SBA (weighted)</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam (weighted)</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground">Total</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground">Remarks</th>
                 </tr>
