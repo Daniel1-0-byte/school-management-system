@@ -394,11 +394,11 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                 >
                   SBA
                 </th>
-                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Exams</th>
-                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Total</th>
-                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Grade</th>
-                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Position</th>
-                <th style={{ padding: '8px', textAlign: 'left', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Remarks
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', borderRight: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Exams</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', borderRight: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Total</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', borderRight: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Grade</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', borderRight: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Position</th>
+                <th style={{ padding: '8px', textAlign: 'left', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', borderRight: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Remarks
                 </th>
               </tr>
             </thead>
@@ -431,7 +431,7 @@ textAlign: 'right',
                   <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', color: '#000' }}>{Math.round(subject.examScore ?? 0)}</td>
                   <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', color: '#000', fontWeight: 'bold' }}>{Math.round(subject.score)}</td>
                   <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: getGradeColor(subject.grade) }}>{subject.grade}</td>
-                  <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.position ?? '—'}</td>
+                  <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', color: '#000' }}>{subject.position ?? '—'}</td>
                   <td style={{ padding: '8px', textAlign: 'left', fontSize: '10px', borderBottom: '1px solid #e2e8f0', color: '#334155' }}>{subject.remarks || '—'}</td>
                 </tr>
               ))}
