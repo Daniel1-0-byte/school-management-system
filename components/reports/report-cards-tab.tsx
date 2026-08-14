@@ -544,9 +544,9 @@ function ReportCardEditor({
                 {studentDetail.subjectGrades.map((subject) => (
                   <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
-                    <td className="px-4 py-3 text-center text-foreground">{subject.class_score.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-center text-foreground">{subject.exam_score.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-foreground">{subject.total_score.toFixed(1)}</td>
+<td className="px-4 py-3 text-center text-foreground">{Math.round(subject.class_score)}</td>
+                  <td className="px-4 py-3 text-center text-foreground">{Math.round(subject.exam_score)}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-foreground">{Math.round(subject.total_score)}</td>
                     <td className="px-4 py-3">
                       <select
                         value={subjectRemarks[subject.subject_id] || ''}

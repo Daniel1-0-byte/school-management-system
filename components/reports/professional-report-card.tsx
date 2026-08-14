@@ -422,10 +422,10 @@ textAlign: 'right',
                       fontWeight: '500',
                     }}
                   >
-                    {subject.classScore ?? subject.score}
+                    {Math.round(subject.classScore ?? subject.score)}
                   </td>
-                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.examScore ?? 0}</td>
-                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000', fontWeight: 'bold' }}>{subject.score}</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{Math.round(subject.examScore ?? 0)}</td>
+                  <td style={{ padding: '8px', textAlign: 'right', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000', fontWeight: 'bold' }}>{Math.round(subject.score)}</td>
                   <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', fontWeight: 'bold', color: getGradeColor(subject.grade) }}>{subject.grade}</td>
                   <td style={{ padding: '8px', textAlign: 'center', fontSize: '11px', borderBottom: '1px solid #e2e8f0', color: '#000' }}>{subject.position ?? '—'}</td>
                   <td style={{ padding: '8px', textAlign: 'left', fontSize: '10px', borderBottom: '1px solid #e2e8f0', color: '#334155' }}>{subject.remarks || '—'}</td>
@@ -460,7 +460,7 @@ textAlign: 'right',
             <div>
               <p style={{ fontSize: '9px', color: '#64748b', letterSpacing: '0.8px', textTransform: 'uppercase', margin: '0 0 3px 0' }}>Average Score</p>
               <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '0', color: '#000' }}>
-                {data.averageScore.toFixed(2)}
+                {Math.round(data.averageScore)}
               </p>
             </div>
             <div>
