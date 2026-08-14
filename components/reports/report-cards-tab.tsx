@@ -534,21 +534,21 @@ function ReportCardEditor({
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left font-semibold text-foreground">Subject</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">SBA (weighted)</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam (weighted)</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Total</th>
+                  <th className="border-r border-border px-4 py-3 text-left font-semibold text-foreground">Subject</th>
+                  <th className="border-r border-border px-4 py-3 text-center font-semibold text-foreground">SBA</th>
+                  <th className="border-r border-border px-4 py-3 text-center font-semibold text-foreground">Exams</th>
+                  <th className="border-r border-border px-4 py-3 text-center font-semibold text-foreground">Total</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground">Remarks</th>
                 </tr>
               </thead>
               <tbody>
                 {studentDetail.subjectGrades.map((subject) => (
                   <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
-<td className="px-4 py-3 text-center text-foreground">{Math.round(subject.class_score)}</td>
-                  <td className="px-4 py-3 text-center text-foreground">{Math.round(subject.exam_score)}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-foreground">{Math.round(subject.total_score)}</td>
-                    <td className="px-4 py-3">
+<td className="border-r border-border px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
+                  <td className="border-r border-border px-4 py-3 text-center text-foreground">{Math.round(subject.class_score)}</td>
+                  <td className="border-r border-border px-4 py-3 text-center text-foreground">{Math.round(subject.exam_score)}</td>
+                  <td className="border-r border-border px-4 py-3 text-center font-semibold text-foreground">{Math.round(subject.total_score)}</td>
+                  <td className="px-4 py-3">
                       <select
                         value={subjectRemarks[subject.subject_id] || ''}
                         onChange={(e) => setSubjectRemarks(prev => ({ ...prev, [subject.subject_id]: e.target.value }))}
