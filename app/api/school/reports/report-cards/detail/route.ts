@@ -268,6 +268,14 @@ export async function GET(request: NextRequest) {
       ? (await supabase.storage.from('teacher-signatures').createSignedUrl(headteacher.signature_url, 3600)).data?.signedUrl || headteacher.signature_url
       : null;
 
+    const { data: gradingPolicy } = await supabase
+      .from('school_grading_policies')
+      .select('class_score_weight, exam_score_weight')
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    const classWeight = (gradingPolicy?.class_score_weight ?? 30) / 100;
+    const examWeight = (gradingPolicy?.exam_score_weight ?? 70) / 100;
+
     // Build response
     const reportCardData: ReportCardData = {
       // School Info
@@ -291,8 +299,8 @@ export async function GET(request: NextRequest) {
         gradeEntries?.map(g => ({
           name: subjectMap.get(g.subject_id) || 'Unknown Subject',
           score: g.total_score ?? 0,
-          classScore: g.class_score ?? 0,
-          examScore: g.exam_score ?? 0,
+          classScore: (g.class_score ?? 0) * classWeight,
+          examScore: (g.exam_score ?? 0) * examWeight,
           grade: g.letter_grade || 'N/A',
           position: subjectPositions.get(g.subject_id) ?? null,
           remarks: g.remarks || null,

@@ -389,9 +389,9 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                     color: '#fff',
                   }}
                 >
-                  SBA
+                  SBA (weighted)
                 </th>
-                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Exam</th>
+                <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Exam (weighted)</th>
                 <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Total</th>
                 <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Grade</th>
                 <th style={{ padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', borderBottom: '1px solid rgba(255,255,255,0.25)', color: '#fff' }}>Position</th>
