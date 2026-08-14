@@ -7,6 +7,7 @@ import { SchoolService } from '@/lib/services/school-service';
 import { StaffForm } from '@/components/staff-form';
 import { Staff } from '@/lib/transformers/staff-transformer';
 import type { StaffCreateInput } from '@/lib/validators/staff-validator';
+import { uploadImage } from '@/lib/storage-utils';
 
 export default function StaffDetailPage() {
   const router = useRouter();
@@ -44,7 +45,15 @@ export default function StaffDetailPage() {
     try {
       setSaving(true);
       setError(null);
-      const { staff: updated, error } = await SchoolService.updateStaff(params.schoolId, params.staffId, data);
+      let updateData: StaffCreateInput & { signatureUrl?: string } = { ...data };
+      if (data.signatureFile) {
+        const signaturePath = `${params.schoolId}/${params.staffId}.webp`;
+        const uploadResult = await uploadImage('teacher-signatures', data.signatureFile, signaturePath);
+        if (uploadResult.error) throw new Error(uploadResult.error);
+        updateData = { ...updateData, signatureUrl: signaturePath };
+      }
+      const { signatureFile: _signatureFile, ...profileData } = updateData;
+      const { staff: updated, error } = await SchoolService.updateStaff(params.schoolId, params.staffId, profileData);
       if (error) {
         setError(error);
       } else {

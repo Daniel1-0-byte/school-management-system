@@ -285,10 +285,19 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
         </div>
       </div>
 
-      {!staff && (
+      <div>
+        {staff?.signatureUrl && (
+          <div className="mb-3 flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+            <img src={staff.signatureUrl} alt="Current teacher signature" className="h-12 max-w-40 object-contain" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Current signature</p>
+              <p className="text-xs text-muted-foreground">Upload a new file below to replace it.</p>
+            </div>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-foreground mb-2" htmlFor="signatureFile">
-            Teacher Signature <span className="text-muted-foreground font-normal">(Optional)</span>
+            {staff ? 'Replace signature' : 'Teacher Signature'} <span className="text-muted-foreground font-normal">(Optional)</span>
           </label>
           <input
             id="signatureFile"
@@ -300,7 +309,7 @@ export function StaffForm({ staff, loading = false, onSubmit, submitLabel = 'Sav
           />
           <p className="mt-1 text-xs text-muted-foreground">Upload a PNG, JPEG, or WebP image. This is not required.</p>
         </div>
-      )}
+      </div>
 
       {/* Submit Button */}
       <div className="flex justify-end pt-4 border-t border-border">
