@@ -471,7 +471,7 @@ function ReportCardEditor({
             {printing ? 'Printing...' : 'Print'}
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Student Name</p>
@@ -545,9 +545,9 @@ function ReportCardEditor({
                 {studentDetail.subjectGrades.map((subject) => (
                   <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
-<td className="px-4 py-3 text-center text-foreground" title={subject.weighting_fallback ? 'Current policy fallback — original weighting unavailable' : undefined}>{subject.class_score.toFixed(1)}{subject.weighting_fallback && <span className="mt-1 block text-[10px] text-muted-foreground">Current policy fallback</span>}</td>
-                  <td className="px-4 py-3 text-center text-foreground" title={subject.weighting_fallback ? 'Current policy fallback — original weighting unavailable' : undefined}>{subject.exam_score.toFixed(1)}{subject.weighting_fallback && <span className="mt-1 block text-[10px] text-muted-foreground">Current policy fallback</span>}</td>
-                    <td className="px-4 py-3 text-center font-semibold text-foreground">{subject.total_score.toFixed(1)}</td>
+<td className="px-4 py-3 text-center text-foreground">{Math.round(subject.class_score)}</td>
+                  <td className="px-4 py-3 text-center text-foreground">{Math.round(subject.exam_score)}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-foreground">{Math.round(subject.total_score)}</td>
                     <td className="px-4 py-3">
                       <select
                         value={subjectRemarks[subject.subject_id] || ''}
