@@ -290,8 +290,9 @@ interface StudentDetailData {
     class_score: number;
     exam_score: number;
     total_score: number;
-    remarks: string;
-    position?: number | null;
+  remarks: string;
+  weighting_fallback?: boolean;
+  position?: number | null;
   }>;
   overallAverage: number;
   teacherComment: string;
@@ -534,8 +535,8 @@ function ReportCardEditor({
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-foreground">Subject</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Class Score</th>
-                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam Score</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">SBA (weighted)</th>
+                  <th className="px-4 py-3 text-center font-semibold text-foreground">Exam (weighted)</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground">Total</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground">Remarks</th>
                 </tr>
@@ -544,8 +545,8 @@ function ReportCardEditor({
                 {studentDetail.subjectGrades.map((subject) => (
                   <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
-                    <td className="px-4 py-3 text-center text-foreground">{subject.class_score.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-center text-foreground">{subject.exam_score.toFixed(1)}</td>
+<td className="px-4 py-3 text-center text-foreground" title={subject.weighting_fallback ? 'Current policy fallback — original weighting unavailable' : undefined}>{subject.class_score.toFixed(1)}{subject.weighting_fallback && <span className="mt-1 block text-[10px] text-muted-foreground">Current policy fallback</span>}</td>
+                  <td className="px-4 py-3 text-center text-foreground" title={subject.weighting_fallback ? 'Current policy fallback — original weighting unavailable' : undefined}>{subject.exam_score.toFixed(1)}{subject.weighting_fallback && <span className="mt-1 block text-[10px] text-muted-foreground">Current policy fallback</span>}</td>
                     <td className="px-4 py-3 text-center font-semibold text-foreground">{subject.total_score.toFixed(1)}</td>
                     <td className="px-4 py-3">
                       <select
