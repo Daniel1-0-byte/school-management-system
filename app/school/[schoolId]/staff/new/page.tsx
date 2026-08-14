@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { SchoolService } from '@/lib/services/school-service';
 import { StaffForm } from '@/components/staff-form';
-import { uploadImage } from '@/lib/storage-utils';
 import type { StaffCreateInput } from '@/lib/validators/staff-validator';
 
 export default function CreateStaffPage() {
@@ -63,29 +62,17 @@ export default function CreateStaffPage() {
 
       if (data.signatureFile) {
         const safeEmail = data.email.toLowerCase().replace(/[^a-z0-9._-]/g, '_');
-        const bucket = 'teacher-signatures';
-        const path = `${params.schoolId}/${safeEmail}.png`;
-        console.log('[v0] Teacher signature upload starting:', {
-          bucket,
-          path,
-          fileName: data.signatureFile.name,
-          fileType: data.signatureFile.type,
-          fileSize: data.signatureFile.size,
+        const signatureForm = new FormData();
+        signatureForm.append('file', data.signatureFile);
+        signatureForm.append('schoolId', params.schoolId);
+        signatureForm.append('email', data.email);
+        const uploadResponse = await fetch('/api/school/staff/signature', {
+          method: 'POST',
+          body: signatureForm,
         });
-        const uploadResult = await uploadImage(
-          bucket,
-          data.signatureFile,
-          path,
-        );
-        const { error: uploadError } = uploadResult;
-        console.log('[v0] Teacher signature upload result:', {
-          bucket,
-          path,
-          url: uploadResult.url,
-          error: uploadResult.error,
-        });
-        if (uploadError) {
-          setError(`Signature upload failed: ${uploadError}`);
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          setError(`Signature upload failed: ${uploadResult.error || 'Unknown error'}`);
           return;
         }
       }

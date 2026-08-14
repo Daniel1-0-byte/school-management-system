@@ -7,7 +7,6 @@ import { SchoolService } from '@/lib/services/school-service';
 import { StaffForm } from '@/components/staff-form';
 import { Staff } from '@/lib/transformers/staff-transformer';
 import type { StaffCreateInput } from '@/lib/validators/staff-validator';
-import { uploadImage } from '@/lib/storage-utils';
 
 export default function StaffDetailPage() {
   const router = useRouter();
@@ -47,12 +46,20 @@ export default function StaffDetailPage() {
       setError(null);
       let updateData: StaffCreateInput & { signatureUrl?: string } = { ...data };
       if (data.signatureFile) {
-        const signaturePath = `${params.schoolId}/${params.staffId}.webp`;
-        const uploadResult = await uploadImage('teacher-signatures', data.signatureFile, signaturePath);
-        if (uploadResult.error) throw new Error(uploadResult.error);
-        updateData = { ...updateData, signatureUrl: signaturePath };
+        const signatureForm = new FormData();
+        signatureForm.append('file', data.signatureFile);
+        signatureForm.append('schoolId', params.schoolId);
+        signatureForm.append('profileId', params.staffId);
+        const uploadResponse = await fetch('/api/school/staff/signature', {
+          method: 'POST',
+          body: signatureForm,
+        });
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          throw new Error(uploadResult.error || 'Signature upload failed');
+        }
       }
-      const { signatureFile: _signatureFile, ...profileData } = updateData;
+      const { signatureFile: _signatureFile, signatureUrl: _signatureUrl, ...profileData } = updateData;
       const { staff: updated, error } = await SchoolService.updateStaff(params.schoolId, params.staffId, profileData);
       if (error) {
         setError(error);
