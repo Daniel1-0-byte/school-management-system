@@ -93,6 +93,40 @@ export default function StaffPage() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'first_name',
+      'last_name',
+      'email',
+      'phone',
+      'role',
+      'department',
+      'qualification',
+      'experience_years',
+      'date_of_joining',
+      'status',
+    ];
+    const example = [
+      'Ama',
+      'Mensah',
+      'ama.mensah@example.com',
+      '+233 24 123 4567',
+      'teacher',
+      'Mathematics',
+      'BSc Education',
+      '5',
+      '2026-09-01',
+      'active',
+    ];
+    const csv = `${headers.join(',')}\\n${example.map((value) => `"${value.replaceAll('"', '""')}"`).join(',')}\\n`;
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'staff_import_template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,6 +142,13 @@ export default function StaffPage() {
           >
             <Upload className="w-5 h-5" />
             <span>Import</span>
+          </button>
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
+          >
+            <Download className="w-5 h-5" />
+            <span>Template CSV</span>
           </button>
           <div className="relative group">
             <button className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors">
