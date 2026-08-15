@@ -7,9 +7,16 @@ import {
   queryAuditLogs,
   formatSupabaseError,
 } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+} from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
+  const roleError = await requireRole(request, ['Admin']);
+  if (roleError) return roleError;
+
   try {
     // Extract and validate school_id
     const schoolId = await getSchoolIdFromRequest(request);
