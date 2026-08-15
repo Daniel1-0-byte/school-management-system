@@ -28,13 +28,9 @@ interface NavItem {
 }
 
 const getNavItems = (role: string): NavItem[] => {
-  const baseItems: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-  ];
-
   if (role === 'Admin') {
     return [
-      ...baseItems,
+      { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
       { label: 'Students', href: '/students', icon: <Users className="w-5 h-5" /> },
       { label: 'Student Records', href: '/student-records', icon: <Archive className="w-5 h-5" /> },
       { label: 'Staff', href: '/staff', icon: <Users className="w-5 h-5" /> },
@@ -48,13 +44,11 @@ const getNavItems = (role: string): NavItem[] => {
     ];
   } else if (role === 'Teacher') {
     return [
-      ...baseItems,
       { label: 'Attendance', href: '/attendance', icon: <Clock className="w-5 h-5" /> },
       { label: 'Grades', href: '/grades', icon: <BarChart3 className="w-5 h-5" /> },
     ];
   } else if (role === 'Parent') {
     return [
-      ...baseItems,
       { label: 'My Child', href: '/my-child', icon: <Users className="w-5 h-5" /> },
       { label: 'Attendance', href: '/child-attendance', icon: <Clock className="w-5 h-5" /> },
       { label: 'Grades', href: '/child-grades', icon: <BarChart3 className="w-5 h-5" /> },
@@ -62,7 +56,7 @@ const getNavItems = (role: string): NavItem[] => {
     ];
   }
 
-  return baseItems;
+  return [];
 };
 
 export default function SchoolLayout({
