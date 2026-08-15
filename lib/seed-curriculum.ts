@@ -21,28 +21,45 @@ export async function seedDefaultCurriculum(
       subjects.forEach(subject => allSubjects.add(subject));
     });
 
-    // Insert subjects into subjects table
-    const subjectsList = Array.from(allSubjects).map(name => ({
-      name,
-      school_id: schoolId,
-    }));
-
-    const { data: createdSubjects, error: subjectError } = await supabase
+    // Reuse the school's existing subject pool. Subjects are intentionally not
+    // scoped by academic year, so each seed run must avoid creating duplicates.
+    const { data: existingSubjects, error: existingSubjectsError } = await supabase
       .from('subjects')
-      .insert(subjectsList)
-      .select('id, name');
+      .select('id, name')
+      .eq('school_id', schoolId);
 
-    if (subjectError) {
-      const message = `Failed to seed subjects: ${subjectError.message}`;
+    if (existingSubjectsError) {
+      const message = `Failed to load existing subjects: ${existingSubjectsError.message}`;
       console.error('[v0]', message);
       errors.push(message);
     }
 
-    // Create map of subject names to IDs for easy lookup
+    const normalizeSubjectName = (name: string) => name.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
     const subjectMap = new Map<string, string>();
-    createdSubjects?.forEach(subject => {
-      subjectMap.set(subject.name, subject.id);
+
+    existingSubjects?.forEach(subject => {
+      subjectMap.set(normalizeSubjectName(subject.name), subject.id);
     });
+
+    for (const subjectName of allSubjects) {
+      const normalizedName = normalizeSubjectName(subjectName);
+      if (subjectMap.has(normalizedName)) continue;
+
+      const { data: createdSubject, error: subjectError } = await supabase
+        .from('subjects')
+        .insert({ name: subjectName.trim(), school_id: schoolId })
+        .select('id, name')
+        .single();
+
+      if (subjectError || !createdSubject) {
+        const message = `Failed to seed subject ${subjectName}: ${subjectError?.message || 'No subject returned'}`;
+        console.error('[v0]', message);
+        errors.push(message);
+        continue;
+      }
+
+      subjectMap.set(normalizeSubjectName(createdSubject.name), createdSubject.id);
+    }
 
     // Insert classes with a stable progression order for future promotions.
     for (const [index, { className, subjects }] of DEFAULT_CURRICULUM.entries()) {
@@ -83,7 +100,7 @@ export async function seedDefaultCurriculum(
       // Link subjects to this class
       const classSubjectLinks = subjects
         .map(subjectName => {
-          const subjectId = subjectMap.get(subjectName);
+          const subjectId = subjectMap.get(normalizeSubjectName(subjectName));
           if (!subjectId) {
             console.warn(`[v0] Subject not found: ${subjectName}`);
             return null;
