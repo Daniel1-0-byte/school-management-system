@@ -118,7 +118,7 @@ export default function StaffPage() {
       '2026-09-01',
       'active',
     ];
-    const csv = `${headers.join(',')}\\n${example.map((value) => `"${value.replaceAll('"', '""')}"`).join(',')}\\n`;
+    const csv = `${headers.join(',')}\n${example.map((value) => `"${value.replaceAll('"', '""')}"`).join(',')}\n`;
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a');
     link.href = url;
