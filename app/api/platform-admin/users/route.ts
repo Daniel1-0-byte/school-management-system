@@ -1,6 +1,6 @@
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { queryProfiles, getPaginatedResults, queryAuditLogs, formatSupabaseError } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, getPaginatedResults, queryAuditLogs, formatSupabaseError } from '@/lib/supabase';
 
 // GET /api/platform-admin/users - Fetch all users across all schools
 export async function GET(request: NextRequest) {
@@ -69,10 +69,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    const serverSupabase = getServerSupabaseClient();
+    const users = await Promise.all(
+      (data || []).map(async (profile: {
+        id: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        system_role?: string | null;
+        created_at?: string | null;
+        updated_at?: string | null;
+        [key: string]: unknown;
+      }) => {
+        const { data: authData, error: authError } = await serverSupabase.auth.admin.getUserById(profile.id);
+
+        if (authError) {
+          console.error('[v0][ADMIN-USERS] Failed to fetch auth user:', {
+            profileId: profile.id,
+            error: authError.message,
+          });
+        }
+
+        return {
+          ...profile,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          systemRole: profile.system_role,
+          createdAt: profile.created_at,
+          updatedAt: profile.updated_at,
+          email: authData.user?.email || null,
+        };
+      })
+    );
+
     console.log('[v0][ADMIN-USERS] ✅ Successfully fetched users');
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: users,
       total: count || 0,
       page,
       pageSize,
