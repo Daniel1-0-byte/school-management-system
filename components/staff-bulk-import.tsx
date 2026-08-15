@@ -39,7 +39,8 @@ export function StaffBulkImport({ schoolId, onSuccess, onClose }: StaffBulkImpor
   };
 
   const parseFile = (content: string, filename: string): Partial<Staff>[] => {
-    if (filename.endsWith('.csv')) {
+    const normalizedFilename = filename.toLowerCase();
+    if (normalizedFilename.endsWith('.csv') || normalizedFilename.endsWith('.txt')) {
       return parseCSV(content);
     } else if (filename.endsWith('.json')) {
       return parseJSON(content);
@@ -49,17 +50,22 @@ export function StaffBulkImport({ schoolId, onSuccess, onClose }: StaffBulkImpor
   };
 
   const parseCSV = (content: string): Partial<Staff>[] => {
-    const lines = content.trim().split('\n');
+    const lines = content.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
     if (lines.length < 2) throw new Error('CSV file must have headers and at least one row');
 
-    const headers = lines[0].split(',').map((h) => h.trim());
+    const headers = parseCSVLine(lines[0]).map((h) => h.trim().toLowerCase());
+    if (!headers.includes('first_name') || !headers.includes('last_name') || !headers.includes('email')) {
+      throw new Error('CSV must include first_name, last_name, and email columns');
+    }
     const staff: Partial<Staff>[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
 
       const values = parseCSVLine(lines[i]);
-      if (values.length !== headers.length) continue;
+      if (values.length !== headers.length) {
+        throw new Error(`CSV row ${i + 1} has ${values.length} values but expected ${headers.length}`);
+      }
 
       const record: Record<string, any> = {};
       headers.forEach((header, index) => {
@@ -291,9 +297,9 @@ export function StaffBulkImport({ schoolId, onSuccess, onClose }: StaffBulkImpor
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.json"
+          accept="text/csv,text/plain,application/vnd.ms-excel,application/json,.csv,.txt,.json"
           onChange={handleFileSelect}
-          className="hidden"
+          className="sr-only"
         />
       </div>
 
