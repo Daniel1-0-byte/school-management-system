@@ -9,6 +9,7 @@ const invitationSchema = z.object({
   first_name: z.string().min(1, 'First name required'),
   last_name: z.string().min(1, 'Last name required'),
   email: z.string().email('Valid email required'),
+  phone: z.string().optional(),
   system_role: z.enum(['Teacher', 'Admin', 'Accountant', 'BusCoordinator']),
   department: z.string().optional(),
 });
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         email: validated.email,
         first_name: validated.first_name,
         last_name: validated.last_name,
+        phone: validated.phone,
         system_role: validated.system_role,
         department: validated.department,
         invite_token: inviteToken,
