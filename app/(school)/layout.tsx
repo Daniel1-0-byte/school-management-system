@@ -112,7 +112,7 @@ export default function SchoolLayout({
         setUserName(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || data.session.email || 'School Admin');
         setIsAuthenticated(true);
 
-        const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/reports', '/settings', '/messages'];
+        const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/settings', '/messages'];
         if (role === 'Teacher' && teacherRestrictedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
           router.replace('/dashboard');
           return;
