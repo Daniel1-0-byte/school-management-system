@@ -415,11 +415,6 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
                     }}
                   >
                     {subject.name}
-                    {subject.weightingFallback && (
-                      <span style={{ color: '#64748b', fontSize: '9px' }} aria-label="Current policy fallback">
-                        {' *'}
-                      </span>
-                    )}
                   </td>
                   <td
                     style={{
@@ -444,19 +439,6 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
               ))}
             </tbody>
           </table>
-          {data.subjects.some((subject) => subject.weightingFallback) && (
-            <p
-              style={{
-                margin: '6px 0 0',
-                color: '#64748b',
-                fontSize: '9px',
-                lineHeight: 1.4,
-              }}
-            >
-              * Calculated using current grading policy — original weighting unavailable for entries recorded before this policy was saved.
-            </p>
-          )}
-
           {/* Summary Stats */}
           <div
             className="report-card-summary"
