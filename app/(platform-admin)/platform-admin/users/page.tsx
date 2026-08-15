@@ -285,7 +285,12 @@ export default function UsersPage() {
                           {(user.firstName?.[0] || '?').toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium">{user.firstName} {user.lastName}</p>
+                          <p className="font-medium">
+                            {[user.firstName, user.lastName].filter(Boolean).join(' ') || 'Unnamed user'}
+                          </p>
+                          {user.email && (
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                          )}
                         </div>
                       </div>
                     </td>
