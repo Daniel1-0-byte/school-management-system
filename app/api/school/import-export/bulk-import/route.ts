@@ -77,12 +77,27 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const { data: academicYear, error: academicYearError } = await queryAcademicYears()
+      let { data: academicYear, error: academicYearError } = await queryAcademicYears()
         .select('id, year')
         .eq('school_id', schoolId)
         .eq('is_active', true)
+        .order('start_date', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      // Some schools have not marked an academic year active yet. Use the
+      // most recent school year as a safe fallback so enrollment matching
+      // does not issue a UUID query with an empty value.
+      if (!academicYear && !academicYearError) {
+        const fallback = await queryAcademicYears()
+          .select('id, year')
+          .eq('school_id', schoolId)
+          .order('start_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        academicYear = fallback.data;
+        academicYearError = fallback.error;
+      }
 
       if (academicYearError) {
         console.error('[v0] Bulk import academic year lookup failed:', {
@@ -93,14 +108,23 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      if (academicYearError || !academicYear) {
+        warnings.push({
+          rowNumber,
+          message: academicYearError
+            ? `Academic year lookup failed: ${academicYearError.message}`
+            : 'No active academic year was found; no enrollment was created.',
+        });
+        return;
+      }
+
       const normalizedClassName = className.trim();
-      const classQuery = querySchoolClasses()
+      const { data: schoolClass, error: classError } = await querySchoolClasses()
         .select('id, name')
         .eq('school_id', schoolId)
-        .eq('academic_year_id', academicYear?.id ?? '')
+        .eq('academic_year_id', academicYear.id)
         .ilike('name', normalizedClassName)
         .maybeSingle();
-      const { data: schoolClass, error: classError } = await classQuery;
 
       console.log('[v0] Bulk import class matching:', {
         rowNumber,
@@ -108,7 +132,7 @@ export async function POST(request: NextRequest) {
         rawClassName: className,
         normalizedClassName,
         schoolId,
-        academicYearId: academicYear?.id ?? null,
+        academicYearId: academicYear.id,
         schoolClass,
         classError,
       });
@@ -121,20 +145,10 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      if (academicYearError || !academicYear) {
-        warnings.push({
-          rowNumber,
-          message: academicYearError
-            ? `Academic year lookup failed: ${academicYearError.message}`
-            : 'No academic year was found; no enrollment was created.',
-        });
-        return;
-      }
-
       if (!schoolClass) {
         warnings.push({
           rowNumber,
-          message: `Class "${className}" could not be matched; no enrollment was created.`,
+          message: `Class "${className}" could not be matched for the active academic year; no enrollment was created.`,
         });
         return;
       }
