@@ -439,7 +439,6 @@ export function ProfessionalReportCard({ data, isPrinting = false }: Professiona
               ))}
             </tbody>
           </table>
-
           {/* Summary Stats */}
           <div
             className="report-card-summary"

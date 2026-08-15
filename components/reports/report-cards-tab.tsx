@@ -544,7 +544,20 @@ function ReportCardEditor({
               <tbody>
                 {studentDetail.subjectGrades.map((subject) => (
                   <tr key={subject.subject_id} className="border-b border-border hover:bg-muted/30 transition-colors">
-<td className="border-r-2 border-border px-4 py-3 font-medium text-foreground">{subject.subject_name}</td>
+  <td className="border-r-2 border-border px-4 py-3 font-medium text-foreground">
+    <span className="inline-flex items-center gap-2">
+      {subject.subject_name}
+      {subject.weighting_fallback && (
+        <span
+          title="Using current policy — historical weighting not recorded for this entry"
+          aria-label="Using current policy — historical weighting not recorded for this entry"
+          className="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+        >
+          *
+        </span>
+      )}
+    </span>
+  </td>
                   <td className="border-r-2 border-border px-4 py-3 text-center text-foreground">{Math.round(subject.class_score)}</td>
                   <td className="border-r-2 border-border px-4 py-3 text-center text-foreground">{Math.round(subject.exam_score)}</td>
                   <td className="border-r-2 border-border px-4 py-3 text-center font-semibold text-foreground">{Math.round(subject.total_score)}</td>
