@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, Plus, Trash2, Users } from 'lucide-react';
 
 type Teacher = { id: string; first_name: string; last_name: string; email: string | null };
 type Assignment = { id: string; teacher_id: string; subjects: string[]; is_primary_teacher: boolean; start_date: string | null; end_date: string | null };
-type Payload = { stream: { name: string; academic_year_id: string; school_classes?: { name?: string | null; level?: string | null } | null }; assignments: Assignment[]; teachers: Teacher[] };
+type Subject = { id: string; name: string; code: string | null; class_subject_id: string };
+type Payload = { stream: { name: string; academic_year_id: string; school_classes?: { name?: string | null; level?: string | null } | null }; assignments: Assignment[]; teachers: Teacher[]; subjects: Subject[] };
 
 export default function ClassroomPage() {
   const [data, setData] = useState<Payload | null>(null);
   const [teacherId, setTeacherId] = useState('');
+  const [subjectName, setSubjectName] = useState('');
   const [primary, setPrimary] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -17,10 +19,16 @@ export default function ClassroomPage() {
 
   const load = async () => {
     setLoading(true);
-    const response = await fetch('/api/school/classrooms/' + window.location.pathname.split('/')[2] + '/teachers', { credentials: 'include' });
-    const result = await response.json();
-    if (!response.ok) setError(result.error || 'Failed to load teachers');
-    else setData(result);
+    const classroomId = window.location.pathname.split('/')[2];
+    const [teacherResponse, subjectResponse] = await Promise.all([
+      fetch(`/api/school/classrooms/${classroomId}/teachers`, { credentials: 'include' }),
+      fetch(`/api/school/subjects?stream_id=${classroomId}`, { credentials: 'include' }),
+    ]);
+    const result = await teacherResponse.json();
+    const subjectResult = await subjectResponse.json();
+    if (!teacherResponse.ok) setError(result.error || 'Failed to load teachers');
+    else if (!subjectResponse.ok) setError(subjectResult.error || 'Failed to load subjects');
+    else setData({ ...result, subjects: subjectResult.data || [] });
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -34,6 +42,22 @@ export default function ClassroomPage() {
     if (!response.ok) setError(result.error || 'Failed to assign teacher');
     else { setTeacherId(''); setPrimary(false); await load(); }
     setSaving(false);
+  };
+
+  const addSubject = async () => {
+    if (!subjectName.trim() || !data) return;
+    setSaving(true); setError('');
+    const response = await fetch(`/api/school/classrooms/${streamId}/subjects`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: subjectName.trim() }) });
+    const result = await response.json();
+    if (!response.ok) setError(result.error || 'Failed to assign subject');
+    else { setSubjectName(''); await load(); }
+    setSaving(false);
+  };
+
+  const removeSubject = async (classSubjectId: string) => {
+    const response = await fetch(`/api/school/classrooms/${streamId}/subjects/${classSubjectId}`, { method: 'DELETE' });
+    if (!response.ok) { const result = await response.json(); setError(result.error || 'Failed to remove subject'); return; }
+    await load();
   };
 
   const removeTeacher = async (assignmentId: string) => {
@@ -53,6 +77,19 @@ export default function ClassroomPage() {
       <a href="/classes" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to Classes</a>
       <header><p className="text-sm font-medium uppercase tracking-wide text-primary">Manage Classroom</p><h1 className="mt-1 text-3xl font-bold text-foreground">{classroomLabel}</h1><p className="mt-1 text-muted-foreground">Teachers</p></header>
       {error && <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>}
+      <section className="rounded-lg border border-border bg-card p-6">
+        <div className="mb-5 flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><h2 className="text-lg font-semibold text-foreground">Assigned subjects</h2><p className="text-sm text-muted-foreground">Assign or remove subjects for this classroom.</p></div></div>
+        <div className="space-y-3">
+          {data.subjects.length === 0 ? <p className="rounded-md bg-muted/50 p-4 text-sm text-muted-foreground">No subjects assigned yet.</p> : data.subjects.map((subject) => <div key={subject.class_subject_id} className="flex items-center justify-between rounded-md border border-border p-4"><div><p className="font-medium text-foreground">{subject.name}</p>{subject.code && <p className="text-sm text-muted-foreground">{subject.code}</p>}</div><button type="button" onClick={() => removeSubject(subject.class_subject_id)} className="rounded-md p-2 text-destructive hover:bg-destructive/10" aria-label={`Remove ${subject.name}`}><Trash2 className="h-4 w-4" /></button></div>)}
+        </div>
+      </section>
+      <section className="rounded-lg border border-border bg-card p-6">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Assign a subject</h2>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <label className="flex-1 text-sm font-medium text-foreground">New subject name<input value={subjectName} onChange={(event) => setSubjectName(event.target.value)} placeholder="e.g. Creative Arts" className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 font-normal" /></label>
+          <button type="button" onClick={addSubject} disabled={!subjectName.trim() || saving} className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50"><Plus className="h-4 w-4" />{saving ? 'Assigning...' : 'Assign subject'}</button>
+        </div>
+      </section>
       <section className="rounded-lg border border-border bg-card p-6">
         <div className="mb-5 flex items-center gap-3"><Users className="h-5 w-5 text-primary" /><div><h2 className="text-lg font-semibold text-foreground">Assigned teachers</h2><p className="text-sm text-muted-foreground">Assign or remove teachers for this classroom.</p></div></div>
         <div className="space-y-3">
