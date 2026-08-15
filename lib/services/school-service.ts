@@ -327,10 +327,12 @@ export class SchoolService {
    */
   static async bulkCreateStaff(
     schoolId: string,
-    staffList: Partial<Staff>[]
-  ): Promise<{ created: number; errors: Array<{ row: number; error: string }>; error?: string }> {
+    staffList: Partial<Staff>[],
+    options?: { sendInvites?: boolean }
+  ): Promise<{ created: number; invited?: number; errors: Array<{ row: number; error: string }>; error?: string }> {
     const payload = {
       staff: staffList.map((s) => StaffTransformer.fromUI(s)),
+      sendInvites: options?.sendInvites ?? true,
     };
 
     const response = await apiClient.post<{ created: number; errors: Array<{ row: number; error: string }> }>(
