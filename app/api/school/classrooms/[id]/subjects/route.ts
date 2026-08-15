@@ -31,6 +31,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let subjectId = body.subject_id;
   if (body.name) {
+    const normalizedName = body.name.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+    const { data: existingSubjects, error: existingSubjectError } = await supabase
+      .from('subjects')
+      .select('id, name')
+      .eq('school_id', schoolId);
+    if (existingSubjectError) return NextResponse.json({ error: existingSubjectError.message }, { status: 400 });
+    const duplicate = (existingSubjects || []).find((subject) => subject.name.replace(/\s+/g, ' ').trim().toLocaleLowerCase() === normalizedName);
+    if (duplicate) return NextResponse.json({ error: `A subject named '${body.name}' already exists — select it from the list above instead` }, { status: 409 });
+
     const { data: subject, error } = await supabase
       .from('subjects')
       .insert({ school_id: schoolId, name: body.name, code: body.code || null })
