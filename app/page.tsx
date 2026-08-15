@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Users, BarChart3, MessageSquare, CheckCircle } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, BarChart3, MessageSquare, CheckCircle, Mail, Phone } from 'lucide-react';
 
 export default function LandingPage() {
   return (
@@ -146,12 +146,12 @@ export default function LandingPage() {
               ].map((benefit, index) => (
                 <div key={index} className="flex gap-4">
                   <CheckCircle className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-slate-300">{benefit}</p>
+                  <p className="text-foreground/80">{benefit}</p>
                 </div>
               ))}
             </div>
             <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl p-8 border border-blue-500/20">
-              <p className="text-lg text-slate-300 leading-relaxed">
+              <p className="text-lg text-foreground/80 leading-relaxed">
                 SchoolHub is trusted by over 100 schools across the region to manage their daily operations efficiently. Our platform handles everything from attendance and grades to fees and parent communication.
               </p>
               <p className="text-lg text-slate-300 leading-relaxed mt-4">
@@ -166,7 +166,7 @@ export default function LandingPage() {
       <section className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border-y border-border py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
           <h2 className="text-4xl font-bold text-foreground">Ready to Transform Your School?</h2>
-          <p className="text-xl text-slate-300">
+          <p className="text-xl text-foreground/80">
             Get started with a free account and discover how SchoolHub can streamline your school management.
           </p>
           <Link
@@ -175,6 +175,32 @@ export default function LandingPage() {
           >
             Sign Up Your School <ArrowRight className="w-4 h-4" />
           </Link>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="border-t border-border bg-card py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-foreground">Contact Us</h2>
+          <p className="mt-3 text-lg text-foreground/80">
+            Have questions about SchoolHub? We&apos;re here to help your school get started.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+            <a
+              href="mailto:danielantwi237@gmail.com"
+              className="inline-flex items-center gap-3 text-foreground/80 hover:text-foreground transition-colors"
+            >
+              <Mail className="w-5 h-5 text-primary" />
+              <span>danielantwi237@gmail.com</span>
+            </a>
+            <a
+              href="tel:+233559291156"
+              className="inline-flex items-center gap-3 text-foreground/80 hover:text-foreground transition-colors"
+            >
+              <Phone className="w-5 h-5 text-primary" />
+              <span>+233 55 929 1156</span>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -192,6 +218,7 @@ export default function LandingPage() {
               <h4 className="text-foreground font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
+                <li><a href="#contact" className="hover:text-foreground transition-colors">Contact</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Pricing</a></li>
               </ul>
             </div>
