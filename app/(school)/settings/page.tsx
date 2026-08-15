@@ -48,8 +48,10 @@ export default function SettingsPage() {
       try {
         // Get school settings
         const response = await fetch('/api/school/settings');
+        let schoolEmail = '';
         if (response.ok) {
           const data = await response.json();
+          schoolEmail = data.email || '';
           setSchoolInfo({
             name: data.name || '',
             address: data.address || '',
@@ -61,7 +63,9 @@ export default function SettingsPage() {
           setLogoUrl(data.logo_url);
         }
 
-        // Get user profile for signature
+        // Get the signed-in user profile for signature and email fallback.
+        // Signup stores the administrator email in auth.users, while the
+        // school's email field may still be empty.
         const profileResponse = await fetch('/api/auth/session');
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
@@ -70,6 +74,10 @@ export default function SettingsPage() {
             setUserId(sessionUser.id);
             setIsAdmin(sessionUser.profile?.system_role === 'Admin' || sessionUser.system_role === 'Admin');
             setSignatureUrl(sessionUser.profile?.signature_url || null);
+
+            if (!schoolEmail && sessionUser.email) {
+              setSchoolInfo((current) => ({ ...current, email: sessionUser.email }));
+            }
           }
         }
 
