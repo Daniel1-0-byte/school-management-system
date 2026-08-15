@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+  requireGradeStreamAccess,
+} from '@/lib/auth-utils';
 
 /**
  * GET /api/school/reports/academic
@@ -13,7 +18,6 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/l
  */
 export async function GET(request: NextRequest) {
   const roleError = await requireRole(request, ['Admin']);
-  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 
@@ -36,6 +40,11 @@ export async function GET(request: NextRequest) {
         { error: 'academic_year_id, term_id, and stream_id are required' },
         { status: 400 }
       );
+    }
+
+    if (roleError) {
+      const accessError = await requireGradeStreamAccess(request, schoolId, streamId, academicYearId);
+      if (accessError) return accessError;
     }
 
     const supabase = getServerSupabaseClient();
