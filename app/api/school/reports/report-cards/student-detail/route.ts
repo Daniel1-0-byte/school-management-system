@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+  requireGradeStreamAccess,
+} from '@/lib/auth-utils';
 
 /**
  * GET /api/school/reports/report-cards/student-detail
@@ -8,7 +13,6 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/l
  */
 export async function GET(request: NextRequest) {
   const roleError = await requireRole(request, ['Admin']);
-  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 
@@ -39,9 +43,10 @@ export async function GET(request: NextRequest) {
     // Step 1: Resolve stream to class
     const { data: streamData, error: streamError } = await supabase
       .from('school_class_streams')
-      .select('school_class_id')
+      .select('school_class_id, academic_year_id')
       .eq('id', streamId)
       .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId)
       .single();
 
     if (streamError || !streamData) {
@@ -49,6 +54,34 @@ export async function GET(request: NextRequest) {
     }
 
     const schoolClassId = streamData.school_class_id;
+
+    if (roleError) {
+      const teacherAccessError = await requireGradeStreamAccess(
+        request,
+        schoolId,
+        streamId,
+        academicYearId
+      );
+      if (teacherAccessError) return teacherAccessError;
+
+      const { data: enrollment, error: enrollmentError } = await supabase
+        .from('student_enrollments')
+        .select('student_id')
+        .eq('school_id', schoolId)
+        .eq('student_id', studentId)
+        .eq('class_id', schoolClassId)
+        .eq('stream_id', streamId)
+        .eq('academic_year_id', academicYearId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (enrollmentError || !enrollment) {
+        return NextResponse.json(
+          { error: 'Student is not enrolled in this stream' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Step 2: Get term dates and school operating days
     const { data: termData, error: termError } = await supabase

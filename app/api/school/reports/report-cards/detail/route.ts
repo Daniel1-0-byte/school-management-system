@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+  requireGradeClassAccess,
+} from '@/lib/auth-utils';
 import type { ReportCardData } from '@/components/reports/professional-report-card';
 
 /**
@@ -14,7 +19,6 @@ import type { ReportCardData } from '@/components/reports/professional-report-ca
  */
 export async function GET(request: NextRequest) {
   const roleError = await requireRole(request, ['Admin']);
-  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 
@@ -72,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     const { data: enrollment, error: enrollmentError } = await supabase
       .from('student_enrollments')
-      .select('class_id')
+      .select('class_id, stream_id')
       .eq('student_id', studentId)
       .eq('school_id', schoolId)
       .eq('academic_year_id', academicYearId)
@@ -80,7 +84,20 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (enrollmentError || !enrollment) {
-      return NextResponse.json({ error: 'Student enrollment not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Student enrollment not found' },
+        { status: roleError ? 403 : 404 }
+      );
+    }
+
+    if (roleError) {
+      const teacherAccessError = await requireGradeClassAccess(
+        request,
+        schoolId,
+        enrollment.class_id,
+        academicYearId
+      );
+      if (teacherAccessError) return teacherAccessError;
     }
 
     // Fetch stream information (class details)
