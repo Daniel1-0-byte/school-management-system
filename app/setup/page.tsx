@@ -187,7 +187,7 @@ export default function SetupWizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto p-4 py-12">
         {/* Progress Indicator */}
         <div className="mb-12">
@@ -199,24 +199,24 @@ export default function SetupWizardPage() {
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${
                         step === currentStep
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-blue-500 text-foreground'
                           : ['school-details', 'academic-year', 'terms', 'complete'].indexOf(step) < ['school-details', 'academic-year', 'terms', 'complete'].indexOf(currentStep)
-                          ? 'bg-green-500 text-white'
-                          : 'bg-slate-700 text-slate-400'
+                          ? 'bg-green-500 text-foreground'
+                          : 'bg-background text-muted-foreground'
                       }`}
                     >
                       {index + 1}
                     </div>
-                    {index < 3 && <div className="flex-1 h-1 bg-slate-700" />}
+                    {index < 3 && <div className="flex-1 h-1 bg-background" />}
                   </React.Fragment>
                 ))}
               </div>
             </div>
           </div>
-          <p className="text-slate-400 text-sm">Step {['school-details', 'academic-year', 'terms', 'complete'].indexOf(currentStep) + 1} of 4</p>
+          <p className="text-muted-foreground text-sm">Step {['school-details', 'academic-year', 'terms', 'complete'].indexOf(currentStep) + 1} of 4</p>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 space-y-6">
+        <div className="bg-card border border-border rounded-xl p-8 space-y-6">
           {error && (
             <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 flex gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -228,8 +228,8 @@ export default function SetupWizardPage() {
           {currentStep === 'school-details' && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">School Information</h2>
-                <p className="text-slate-400">Let&apos;s get your school details set up</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">School Information</h2>
+                <p className="text-muted-foreground">Let&apos;s get your school details set up</p>
               </div>
 
               <div>
@@ -239,7 +239,7 @@ export default function SetupWizardPage() {
                   name="name"
                   value={schoolDetails.name}
                   onChange={handleSchoolDetailsChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                   placeholder="Your School Name"
                 />
               </div>
@@ -251,7 +251,7 @@ export default function SetupWizardPage() {
                   name="address"
                   value={schoolDetails.address}
                   onChange={handleSchoolDetailsChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                   placeholder="School Address"
                 />
               </div>
@@ -264,7 +264,7 @@ export default function SetupWizardPage() {
                     name="principalName"
                     value={schoolDetails.principalName}
                     onChange={handleSchoolDetailsChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                     placeholder="Principal Name"
                   />
                 </div>
@@ -275,7 +275,7 @@ export default function SetupWizardPage() {
                     name="principalEmail"
                     value={schoolDetails.principalEmail}
                     onChange={handleSchoolDetailsChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                     placeholder="principal@school.edu"
                   />
                 </div>
@@ -289,7 +289,7 @@ export default function SetupWizardPage() {
                     name="phone"
                     value={schoolDetails.phone}
                     onChange={handleSchoolDetailsChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                     placeholder="+1 (555) 000-0000"
                   />
                 </div>
@@ -300,7 +300,7 @@ export default function SetupWizardPage() {
                     name="website"
                     value={schoolDetails.website}
                     onChange={handleSchoolDetailsChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                     placeholder="https://school.edu"
                   />
                 </div>
@@ -313,8 +313,8 @@ export default function SetupWizardPage() {
           {currentStep === 'academic-year' && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Academic Year</h2>
-                <p className="text-slate-400">Set up your academic year dates</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Academic Year</h2>
+                <p className="text-muted-foreground">Set up your academic year dates</p>
               </div>
 
               <div>
@@ -324,7 +324,7 @@ export default function SetupWizardPage() {
                   name="year"
                   value={academicYear.year}
                   onChange={handleAcademicYearChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                 />
               </div>
 
@@ -336,7 +336,7 @@ export default function SetupWizardPage() {
                     name="startDate"
                     value={academicYear.startDate}
                     onChange={handleAcademicYearChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -346,7 +346,7 @@ export default function SetupWizardPage() {
                     name="endDate"
                     value={academicYear.endDate}
                     onChange={handleAcademicYearChange}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                   />
                 </div>
               </div>
@@ -357,13 +357,13 @@ export default function SetupWizardPage() {
           {currentStep === 'terms' && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">School Terms</h2>
-                <p className="text-slate-400">Configure your school terms</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">School Terms</h2>
+                <p className="text-muted-foreground">Configure your school terms</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Term 1</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Term 1</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
@@ -372,7 +372,7 @@ export default function SetupWizardPage() {
                         name="term1Start"
                         value={terms.term1Start}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                     <div>
@@ -382,14 +382,14 @@ export default function SetupWizardPage() {
                         name="term1End"
                         value={terms.term1End}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Term 2</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Term 2</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
@@ -398,7 +398,7 @@ export default function SetupWizardPage() {
                         name="term2Start"
                         value={terms.term2Start}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                     <div>
@@ -408,14 +408,14 @@ export default function SetupWizardPage() {
                         name="term2End"
                         value={terms.term2End}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold text-white mb-3">Term 3</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Term 3</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
@@ -424,7 +424,7 @@ export default function SetupWizardPage() {
                         name="term3Start"
                         value={terms.term3Start}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                     <div>
@@ -434,7 +434,7 @@ export default function SetupWizardPage() {
                         name="term3End"
                         value={terms.term3End}
                         onChange={handleTermsChange}
-                        className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2 rounded-lg bg-background border border-slate-600 text-foreground focus:border-blue-500 outline-none"
                       />
                     </div>
                   </div>
@@ -450,8 +450,8 @@ export default function SetupWizardPage() {
                 <CheckCircle2 className="w-8 h-8 text-green-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Setup Complete!</h2>
-                <p className="text-slate-400">
+                <h2 className="text-2xl font-bold text-foreground mb-2">Setup Complete!</h2>
+                <p className="text-muted-foreground">
                   Your school is ready to go. Click below to access your dashboard.
                 </p>
               </div>
@@ -464,7 +464,7 @@ export default function SetupWizardPage() {
               <button
                 onClick={handleBack}
                 disabled={loading}
-                className="flex-1 px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-background transition-colors disabled:opacity-50"
               >
                 Back
               </button>
@@ -473,7 +473,7 @@ export default function SetupWizardPage() {
               <button
                 onClick={handleNext}
                 disabled={loading}
-                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:shadow-lg hover:shadow-blue-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Next <ArrowRight className="w-4 h-4" />
@@ -482,7 +482,7 @@ export default function SetupWizardPage() {
               <button
                 onClick={handleComplete}
                 disabled={loading}
-                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-semibold hover:shadow-lg hover:shadow-green-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-foreground font-semibold hover:shadow-lg hover:shadow-green-500/50 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Go to Dashboard <ArrowRight className="w-4 h-4" />
