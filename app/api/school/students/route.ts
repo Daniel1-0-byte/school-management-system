@@ -8,7 +8,12 @@ import {
   getPaginatedResults,
   formatSupabaseError,
 } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+  requireGradeStreamAccess,
+} from '@/lib/auth-utils';
 import { generateAdmissionNumber } from '@/lib/services/admission-number-service';
 
 const studentSchema = z.object({
@@ -28,15 +33,26 @@ const studentSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const roleError = await requireRole(request, ['Admin']);
-  if (roleError) return roleError;
+  const streamId = request.nextUrl.searchParams.get('stream_id') || '';
+  const adminRoleError = await requireRole(request, ['Admin']);
+
+  if (adminRoleError) {
+    // Teachers may only use this endpoint for the roster of a stream whose
+    // parent class they are actively assigned to for that academic year.
+    if (!streamId) {
+      return NextResponse.json(
+        { error: 'Teachers must provide a stream_id for roster access' },
+        { status: 403 }
+      );
+    }
+  }
+
   try {
     const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
     const pageSize = parseInt(request.nextUrl.searchParams.get('pageSize') || '20');
     const search = request.nextUrl.searchParams.get('search') || '';
     const schoolId = await getSchoolIdFromRequest(request);
     const status = request.nextUrl.searchParams.get('status') || '';
-    const streamId = request.nextUrl.searchParams.get('stream_id') || '';
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json({ error: 'Invalid school ID' }, { status: 400 });
@@ -48,6 +64,26 @@ export async function GET(request: NextRequest) {
         { error: validation.error || 'Invalid school access' },
         { status: 400 }
       );
+    }
+
+    if (adminRoleError) {
+      const { data: stream, error: streamError } = await querySchoolClassStreams()
+        .select('academic_year_id')
+        .eq('id', streamId)
+        .eq('school_id', schoolId)
+        .maybeSingle();
+
+      if (streamError || !stream?.academic_year_id) {
+        return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+      }
+
+      const teacherAccessError = await requireGradeStreamAccess(
+        request,
+        schoolId,
+        streamId,
+        stream.academic_year_id
+      );
+      if (teacherAccessError) return teacherAccessError;
     }
 
     let query = queryStudents()
