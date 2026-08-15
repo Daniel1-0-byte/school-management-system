@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, AlertCircle, CheckCircle2, ArrowRight, Upload } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 
-type SetupStep = 'school-details' | 'academic-year' | 'curriculum' | 'invite-teacher' | 'complete';
+type SetupStep = 'school-details' | 'academic-year' | 'terms' | 'complete';
 
 interface SchoolDetailsData {
   name: string;
@@ -13,7 +13,6 @@ interface SchoolDetailsData {
   principalEmail: string;
   phone: string;
   website?: string;
-  logoFile?: File;
 }
 
 interface AcademicYearData {
@@ -29,13 +28,6 @@ interface TermData {
   term2End: string;
   term3Start: string;
   term3End: string;
-}
-
-interface TeacherInviteData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  subject: string;
 }
 
 export default function SetupWizardPage() {
@@ -68,15 +60,6 @@ export default function SetupWizardPage() {
     term3Start: `${new Date().getFullYear()}-09-01`,
     term3End: `${new Date().getFullYear()}-12-15`,
   });
-
-  const [teacherInvite, setTeacherInvite] = useState<TeacherInviteData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    subject: '',
-  });
-
-  const [logoFileName, setLogoFileName] = useState('');
 
   // Get schoolId from API session on mount
   useEffect(() => {
@@ -116,14 +99,6 @@ export default function SetupWizardPage() {
     setSchoolDetails(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSchoolDetails(prev => ({ ...prev, logoFile: file }));
-      setLogoFileName(file.name);
-    }
-  };
-
   const handleAcademicYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAcademicYear(prev => ({ ...prev, [name]: name === 'year' ? parseInt(value) : value }));
@@ -132,11 +107,6 @@ export default function SetupWizardPage() {
   const handleTermsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setTerms(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleTeacherInviteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setTeacherInvite(prev => ({ ...prev, [name]: value }));
   };
 
   const handleNext = async () => {
@@ -153,14 +123,12 @@ export default function SetupWizardPage() {
         setError('Please select academic year dates');
         return;
       }
-      setCurrentStep('curriculum');
-    } else if (currentStep === 'curriculum') {
+      setCurrentStep('terms');
+    } else if (currentStep === 'terms') {
       if (!terms.term1Start || !terms.term1End) {
         setError('Please configure at least Term 1 dates');
         return;
       }
-      setCurrentStep('invite-teacher');
-    } else if (currentStep === 'invite-teacher') {
       setCurrentStep('complete');
     }
   };
@@ -168,7 +136,7 @@ export default function SetupWizardPage() {
   const handleBack = () => {
     if (currentStep === 'school-details') return;
     
-    const steps: SetupStep[] = ['school-details', 'academic-year', 'curriculum', 'invite-teacher', 'complete'];
+    const steps: SetupStep[] = ['school-details', 'academic-year', 'terms', 'complete'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -226,26 +194,26 @@ export default function SetupWizardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                {['school-details', 'academic-year', 'curriculum', 'invite-teacher', 'complete'].map((step, index) => (
+                {['school-details', 'academic-year', 'terms', 'complete'].map((step, index) => (
                   <React.Fragment key={step}>
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm ${
                         step === currentStep
                           ? 'bg-blue-500 text-white'
-                          : ['school-details', 'academic-year', 'curriculum', 'invite-teacher', 'complete'].indexOf(step) < ['school-details', 'academic-year', 'curriculum', 'invite-teacher', 'complete'].indexOf(currentStep)
+                          : ['school-details', 'academic-year', 'terms', 'complete'].indexOf(step) < ['school-details', 'academic-year', 'terms', 'complete'].indexOf(currentStep)
                           ? 'bg-green-500 text-white'
                           : 'bg-slate-700 text-slate-400'
                       }`}
                     >
                       {index + 1}
                     </div>
-                    {index < 4 && <div className="flex-1 h-1 bg-slate-700" />}
+                    {index < 3 && <div className="flex-1 h-1 bg-slate-700" />}
                   </React.Fragment>
                 ))}
               </div>
             </div>
           </div>
-          <p className="text-slate-400 text-sm">Step {['school-details', 'academic-year', 'curriculum', 'invite-teacher', 'complete'].indexOf(currentStep) + 1} of 5</p>
+          <p className="text-slate-400 text-sm">Step {['school-details', 'academic-year', 'terms', 'complete'].indexOf(currentStep) + 1} of 4</p>
         </div>
 
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 space-y-6">
@@ -338,23 +306,6 @@ export default function SetupWizardPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">School Logo (Optional)</label>
-                <label className="block px-4 py-3 rounded-lg bg-slate-700 border border-dashed border-slate-600 cursor-pointer hover:border-blue-500 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <Upload className="w-5 h-5 text-slate-400" />
-                    <span className="text-slate-300 text-sm">
-                      {logoFileName || 'Click to upload logo'}
-                    </span>
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
             </div>
           )}
 
@@ -403,7 +354,7 @@ export default function SetupWizardPage() {
           )}
 
           {/* Step 3: Curriculum/Terms */}
-          {currentStep === 'curriculum' && (
+          {currentStep === 'terms' && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">School Terms</h2>
@@ -492,65 +443,7 @@ export default function SetupWizardPage() {
             </div>
           )}
 
-          {/* Step 4: Invite First Teacher */}
-          {currentStep === 'invite-teacher' && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Invite First Teacher</h2>
-                <p className="text-slate-400">Add your first teacher to get started (Optional)</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">First Name</label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={teacherInvite.firstName}
-                  onChange={handleTeacherInviteChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
-                  placeholder="Teacher First Name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={teacherInvite.lastName}
-                  onChange={handleTeacherInviteChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
-                  placeholder="Teacher Last Name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Email Address</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={teacherInvite.email}
-                  onChange={handleTeacherInviteChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
-                  placeholder="teacher@school.edu"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Primary Subject</label>
-                <input
-                  type="text"
-                  name="subject"
-                  value={teacherInvite.subject}
-                  onChange={handleTeacherInviteChange}
-                  className="w-full px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white focus:border-blue-500 outline-none"
-                  placeholder="e.g., Mathematics, English"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Complete */}
+          {/* Step 4: Complete */}
           {currentStep === 'complete' && (
             <div className="space-y-4 text-center">
               <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">

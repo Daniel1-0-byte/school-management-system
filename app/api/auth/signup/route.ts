@@ -90,6 +90,15 @@ export async function POST(request: NextRequest) {
         submitted_at: new Date().toISOString(),
       });
 
+    if (requestError) {
+      console.error('[v0][SIGNUP] School request creation failed:', requestError);
+      await supabase.from('schools').delete().eq('id', schoolData.id);
+      return NextResponse.json(
+        { success: false, error: 'Failed to submit school registration request' },
+        { status: 500 }
+      );
+    }
+
     // Create auth user via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
