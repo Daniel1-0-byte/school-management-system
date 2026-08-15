@@ -251,7 +251,10 @@ export default function SchoolsPage() {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Contact
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
+                    Phone
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                     Added
@@ -271,6 +274,7 @@ export default function SchoolsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{school.email || 'N/A'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{school.phone || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {formatDate(school.createdAt)}
                     </td>
