@@ -267,9 +267,10 @@ export class SchoolService {
         invited_by: invitedBy,
         first_name: staffData.first_name,
         last_name: staffData.last_name,
-        email: staffData.email,
-        system_role: staffData.system_role,
-        department: staffData.department,
+          email: staffData.email,
+          phone: staffData.phone,
+          system_role: staffData.system_role,
+          department: staffData.department,
       },
       { school_id: schoolId, invited_by: invitedBy }
     );

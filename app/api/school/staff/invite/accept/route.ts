@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
         school_id: invitation.school_id,
         first_name: invitation.first_name,
         last_name: invitation.last_name,
+        phone: invitation.phone,
         system_role: invitation.system_role,
         status: 'active',
         setup_completed: true,
