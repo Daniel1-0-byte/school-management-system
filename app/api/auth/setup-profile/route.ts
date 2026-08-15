@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create academic year record if it doesn't exist
-    const { error: academicYearError } = await supabase
+    const { data: academicYearData, error: academicYearError } = await supabase
       .from('academic_years')
       .insert({
         school_id: schoolId,
@@ -76,8 +76,16 @@ export async function POST(request: NextRequest) {
         start_date: body.academicYear.startDate,
         end_date: body.academicYear.endDate,
       })
-      .select()
+      .select('id')
       .single();
+
+    if (academicYearError || !academicYearData) {
+      console.error('[v0][SETUP] Failed to create academic year:', academicYearError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to create academic year' },
+        { status: 500 }
+      );
+    }
 
     // Get userId from profile - profiles are created with role 'Admin'
     const { data: profileData, error: profileFetchError } = await supabase
@@ -105,20 +113,29 @@ export async function POST(request: NextRequest) {
 
     // Create term records
     const terms = [
-      { name: 'Term 1', start: body.terms.term1Start, end: body.terms.term1End },
-      { name: 'Term 2', start: body.terms.term2Start, end: body.terms.term2End },
-      { name: 'Term 3', start: body.terms.term3Start, end: body.terms.term3End },
+      { type: 'term_1', start: body.terms.term1Start, end: body.terms.term1End },
+      { type: 'term_2', start: body.terms.term2Start, end: body.terms.term2End },
+      { type: 'term_3', start: body.terms.term3Start, end: body.terms.term3End },
     ];
 
     for (const term of terms) {
-      await supabase
+      const { error: termError } = await supabase
         .from('terms')
         .insert({
           school_id: schoolId,
-          name: term.name,
+          academic_year_id: academicYearData.id,
+          type: term.type,
           start_date: term.start,
           end_date: term.end,
         });
+
+      if (termError) {
+        console.error('[v0][SETUP] Failed to create term:', { type: term.type, error: termError });
+        return NextResponse.json(
+          { success: false, error: `Failed to create ${term.type.replace('_', ' ')}` },
+          { status: 500 }
+        );
+      }
     }
 
     // Mark profile setup as complete - MANDATORY
@@ -145,8 +162,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0][SETUP] Setup completed marked in database successfully');
 
-    // Log audit entry
-    await supabase
+    // Log audit entry without masking a successfully completed setup if logging fails.
+    const { error: auditError } = await supabase
       .from('audit_logs')
       .insert({
         actor_id: userId,
@@ -156,6 +173,10 @@ export async function POST(request: NextRequest) {
         target_name: body.schoolDetails.name,
         school_id: schoolId,
       });
+
+    if (auditError) {
+      console.error('[v0][SETUP] Failed to write setup audit log:', auditError);
+    }
 
     return NextResponse.json({
       success: true,
