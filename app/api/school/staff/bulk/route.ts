@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { queryProfiles, formatSupabaseError } from '@/lib/supabase';
+import { getServerSupabaseClient, queryProfiles, formatSupabaseError } from '@/lib/supabase';
 import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
 
 const bulkStaffSchema = z.object({
@@ -39,29 +39,55 @@ export async function POST(request: NextRequest) {
 
     const errors: Array<{ row: number; error: string }> = [];
     let created = 0;
+    const supabase = getServerSupabaseClient();
+    const roleMap = {
+      teacher: 'Teacher',
+      admin: 'Admin',
+      staff: 'Teacher',
+    } as const;
 
     for (let i = 0; i < staff.length; i++) {
       try {
         const member = staff[i];
         const validatedData = bulkStaffSchema.parse(member);
+        const systemRole = roleMap[validatedData.role];
+        const temporaryPassword = `${crypto.randomUUID()}Aa1!`;
 
-        const { error } = await queryProfiles()
-          .insert({
-            ...validatedData,
-            school_id: schoolId,
-            id: crypto.randomUUID(),
-          })
-          .select()
-          .single();
+        // profiles.id must reference a real auth.users row; a random UUID
+        // cannot be inserted directly into profiles.
+        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+          email: validatedData.email,
+          password: temporaryPassword,
+          email_confirm: false,
+          user_metadata: {
+            first_name: validatedData.first_name,
+            last_name: validatedData.last_name,
+          },
+        });
 
-        if (error) {
-          errors.push({ row: i + 1, error: formatSupabaseError(error) });
-        } else {
-          created++;
+        if (authError || !authUser.user) {
+          throw new Error(authError?.message || 'Failed to create auth user');
         }
+
+        const { error: profileError } = await queryProfiles().insert({
+          id: authUser.user.id,
+          school_id: schoolId,
+          first_name: validatedData.first_name,
+          last_name: validatedData.last_name,
+          phone: validatedData.phone,
+          system_role: systemRole,
+          status: validatedData.status === 'active' ? 'active' : 'inactive',
+        });
+
+        if (profileError) {
+          await supabase.auth.admin.deleteUser(authUser.user.id);
+          throw new Error(profileError.message || 'Failed to save staff profile');
+        }
+
+        created++;
       } catch (err) {
         errors.push({
-          row: i + 1,
+          row: i + 2,
           error: err instanceof Error ? err.message : 'Validation failed',
         });
       }
