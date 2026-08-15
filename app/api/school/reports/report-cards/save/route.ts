@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabaseClient } from '@/lib/supabase';
-import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/lib/auth-utils';
+import {
+  getSchoolIdFromRequest,
+  validateSchoolIdAccess,
+  requireRole,
+  requireGradeClassAccess,
+} from '@/lib/auth-utils';
 
 /**
  * POST /api/school/reports/report-cards/save
@@ -8,7 +13,6 @@ import { getSchoolIdFromRequest, validateSchoolIdAccess, requireRole } from '@/l
  */
 export async function POST(request: NextRequest) {
   const roleError = await requireRole(request, ['Admin']);
-  if (roleError) return roleError;
   try {
     const schoolId = await getSchoolIdFromRequest(request);
 
@@ -83,8 +87,20 @@ export async function POST(request: NextRequest) {
       console.error('[v0] Error resolving student enrollment for class size:', enrollmentError);
       return NextResponse.json(
         { error: 'Active student enrollment not found' },
-        { status: 400 }
+        { status: roleError ? 403 : 400 }
       );
+    }
+
+    // Teacher writes are authorized only after resolving the submitted
+    // student to an active enrollment for this exact academic year.
+    if (roleError) {
+      const teacherAccessError = await requireGradeClassAccess(
+        request,
+        schoolId,
+        studentEnrollment.class_id,
+        academicYearId
+      );
+      if (teacherAccessError) return teacherAccessError;
     }
 
     let classSizeQuery = supabase
