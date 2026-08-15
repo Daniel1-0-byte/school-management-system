@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedPlatformAdmin, requirePlatformAdmin } from '@/lib/platform-admin-middleware';
-import { querySchools, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
+import { getServerSupabaseClient, querySchools, queryProfiles, getPaginatedResults, formatSupabaseError } from '@/lib/supabase';
 
 // GET /api/platform-admin/schools - Fetch all schools with pagination, search, and filters
 export async function GET(request: NextRequest) {
@@ -58,10 +58,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: formatSupabaseError(error) }, { status: 400 });
     }
 
+    // Signup stores the administrator's email in auth.users, while the
+    // profiles row links that auth user to the school. Resolve that relation
+    // explicitly instead of relying on the nullable schools.email column.
+    const schools = (data || []) as Array<{
+      id: string;
+      email?: string | null;
+      phone?: string | null;
+      [key: string]: unknown;
+    }>;
+    const schoolIds = schools.map((school) => school.id);
+    const { data: adminProfiles, error: profilesError } = schoolIds.length
+      ? await queryProfiles()
+          .select('id, school_id')
+          .eq('system_role', 'Admin')
+          .in('school_id', schoolIds)
+      : { data: [], error: null };
+
+    if (profilesError) {
+      console.error('[v0][ADMIN-SCHOOLS] Failed to fetch school admin profiles:', profilesError);
+      return NextResponse.json({ error: formatSupabaseError(profilesError) }, { status: 400 });
+    }
+
+    const adminEmailBySchoolId = new Map<string, string>();
+    const serverSupabase = getServerSupabaseClient();
+    await Promise.all(
+      (adminProfiles || []).map(async (profile) => {
+        const { data: authUser, error: authUserError } = await serverSupabase.auth.admin.getUserById(profile.id);
+        if (authUserError) {
+          console.error('[v0][ADMIN-SCHOOLS] Failed to fetch admin auth user:', {
+            profileId: profile.id,
+            error: authUserError,
+          });
+          return;
+        }
+        if (authUser.user?.email) adminEmailBySchoolId.set(profile.school_id, authUser.user.email);
+      })
+    );
+
+    const enrichedSchools = schools.map((school) => ({
+      ...school,
+      email: adminEmailBySchoolId.get(school.id) || school.email || null,
+    }));
+
     console.log('[v0][ADMIN-SCHOOLS] ✅ Successfully fetched schools');
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: enrichedSchools,
       total: count || 0,
       page,
       pageSize,
