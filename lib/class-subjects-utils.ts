@@ -16,7 +16,7 @@ export async function fetchClassSubjects(
 ) {
   const { data: assignments, error: assignmentsError } = await supabase
     .from('class_subjects')
-    .select('subject_id, created_at')
+    .select('id, subject_id, created_at')
     .eq('class_id', classId)
     .eq('school_id', schoolId)
     .order('created_at', { ascending: true });
@@ -40,7 +40,12 @@ export async function fetchClassSubjects(
   }
 
   const subjectsById = new Map((subjects || []).map((subject) => [subject.id, subject]));
-  return subjectIds.map((id) => subjectsById.get(id)).filter(Boolean);
+  return (assignments || [])
+    .map((assignment) => {
+      const subject = subjectsById.get(assignment.subject_id);
+      return subject ? { ...subject, class_subject_id: assignment.id } : null;
+    })
+    .filter(Boolean);
 }
 
 /**

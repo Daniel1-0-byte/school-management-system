@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const schoolId = await getSchoolIdFromRequest(request);
     const classIdParam = request.nextUrl.searchParams.get('class_id');
     const streamId = request.nextUrl.searchParams.get('stream_id');
+    const allSubjects = request.nextUrl.searchParams.get('all') === 'true';
 
     if (typeof schoolId !== 'string') {
       return NextResponse.json(
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!classIdParam && !streamId) {
+    if (!allSubjects && !classIdParam && !streamId) {
       return NextResponse.json(
         { error: 'class_id or stream_id parameter is required' },
         { status: 400 }
@@ -41,7 +42,11 @@ export async function GET(request: NextRequest) {
     let subjects;
 
     try {
-      if (streamId) {
+      if (allSubjects) {
+        const { data, error } = await supabase.from('subjects').select('id, name, code, created_at').eq('school_id', schoolId).order('name');
+        if (error) throw error;
+        subjects = data || [];
+      } else if (streamId) {
         ({ subjects } = await fetchSubjectsForStream(supabase, streamId, schoolId));
       } else {
         subjects = await fetchClassSubjects(supabase, classIdParam as string, schoolId);
