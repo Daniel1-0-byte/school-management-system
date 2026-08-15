@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSupabaseClient, queryAcademicYears, queryProfiles } from '@/lib/supabase';
+import {
+  getServerSupabaseClient,
+  queryAcademicYears,
+  queryProfiles,
+  querySchools,
+} from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,6 +69,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { data: schoolData, error: schoolError } = await querySchools()
+      .select('id, name')
+      .eq('id', profileData.school_id)
+      .maybeSingle();
+
+    if (schoolError) {
+      console.error('[v0][SESSION] School lookup failed:', {
+        error: schoolError.message,
+      });
+    }
+
     const { data: activeAcademicYear, error: academicYearError } = await queryAcademicYears()
       .select('id')
       .eq('school_id', profileData.school_id)
@@ -84,6 +100,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: profileData.system_role,
         schoolId: profileData.school_id,
+        schoolName: schoolData?.name ?? null,
         academicYearId: activeAcademicYear?.id ?? null,
         setupCompleted: profileData.setup_completed,
       },
