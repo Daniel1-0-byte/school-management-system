@@ -116,8 +116,23 @@ export default function SchoolLayout({
 
         const teacherRestrictedPaths = ['/students', '/staff', '/classes', '/settings', '/messages'];
         if (role === 'Teacher' && teacherRestrictedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
-          router.replace('/dashboard');
+          router.replace('/grades');
           return;
+        }
+
+        if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
+          if (role === 'Teacher') {
+            router.replace('/grades');
+            return;
+          }
+          if (role === 'Parent') {
+            router.replace('/my-child');
+            return;
+          }
+          if (role !== 'Admin') {
+            router.replace('/login');
+            return;
+          }
         }
 
         // Check if profile setup is completed
