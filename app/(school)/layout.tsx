@@ -77,6 +77,7 @@ export default function SchoolLayout({
   const [userRole, setUserRole] = useState<string>('Admin');
   const [userName, setUserName] = useState('School Admin');
   const [userEmail, setUserEmail] = useState('');
+  const [schoolName, setSchoolName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -109,6 +110,7 @@ export default function SchoolLayout({
         const role = data.session.role || 'Admin';
         setUserRole(role);
         setUserEmail(data.session.email || '');
+        setSchoolName(data.session.schoolName || '');
         setUserName(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || data.session.email || 'School Admin');
         setIsAuthenticated(true);
 
@@ -173,10 +175,17 @@ export default function SchoolLayout({
         } lg:translate-x-0 lg:static lg:inset-auto`}
       >
         {/* Logo / Brand */}
-        <div className="h-16 border-b border-border flex items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="w-6 h-6 text-primary" />
-            <span className="font-bold text-lg text-foreground">SchoolHub</span>
+        <div className="min-h-16 border-b border-border flex items-center justify-between px-6 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <LayoutDashboard className="w-6 h-6 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <span className="block truncate font-bold text-lg text-foreground">SchoolHub</span>
+              {schoolName && (
+                <span className="block truncate text-xs text-muted-foreground" title={schoolName}>
+                  {schoolName}
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
