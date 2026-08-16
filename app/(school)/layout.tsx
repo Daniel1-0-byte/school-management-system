@@ -186,7 +186,11 @@ export default function SchoolLayout({
         {/* Logo / Brand */}
         <div className="min-h-16 border-b border-border flex items-center justify-between px-6 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <LayoutDashboard className="w-6 h-6 shrink-0 text-primary" />
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/418663-removebg-preview-VtVfwK4nK0XmFUKHC1BHmGHDkqcp6Y.png"
+              alt="SchoolHub logo"
+              className="h-6 w-6 shrink-0 object-contain"
+            />
             <div className="min-w-0">
               <span className="block truncate font-bold text-lg text-foreground">SchoolHub</span>
               {schoolName && (
