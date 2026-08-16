@@ -7,21 +7,8 @@ export const metadata: Metadata = {
   description: 'Comprehensive school management platform for attendance, fees, academics, and communication',
   generator: 'v0.app',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/418663-removebg-preview-VtVfwK4nK0XmFUKHC1BHmGHDkqcp6Y.png',
+    apple: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/418663-removebg-preview-VtVfwK4nK0XmFUKHC1BHmGHDkqcp6Y.png',
   },
 }
 
